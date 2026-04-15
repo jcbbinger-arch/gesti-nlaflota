@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
-import { PlusIcon, DownloadIcon, WarningIcon, TrashIcon, ProductIcon } from '../../components/icons';
+import { PlusIcon, DownloadIcon, WarningIcon, TrashIcon, ProductIcon, ShieldCheckIcon } from '../../components/icons';
 import { Product, Supplier, ProductState, WarehouseStatus, Profile } from '../../types';
 import { exportToCsv } from '../../utils/export';
 import { parseCsv } from '../../utils/csv';
@@ -203,19 +203,36 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                     <div className="flex-1 space-y-4">
                         <input type="text" name="name" value={formState.name} onChange={handleChange} placeholder="Nombre del Producto" required className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600"/>
                         <textarea name="description" value={formState.description} onChange={handleChange} placeholder="Descripción" rows={2} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600"/>
+                        
+                        <div>
+                            <label className="text-xs text-gray-500 block mb-1">Enlace de la imagen (URL)</label>
+                            <input 
+                                type="text" 
+                                name="image" 
+                                value={formState.image?.startsWith('data:') ? '' : formState.image} 
+                                onChange={handleChange} 
+                                placeholder="Pega aquí el enlace de la imagen..." 
+                                className="block w-full rounded-md border-gray-300 shadow-sm text-sm dark:bg-gray-700 dark:border-gray-600"
+                            />
+                            {formState.image?.startsWith('data:') && (
+                                <p className="text-[10px] text-green-600 mt-1 flex items-center">
+                                    <ShieldCheckIcon className="w-3 h-3 mr-1" /> Imagen cargada directamente
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    <div className="w-32 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800 relative group">
+                    <div className="w-32 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800 relative group shrink-0">
                         {formState.image ? (
                             <>
                                 <img src={formState.image} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                <button type="button" onClick={() => setFormState({...formState, image: ''})} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button type="button" onClick={() => setFormState({...formState, image: ''})} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                     <TrashIcon className="w-3 h-3" />
                                 </button>
                             </>
                         ) : (
                             <div className="text-center p-2">
                                 <PlusIcon className="w-6 h-6 mx-auto text-gray-400" />
-                                <span className="text-[10px] text-gray-500">Subir Imagen</span>
+                                <span className="text-[10px] text-gray-500">Subir o Pegar</span>
                             </div>
                         )}
                         <input 
@@ -223,19 +240,9 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                             accept="image/*"
                             className="absolute inset-0 opacity-0 cursor-pointer" 
                             onChange={handleImageUpload}
-                            title="Selecciona una imagen para el producto"
+                            title="Selecciona una imagen o pega una directamente (Ctrl+V)"
                         />
                     </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <input 
-                        type="text" 
-                        name="image" 
-                        value={formState.image?.startsWith('data:') ? 'Imagen cargada (Base64)' : formState.image} 
-                        onChange={handleChange} 
-                        placeholder="O pega una URL de imagen..." 
-                        className="flex-1 text-xs p-1 border rounded dark:bg-gray-700 dark:border-gray-600"
-                    />
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
