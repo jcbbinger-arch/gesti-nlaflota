@@ -230,21 +230,21 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <CompanyProvider>
-        <CreatorProvider>
-          <Router>
-            <AuthProvider>
+    <Router>
+      <AuthProvider>
+        <ThemeProvider>
+          <CompanyProvider>
+            <CreatorProvider>
               <DataProvider>
                 <ErrorBoundary>
                   <AppContent />
                 </ErrorBoundary>
               </DataProvider>
-            </AuthProvider>
-          </Router>
-        </CreatorProvider>
-      </CompanyProvider>
-    </ThemeProvider>
+            </CreatorProvider>
+          </CompanyProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 
