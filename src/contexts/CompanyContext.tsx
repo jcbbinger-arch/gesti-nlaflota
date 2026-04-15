@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo, useState, useEffect } from '
 import { Company } from '../types';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from './AuthContext';
 
 interface CompanyContextType {
   companyInfo: Company;
@@ -24,14 +25,15 @@ const initialCompanyInfo: Company = {
 
 export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [companyInfo, setCompanyInfoState] = useState<Company>(initialCompanyInfo);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     const docRef = doc(db, 'settings', 'company');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         setCompanyInfoState(docSnap.data() as Company);
-      } else {
-        // Initialize if it doesn't exist
+      } else if (currentUser?.role === 'admin') {
+        // Initialize if it doesn't exist and user is admin
         setDoc(docRef, initialCompanyInfo, { merge: true }).catch(console.error);
       }
     }, (error) => {
@@ -39,7 +41,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [currentUser]);
 
   const setCompanyInfo = async (info: Company) => {
     try {

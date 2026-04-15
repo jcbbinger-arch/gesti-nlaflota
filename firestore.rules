@@ -1,9 +1,47 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: id, name, email, profiles, activity_status, location_status, role, etc.
+    //
+    // Collection: products
+    // Fields: id, name, reference, unit, tax, category, family, status, etc.
+    //
+    // Collection: suppliers
+    // Fields: id, name, cif, status, etc.
+    //
+    // Collection: events
+    // Fields: id, name, type, start_date, end_date, budget_per_teacher, status, etc.
+    //
+    // Collection: orders
+    // Fields: id, user_id, date, status, event_id, items, etc.
+    //
+    // Collection: recipes
+    // Fields: id, name, author_id, yield_amount, yield_unit, category, ingredients, preparation_steps, is_public, cost, price, etc.
+    //
+    // Collection: sale_items
+    // Fields: id, recipe_id, name, price, rations, workspace_id, status, created_at, sale_date, etc.
+    //
+    // Collection: reservations
+    // Fields: id, sale_item_id, user_name, quantity, status, created_at, etc.
+    //
+    // Collection: dining_services
+    // Fields: id, date, max_capacity, current_pax, menu_price, status, created_by, created_at, etc.
+    //
+    // Collection: dining_reservations
+    // Fields: id, service_id, reference_name, pax, total_price, created_by, created_at, etc.
+    //
+    // ===============================================================
+
     // ===============================================================
     // Helper Functions
     // ===============================================================
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -14,208 +52,122 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['admin', 'creator']) ||
-          request.auth.token.email in ['jcbprofesor@gmail.com', 'managerproapp@gmail.com']);
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          ((request.auth.token.email == "jcbprofesor@gmail.com" || request.auth.token.email == "managerproapp@gmail.com") && request.auth.token.email_verified == true));
     }
 
-    function validString(field, min, max) {
-      return request.resource.data[field] is string &&
-             request.resource.data[field].size() >= min &&
-             request.resource.data[field].size() <= max;
-    }
-
-    function isAlmacen() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['almacen', 'admin', 'creator']);
-    }
-
-    function isTeacher() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['teacher', 'admin', 'creator']);
-    }
-
-    function isSalesManager() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['sales_manager', 'admin', 'creator']);
-    }
-
-    function isStudent() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['student', 'admin', 'creator']);
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
     }
 
     function hasOnlyAllowedFields(fields) {
       return request.resource.data.keys().hasOnly(fields);
     }
 
-    function isApproved() {
-      return isAuthenticated();
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     }
 
-    function getUserWorkspace() {
-      return request.auth.uid;
-    }
-
-    function isValidWorkspaceSettings(data) {
-      return data.keys().hasAll(['workspaceId', 'categories']) &&
-             data.keys().hasOnly(['workspaceId', 'categories', 'categoryConfigs']) &&
-             data.workspaceId is string &&
-             data.categories is list &&
-             data.categories.size() < 50 &&
-             (!('categoryConfigs' in data) || data.categoryConfigs is list);
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
     }
 
     // ===============================================================
-    // Collection Rules
+    // Domain Validators
     // ===============================================================
 
-    match /invitations/{invitationId} {
-      allow read: if isAuthenticated();
-      allow create: if isAdmin() || isTeacher();
-      allow delete: if isAdmin() || isTeacher();
+    function isValidUser(data) {
+      return data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.profiles is list &&
+             data.activity_status in ['Activo', 'De Baja'] &&
+             data.location_status in ['En el centro', 'Fuera del centro'];
     }
 
-    match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
+    function isValidProduct(data) {
+      return data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.reference is string &&
+             data.unit is string &&
+             data.tax is number &&
+             data.category is string &&
+             data.family is string &&
+             data.status in ['Activo', 'Inactivo'];
     }
 
-    match /settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin();
+    function isValidOrder(data) {
+      return data.id is string &&
+             data.user_id is string &&
+             isValidDateString(data.date) &&
+             data.status is string &&
+             data.event_id is string &&
+             data.items is list;
     }
+
+    function isValidRecipe(data) {
+      return data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.author_id is string &&
+             data.yield_amount is number &&
+             data.yield_unit is string &&
+             data.category is string &&
+             data.ingredients is list &&
+             data.preparation_steps is string &&
+             data.is_public is bool &&
+             data.cost is number &&
+             data.price is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if (isAdmin() || isOwner(userId)) && validString('name', 1, 100) && validString('email', 5, 100);
-      allow update: if (isAdmin() || isOwner(userId)) && validString('name', 1, 100) && validString('email', 5, 100);
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin());
       allow delete: if isAdmin();
     }
 
     match /products/{productId} {
       allow read: if isAuthenticated();
-      allow write: if isAlmacen() && validString('name', 1, 100) && validString('description', 0, 500);
+      allow write: if isAdmin() && isValidProduct(request.resource.data);
     }
 
     match /suppliers/{supplierId} {
       allow read: if isAuthenticated();
-      allow write: if isAlmacen() && validString('name', 1, 100) && validString('address', 0, 200);
+      allow write: if isAdmin();
     }
 
     match /events/{eventId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin() && validString('name', 1, 100);
+      allow write: if isAdmin();
     }
 
     match /orders/{orderId} {
       allow read: if isAuthenticated();
-      allow create: if (isTeacher() || isAlmacen()) && validString('notes', 0, 500);
-      allow update: if (isTeacher() || isAlmacen()) && validString('notes', 0, 500);
+      allow create: if isAuthenticated() && isValidOrder(request.resource.data) && (request.resource.data.user_id == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && isValidOrder(request.resource.data) && (resource.data.user_id == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 
     match /recipes/{recipeId} {
       allow read: if isAuthenticated();
-      allow create: if isTeacher() && validString('name', 1, 100) && validString('description', 0, 500);
-      allow update: if isTeacher() && (resource.data.authorId == request.auth.uid || isAdmin()) && validString('name', 1, 100) && validString('description', 0, 500);
-      allow delete: if isAdmin() || (isTeacher() && resource.data.authorId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidRecipe(request.resource.data) && (request.resource.data.author_id == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && isValidRecipe(request.resource.data) && (resource.data.author_id == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.author_id == request.auth.uid || isAdmin());
     }
 
-    match /incidents/{incidentId} {
+    match /sale_items/{itemId} {
+      allow read: if true; // Public catalog
+      allow write: if isAuthenticated() && (isAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['teacher', 'sales_manager']));
+    }
+
+    match /reservations/{resId} {
       allow read: if isAuthenticated();
-      allow write: if (isAlmacen() || isTeacher()) && validString('description', 1, 500);
-    }
-
-    match /sales/{saleId} {
-      allow read: if isAuthenticated();
-      allow write: if isTeacher() && validString('category', 1, 50);
-    }
-
-    match /messages/{messageId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && validString('subject', 1, 100) && validString('body', 1, 1000);
-      allow update: if isAuthenticated();
-    }
-
-    match /classrooms/{classroomId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    match /classroom_products/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isTeacher() || isStudent();
-    }
-
-    match /classroom_suppliers/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isTeacher() || isStudent();
-    }
-
-    match /classroom_events/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isTeacher();
-    }
-
-    match /classroom_orders/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isStudent() || isTeacher();
-    }
-
-    match /service_groups/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    match /services/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin() || isTeacher();
-    }
-
-    match /training_cycles/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    match /modules/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-
-    match /groups/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin() || isTeacher();
-    }
-
-    match /assignments/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin() || isTeacher();
-    }
-
-    match /mini_economato_stock/{id} {
-      allow read: if isAuthenticated();
-      allow write: if isAlmacen() || isTeacher();
-    }
-
-    match /workspace_settings/{workspaceId} {
-      // Solo el usuario del centro (profesor) puede leer su propia configuración
-      allow read: if isApproved() && (isAdmin() || workspaceId == getUserWorkspace());
-      // Solo el usuario del centro puede crear/actualizar su propia configuración
-      allow create: if isApproved() && (isAdmin() || (workspaceId == getUserWorkspace() && isValidWorkspaceSettings(request.resource.data)));
-      allow update: if isApproved() && (isAdmin() || (workspaceId == getUserWorkspace() && isValidWorkspaceSettings(request.resource.data)));
-      allow delete: if isAdmin();
-    }
-
-    match /sale_items/{saleItemId} {
-      allow read: if true;
-      allow create, delete: if isTeacher() && validString('name', 1, 100) && validString('description', 0, 500);
-      allow update: if (isTeacher() && validString('name', 1, 100) && validString('description', 0, 500)) || 
-                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rations']) && 
-                     request.resource.data.rations >= 0 && 
-                     request.resource.data.rations < resource.data.rations);
-    }
-
-    match /reservations/{reservationId} {
-      allow read: if isAuthenticated();
-      allow create: if validString('user_name', 1, 100) && request.resource.data.quantity is number && request.resource.data.quantity > 0;
-      allow update: if isAuthenticated() && (isTeacher() || isSalesManager() || isOwner(resource.data.user_id));
-      allow delete: if isAdmin() || isTeacher() || isSalesManager();
+      allow create: if true; // Allow public reservations if needed, but usually auth is better
+      allow update, delete: if isAuthenticated();
     }
 
     match /dining_services/{serviceId} {
@@ -223,14 +175,26 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    match /dining_reservations/{reservationId} {
+    match /dining_reservations/{resId} {
       allow read: if isAuthenticated();
-      allow create: if isAlmacen() && 
-                      get(/databases/$(database)/documents/dining_services/$(request.resource.data.service_id)).data.status == 'abierto';
-      allow update: if (isAlmacen() && 
-                       get(/databases/$(database)/documents/dining_services/$(resource.data.service_id)).data.status == 'abierto') || 
-                      isAdmin();
+      allow write: if isAuthenticated();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && (request.auth.uid in resource.data.recipient_ids || resource.data.sender_id == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (request.auth.uid in resource.data.recipient_ids || isAdmin());
       allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true; // Public branding/settings
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if isAdmin();
     }
   }
 }

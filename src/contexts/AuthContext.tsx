@@ -86,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               profiles: isSuperUser 
                 ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] 
                 : [Profile.TEACHER], // Default to Teacher so they appear in TeacherManager
+              role: isSuperUser ? 'admin' : 'user',
               workspaceId: firebaseUser.uid, // Set workspaceId to UID by default
               activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive
               location_status: 'En el centro',
@@ -128,6 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           profiles: isSuperUser 
             ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] 
             : [Profile.TEACHER], // Default to Teacher so they appear in TeacherManager
+          role: isSuperUser ? 'admin' : 'user',
           workspaceId: result.user.uid,
           activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive
           location_status: 'En el centro',

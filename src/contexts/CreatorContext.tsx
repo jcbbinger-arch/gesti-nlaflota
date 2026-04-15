@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo, useState, useEffect } from '
 import { Creator } from '../types';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from './AuthContext';
 
 interface CreatorContextType {
   creatorInfo: Creator;
@@ -20,14 +21,15 @@ const initialCreatorInfo: Creator = {
 
 export const CreatorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [creatorInfo, setCreatorInfoState] = useState<Creator>(initialCreatorInfo);
+  const { currentUser } = useAuth();
   
   useEffect(() => {
     const docRef = doc(db, 'settings', 'creator');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         setCreatorInfoState(docSnap.data() as Creator);
-      } else {
-        // Initialize if it doesn't exist
+      } else if (currentUser?.role === 'admin') {
+        // Initialize if it doesn't exist and user is admin
         setDoc(docRef, initialCreatorInfo, { merge: true }).catch(console.error);
       }
     }, (error) => {
@@ -35,7 +37,7 @@ export const CreatorProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [currentUser]);
 
   const setCreatorInfo = async (info: Creator) => {
     try {

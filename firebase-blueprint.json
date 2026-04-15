@@ -10,17 +10,24 @@
         "email": { "type": "string", "format": "email" },
         "avatar": { "type": "string" },
         "profiles": { "type": "array", "items": { "type": "string" } },
-        "activityStatus": { "type": "string", "enum": ["Activo", "De Baja"] },
-        "locationStatus": { "type": "string", "enum": ["En el centro", "Fuera del centro"] },
-        "contractType": { "type": "string", "enum": ["Fijo", "Interino"] },
-        "roleType": { "type": "string", "enum": ["Titular", "Sustituto"] },
-        "classroomId": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "teacherLogo": { "type": "string" },
+        "instituteName": { "type": "string" },
+        "instituteLogo": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "activity_status": { "type": "string", "enum": ["Activo", "De Baja"] },
+        "location_status": { "type": "string", "enum": ["En el centro", "Fuera del centro"] },
+        "contract_type": { "type": "string", "enum": ["Fijo", "Interino"] },
+        "role_type": { "type": "string", "enum": ["Titular", "Sustituto"] },
+        "classroom_id": { "type": "string" },
         "phone": { "type": "string" },
-        "secondaryPhone": { "type": "string" },
+        "secondary_phone": { "type": "string" },
         "address": { "type": "string" },
-        "studentSimulatedProfile": { "type": "string", "enum": ["teacher", "almacen"] }
+        "allergens": { "type": "array", "items": { "type": "string" } },
+        "student_simulated_profile": { "type": "string", "enum": ["teacher", "almacen"] }
       },
-      "required": ["id", "name", "email", "profiles", "activityStatus", "locationStatus"]
+      "required": ["id", "name", "email", "profiles", "activity_status", "location_status"]
     },
     "Product": {
       "title": "Product",
@@ -38,8 +45,8 @@
         "family": { "type": "string" },
         "allergens": { "type": "array", "items": { "type": "string" } },
         "status": { "type": "string", "enum": ["Activo", "Inactivo"] },
-        "productState": { "type": "string" },
-        "warehouseStatus": { "type": "string" }
+        "product_state": { "type": "string" },
+        "warehouse_status": { "type": "string" }
       },
       "required": ["id", "name", "reference", "unit", "tax", "category", "family", "status"]
     },
@@ -47,7 +54,7 @@
       "title": "ProductSupplier",
       "type": "object",
       "properties": {
-        "supplierId": { "type": "string" },
+        "supplier_id": { "type": "string" },
         "price": { "type": "number" }
       }
     },
@@ -62,7 +69,7 @@
         "address": { "type": "string" },
         "phone": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "contactPerson": { "type": "string" },
+        "contact_person": { "type": "string" },
         "status": { "type": "string", "enum": ["Activo", "Inactivo"] },
         "website": { "type": "string" },
         "notes": { "type": "string" }
@@ -77,13 +84,13 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "type": { "type": "string", "enum": ["Regular", "Extraordinario"] },
-        "startDate": { "type": "string", "format": "date-time" },
-        "endDate": { "type": "string", "format": "date-time" },
-        "budgetPerTeacher": { "type": "number" },
-        "authorizedTeachers": { "type": "array", "items": { "type": "string" } },
+        "start_date": { "type": "string", "format": "date-time" },
+        "end_date": { "type": "string", "format": "date-time" },
+        "budget_per_teacher": { "type": "number" },
+        "authorized_teachers": { "type": "array", "items": { "type": "string" } },
         "status": { "type": "string", "enum": ["Activo", "Inactivo"] }
       },
-      "required": ["id", "name", "type", "startDate", "endDate", "budgetPerTeacher", "status"]
+      "required": ["id", "name", "type", "start_date", "end_date", "budget_per_teacher", "status"]
     },
     "Order": {
       "title": "Order",
@@ -91,25 +98,90 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
+        "user_id": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
         "status": { "type": "string" },
-        "eventId": { "type": "string" },
+        "event_id": { "type": "string" },
         "items": { "type": "array", "items": { "$ref": "OrderItem" } },
+        "new_product_requests": { "type": "array", "items": { "$ref": "NewProductRequest" } },
         "cost": { "type": "number" },
         "notes": { "type": "string" }
       },
-      "required": ["id", "userId", "date", "status", "eventId", "items"]
+      "required": ["id", "user_id", "date", "status", "event_id", "items"]
     },
     "OrderItem": {
       "title": "OrderItem",
       "type": "object",
       "properties": {
-        "productId": { "type": "string" },
+        "product_id": { "type": "string" },
         "quantity": { "type": "number" },
         "price": { "type": "number" },
         "tax": { "type": "number" }
       }
+    },
+    "NewProductRequest": {
+      "title": "NewProductRequest",
+      "type": "object",
+      "properties": {
+        "product_name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "notes": { "type": "string" }
+      }
+    },
+    "Incident": {
+      "title": "Incident",
+      "description": "Incident report",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" },
+        "reported_by": { "type": "string" },
+        "status": { "type": "string", "enum": ["Abierta", "En Progreso", "Resuelta"] },
+        "supplier_id": { "type": "string" },
+        "product_id": { "type": "string" },
+        "event_id": { "type": "string" }
+      },
+      "required": ["id", "date", "description", "reported_by", "status", "supplier_id"]
+    },
+    "TrainingCycle": {
+      "title": "TrainingCycle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Module": {
+      "title": "Module",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "cycle_id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "cycle_id", "name"]
+    },
+    "Group": {
+      "title": "Group",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "module_id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "module_id", "name"]
+    },
+    "Assignment": {
+      "title": "Assignment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "group_id": { "type": "string" }
+      },
+      "required": ["id", "user_id", "group_id"]
     },
     "Recipe": {
       "title": "Recipe",
@@ -119,25 +191,171 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
-        "authorId": { "type": "string" },
-        "yieldAmount": { "type": "number" },
-        "yieldUnit": { "type": "string" },
+        "author_id": { "type": "string" },
+        "photo": { "type": "string" },
+        "yield_amount": { "type": "number" },
+        "yield_unit": { "type": "string" },
         "category": { "type": "string" },
         "ingredients": { "type": "array", "items": { "$ref": "RecipeIngredient" } },
-        "preparationSteps": { "type": "string" },
-        "isPublic": { "type": "boolean" },
+        "preparation_steps": { "type": "string" },
+        "key_points": { "type": "string" },
+        "is_public": { "type": "boolean" },
         "cost": { "type": "number" },
-        "price": { "type": "number" }
+        "price": { "type": "number" },
+        "presentation": { "type": "string" },
+        "temperature": { "type": "string", "enum": ["Caliente", "Frio", "Ambiente"] },
+        "recommended_marking": { "type": "string" },
+        "service_type": { "type": "string" },
+        "client_description": { "type": "string" },
+        "service_time": { "type": "string" },
+        "selected_allergens": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["id", "name", "authorId", "yieldAmount", "yieldUnit", "category", "ingredients", "preparationSteps", "isPublic", "cost", "price"]
+      "required": ["id", "name", "author_id", "yield_amount", "yield_unit", "category", "ingredients", "preparation_steps", "is_public", "cost", "price"]
     },
     "RecipeIngredient": {
       "title": "RecipeIngredient",
       "type": "object",
       "properties": {
-        "productId": { "type": "string" },
+        "product_id": { "type": "string" },
         "quantity": { "type": "number" },
-        "unit": { "type": "string" }
+        "unit": { "type": "string" },
+        "cost": { "type": "number" }
+      }
+    },
+    "StockItem": {
+      "title": "StockItem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "stock": { "type": "number" },
+        "min_stock": { "type": "number" }
+      },
+      "required": ["id", "stock", "min_stock"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "teacher_id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "teacher_id", "date", "amount", "category"]
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sender_id": { "type": "string" },
+        "recipient_ids": { "type": "array", "items": { "type": "string" } },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "read_by": { "type": "object" }
+      },
+      "required": ["id", "sender_id", "recipient_ids", "subject", "body", "date", "read_by"]
+    },
+    "Classroom": {
+      "title": "Classroom",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "tutor_id": { "type": "string" }
+      },
+      "required": ["id", "name", "code", "tutor_id"]
+    },
+    "ClassroomProduct": {
+      "title": "ClassroomProduct",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "reference": { "type": "string" },
+        "category": { "type": "string" },
+        "classroom_id": { "type": "string" }
+      },
+      "required": ["id", "name", "reference", "category", "classroom_id"]
+    },
+    "ClassroomSupplier": {
+      "title": "ClassroomSupplier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "classroom_id": { "type": "string" }
+      },
+      "required": ["id", "name", "classroom_id"]
+    },
+    "ClassroomEvent": {
+      "title": "ClassroomEvent",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "start_date": { "type": "string", "format": "date-time" },
+        "end_date": { "type": "string", "format": "date-time" },
+        "classroom_id": { "type": "string" }
+      },
+      "required": ["id", "name", "start_date", "end_date", "classroom_id"]
+    },
+    "ClassroomOrder": {
+      "title": "ClassroomOrder",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "student_id": { "type": "string" },
+        "event_id": { "type": "string" },
+        "classroom_id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Pendiente", "Completado"] },
+        "items": { "type": "array", "items": { "$ref": "ClassroomOrderItem" } }
+      },
+      "required": ["id", "student_id", "event_id", "classroom_id", "date", "status", "items"]
+    },
+    "ClassroomOrderItem": {
+      "title": "ClassroomOrderItem",
+      "type": "object",
+      "properties": {
+        "product_id": { "type": "string" },
+        "quantity": { "type": "number" }
+      }
+    },
+    "ServiceGroup": {
+      "title": "ServiceGroup",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "teacher_ids": { "type": "array", "items": { "type": "string" } },
+        "roles": { "type": "object" }
+      },
+      "required": ["id", "name", "teacher_ids"]
+    },
+    "Service": {
+      "title": "Service",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "service_group_id": { "type": "string" },
+        "menu": { "type": "array", "items": { "$ref": "ServiceMenuItem" } },
+        "roles": { "type": "object" },
+        "status": { "type": "string", "enum": ["Planificación", "Confirmado", "Completado"] }
+      },
+      "required": ["id", "name", "date", "service_group_id", "menu", "roles", "status"]
+    },
+    "ServiceMenuItem": {
+      "title": "ServiceMenuItem",
+      "type": "object",
+      "properties": {
+        "recipe_id": { "type": "string" }
       }
     },
     "WorkspaceSettings": {
@@ -147,6 +365,7 @@
       "properties": {
         "workspaceId": { "type": "string" },
         "categories": { "type": "array", "items": { "type": "string" } },
+        "families": { "type": "array", "items": { "type": "string" } },
         "categoryConfigs": { "type": "array", "items": { "type": "object" } }
       },
       "required": ["workspaceId", "categories"]
@@ -157,17 +376,23 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "recipe_id": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
         "price": { "type": "number" },
         "rations": { "type": "number" },
         "allergens": { "type": "array", "items": { "type": "string" } },
         "notes": { "type": "string" },
-        "workspaceId": { "type": "string" },
-        "status": { "type": "string", "enum": ["Activo", "Inactivo"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "workspace_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["Activo", "Inactivo", "Preparacion"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "sale_date": { "type": "string", "format": "date-time" },
+        "pickup_time": { "type": "string" },
+        "end_time": { "type": "string" },
+        "teacher_name": { "type": "string" },
+        "group_name": { "type": "string" }
       },
-      "required": ["id", "name", "price", "rations", "workspaceId", "status", "createdAt"]
+      "required": ["id", "recipe_id", "name", "price", "rations", "workspace_id", "status", "created_at", "sale_date", "pickup_time", "end_time"]
     },
     "Reservation": {
       "title": "Reservation",
@@ -175,14 +400,18 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "saleItemId": { "type": "string" },
-        "userId": { "type": "string" },
-        "userName": { "type": "string" },
+        "sale_item_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "user_name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "allergens": { "type": "array", "items": { "type": "string" } },
         "quantity": { "type": "number" },
         "notes": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "status": { "type": "string", "enum": ["pendiente", "recogido", "cancelado"] },
+        "created_at": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "saleItemId", "userId", "userName", "quantity", "createdAt"]
+      "required": ["id", "sale_item_id", "user_name", "quantity", "status", "created_at"]
     },
     "DiningService": {
       "title": "DiningService",
@@ -190,6 +419,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "service_id": { "type": "string" },
         "date": { "type": "string", "format": "date" },
         "max_capacity": { "type": "number" },
         "current_pax": { "type": "number" },
