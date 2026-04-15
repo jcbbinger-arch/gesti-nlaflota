@@ -1,5 +1,6 @@
 {
-  "name": "Manager Pro Flota",
+  "name": "Profesores Pro Flota",
   "description": "An advanced management application for educational centers, featuring role-based access control, data management, and powerful developer tools like user impersonation and demo mode.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }
