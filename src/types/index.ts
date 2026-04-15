@@ -125,6 +125,8 @@ export interface Product {
   product_state?: ProductState;
   warehouse_status?: WarehouseStatus;
   image?: string;
+  unit_size?: number;
+  unit_size_type?: 'g' | 'kg' | 'ml' | 'L' | 'uds';
 }
 
 export interface Supplier {

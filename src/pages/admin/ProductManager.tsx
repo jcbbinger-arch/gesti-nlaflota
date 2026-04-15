@@ -257,6 +257,20 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                            {units.map(u => <option key={u} value={u}>{u}</option>)}
                         </select>
                      </div>
+                     {formState.unit === 'Uds' && (
+                        <div className="flex space-x-2 items-end">
+                            <div className="flex-1">
+                                <label className="text-xs text-gray-500">Equivalencia (Peso/Volumen)</label>
+                                <input type="number" name="unit_size" value={formState.unit_size || ''} onChange={handleChange} placeholder="Ej: 300" className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 text-sm"/>
+                            </div>
+                            <select name="unit_size_type" value={formState.unit_size_type || 'g'} onChange={handleChange} className="mb-0.5 block rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 text-sm">
+                                <option value="g">g</option>
+                                <option value="kg">kg</option>
+                                <option value="ml">ml</option>
+                                <option value="L">L</option>
+                            </select>
+                        </div>
+                     )}
                       <div>
                         <label className="text-sm">Estado (Catálogo)</label>
                         <select name="status" value={formState.status} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
@@ -483,7 +497,9 @@ export const ProductManager: React.FC = () => {
                         product_state: (item.product_state as ProductState) || 'Fresco',
                         warehouse_status: (item.warehouse_status as WarehouseStatus) || 'Disponible',
                         suppliers: itemSuppliers.length > 0 ? itemSuppliers : (existingIndex >= 0 ? updatedProducts[existingIndex].suppliers : []),
-                        image: item.image || item.imagen || (existingIndex >= 0 ? updatedProducts[existingIndex].image : '')
+                        image: item.image || item.imagen || (existingIndex >= 0 ? updatedProducts[existingIndex].image : ''),
+                        unit_size: parseFloat(item.unit_size) || (existingIndex >= 0 ? updatedProducts[existingIndex].unit_size : undefined),
+                        unit_size_type: (item.unit_size_type as any) || (existingIndex >= 0 ? updatedProducts[existingIndex].unit_size_type : 'g')
                     };
 
                     if (existingIndex >= 0) {
@@ -524,7 +540,9 @@ export const ProductManager: React.FC = () => {
                 warehouse_status: "Disponible",
                 image: "https://picsum.photos/seed/product/200/200",
                 supplier_name: "Makro",
-                price: 10.5
+                price: 10.5,
+                unit_size: 300,
+                unit_size_type: "g"
             }
         ];
         exportToCsv("plantilla_productos.csv", template);
@@ -654,9 +672,45 @@ export const ProductManager: React.FC = () => {
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2 font-medium">{product.name}</td>
-                                    <td className="px-4 py-2 font-mono">
-                                        {bestPriceInfo.price !== null ? `${bestPriceInfo.price.toFixed(2)}€` : 'N/A'}
+                                    <td className="px-4 py-2 font-medium">
+                                        <div>{product.name}</div>
+                                        {product.unit === 'Uds' && product.unit_size && (
+                                            <div className="text-[10px] text-gray-500">
+                                                1 ud = {product.unit_size}{product.unit_size_type || 'g'}
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-2">
+                                        <div className="font-mono text-sm">
+                                            {bestPriceInfo.price !== null ? `${bestPriceInfo.price.toFixed(2)}€` : 'N/A'}
+                                            <span className="text-xs text-gray-500 ml-1">/{product.unit}</span>
+                                        </div>
+                                        {bestPriceInfo.price !== null && product.unit === 'Uds' && product.unit_size && (
+                                            <div className="text-[10px] text-primary-600 font-semibold">
+                                                {(() => {
+                                                    const size = product.unit_size;
+                                                    const type = product.unit_size_type || 'g';
+                                                    let pricePerBase = 0;
+                                                    let baseLabel = '';
+
+                                                    if (type === 'g') {
+                                                        pricePerBase = (bestPriceInfo.price / size) * 1000;
+                                                        baseLabel = 'kg';
+                                                    } else if (type === 'kg') {
+                                                        pricePerBase = bestPriceInfo.price / size;
+                                                        baseLabel = 'kg';
+                                                    } else if (type === 'ml') {
+                                                        pricePerBase = (bestPriceInfo.price / size) * 1000;
+                                                        baseLabel = 'L';
+                                                    } else if (type === 'L') {
+                                                        pricePerBase = bestPriceInfo.price / size;
+                                                        baseLabel = 'L';
+                                                    }
+
+                                                    return pricePerBase > 0 ? `(${pricePerBase.toFixed(2)}€/${baseLabel})` : '';
+                                                })()}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-4 py-2">
                                         {bestPriceInfo.supplierName}
