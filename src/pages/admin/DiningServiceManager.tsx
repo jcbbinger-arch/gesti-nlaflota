@@ -22,7 +22,7 @@ export const DiningServiceManager: React.FC = () => {
         date: '',
         max_capacity: 40,
         menu_price: 0,
-        status: 'borrador' as DiningServiceStatus
+        status: 'abierto' as DiningServiceStatus
     });
 
     const handleOpenModal = (service?: DiningService) => {
@@ -42,7 +42,7 @@ export const DiningServiceManager: React.FC = () => {
                 date: new Date().toISOString().split('T')[0],
                 max_capacity: 40,
                 menu_price: 15,
-                status: 'borrador'
+                status: 'abierto'
             });
         }
         setIsModalOpen(true);

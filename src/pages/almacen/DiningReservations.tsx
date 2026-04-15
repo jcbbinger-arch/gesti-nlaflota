@@ -18,7 +18,7 @@ export const DiningReservations: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const activeServices = useMemo(() => {
-        return dining_services.filter((s: DiningService) => s.status === 'abierto');
+        return dining_services.filter((s: DiningService) => s.status === 'abierto' || s.status === 'borrador');
     }, [dining_services]);
 
     const selectedService = useMemo(() => {
@@ -134,7 +134,7 @@ export const DiningReservations: React.FC = () => {
                         <option value="">-- Seleccione un servicio --</option>
                         {activeServices.map((service: DiningService) => (
                             <option key={service.id} value={service.id}>
-                                {new Date(service.date).toLocaleDateString()} - Aforo: {service.current_pax}/{service.max_capacity}
+                                {new Date(service.date).toLocaleDateString()} - Aforo: {service.current_pax}/{service.max_capacity} {service.status === 'borrador' ? '(Borrador)' : ''}
                             </option>
                         ))}
                     </select>

@@ -277,8 +277,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadDemoData = () => seedData(demoData);
     const seedInitialData = () => seedData(initialData);
 
+    const filteredUsers = useMemo(() => users.filter(u => u.email !== 'managerproapp@gmail.com'), [users]);
+
     const value: DataContextType = useMemo(() => ({
-        users, products, suppliers, events, orders, incidents, 
+        users: filteredUsers, products, suppliers, events, orders, incidents, 
         training_cycles, modules, groups, assignments, recipes, sales, mini_economato_stock, messages,
         classrooms, classroom_products, classroom_suppliers, classroom_events, classroom_orders,
         service_groups, services, workspaceSettings, sale_items, reservations,
@@ -291,7 +293,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setServiceGroups, setServices, setDiningServices, setDiningReservations, setWorkspaceSettings,
         loadDemoData, seedInitialData
     }), [
-        users, products, suppliers, events, orders, incidents, 
+        filteredUsers, products, suppliers, events, orders, incidents, 
         training_cycles, modules, groups, assignments, recipes, sales, mini_economato_stock, messages,
         classrooms, classroom_products, classroom_suppliers, classroom_events, classroom_orders,
         service_groups, services, workspaceSettings, sale_items, reservations,
