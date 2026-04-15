@@ -70,9 +70,9 @@ export const Login: React.FC = () => {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError('');
-    const success = await loginWithGoogle();
-    if (!success) {
-      setError('Error al iniciar sesión con Google. Asegúrate de usar tu cuenta oficial.');
+    const errorMessage = await loginWithGoogle();
+    if (errorMessage) {
+      setError(errorMessage);
     }
     setIsLoading(false);
   };

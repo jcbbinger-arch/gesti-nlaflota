@@ -18,7 +18,7 @@ interface AuthContextType {
   selectedProfile: Profile | null;
   isImpersonating: boolean;
   isAuthReady: boolean;
-  loginWithGoogle: () => Promise<boolean>;
+  loginWithGoogle: () => Promise<string | null>;
   loginWithEmail: (email: string, password: string) => Promise<boolean>;
   registerWithEmail: (email: string, password: string, name: string, phone: string, allergens: string[]) => Promise<boolean>;
   logout: () => void;
@@ -71,6 +71,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               userData.workspaceId = firebaseUser.uid;
               needsUpdate = true;
             }
+            // Ensure super users have admin role
+            const isSuperUser = SUPER_USER_EMAILS.includes(userData.email);
+            if (isSuperUser && userData.role !== 'admin') {
+              userData.role = 'admin';
+              needsUpdate = true;
+            }
+            // Ensure super users are active
+            if (isSuperUser && userData.activity_status !== 'Activo') {
+              userData.activity_status = 'Activo';
+              needsUpdate = true;
+            }
             if (needsUpdate) {
               await setDoc(doc(db, 'users', firebaseUser.uid), userData);
             }
@@ -110,10 +121,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const loginWithGoogle = async (): Promise<boolean> => {
+  const loginWithGoogle = async (): Promise<string | null> => {
     try {
       console.log('AuthContext - Starting Google Login (Firebase)');
       const provider = new GoogleAuthProvider();
+      // Force account selection to avoid stale sessions
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
       const result = await signInWithPopup(auth, provider);
       
       const userDocRef = doc(db, 'users', result.user.uid);
@@ -148,13 +162,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
            };
            await setDoc(userDocRef, userData);
         }
+        // Ensure super users have admin role and are active
+        const isSuperUser = SUPER_USER_EMAILS.includes(userData.email);
+        let needsUpdate = false;
+        if (isSuperUser && userData.role !== 'admin') {
+          userData.role = 'admin';
+          needsUpdate = true;
+        }
+        if (isSuperUser && userData.activity_status !== 'Activo') {
+          userData.activity_status = 'Activo';
+          needsUpdate = true;
+        }
+        if (needsUpdate) {
+          await setDoc(userDocRef, userData);
+        }
         setCurrentUser(userData);
       }
       
-      return true;
+      return null;
     } catch (error: any) {
-      console.error('Firebase login error details:', error);
-      return false;
+      console.error('Google Login Error:', error);
+      if (error.code === 'auth/popup-blocked') {
+        return 'El navegador ha bloqueado la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.';
+      }
+      if (error.code === 'auth/popup-closed-by-user') {
+        return 'Has cerrado la ventana de inicio de sesión antes de completar el proceso.';
+      }
+      if (error.code === 'auth/unauthorized-domain') {
+        return 'Este dominio no está autorizado para el inicio de sesión. Contacta con el administrador.';
+      }
+      return error.message || 'Error desconocido al iniciar sesión.';
     }
   };
 
