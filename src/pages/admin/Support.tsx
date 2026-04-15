@@ -143,15 +143,28 @@ export const Support: React.FC = () => {
         fileInputRef.current?.click();
     };
 
-    const exportCollection = (name: string, collection: any[]) => {
+    const exportCollection = (name: string, collection: any[], format: 'csv' | 'json' = 'csv') => {
         if (collection.length === 0) {
             alert(`No hay datos en la colección ${name} para exportar.`);
             return;
         }
-        // Ensure all objects have the same keys by merging with a template if necessary
-        // or just use the keys from the first object but ensure it's representative.
-        exportToCsv(`${name}_${new Date().toISOString().slice(0,10)}.csv`, collection);
+        
+        const fileName = `${name}_${new Date().toISOString().slice(0,10)}`;
+        
+        if (format === 'csv') {
+            exportToCsv(`${fileName}.csv`, collection);
+        } else {
+            const blob = new Blob([JSON.stringify(collection, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${fileName}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
     };
+
+    const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
 
     return (
         <div>
@@ -160,7 +173,7 @@ export const Support: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card title="Copia de Seguridad y Restauración">
                     <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-                        Descarga una copia completa de todos los datos (JSON) o exporta tablas individuales (CSV).
+                        Descarga una copia completa de todos los datos o exporta tablas individuales.
                     </p>
                     <div className="space-y-4">
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
@@ -171,33 +184,51 @@ export const Support: React.FC = () => {
                                 Recomendado para migraciones o restauraciones totales. Incluye: Usuarios, Productos, Proveedores, Pedidos, Recetas, Eventos, etc.
                             </p>
                             <button onClick={handleBackup} className="w-full flex items-center justify-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
-                                <DownloadIcon className="w-5 h-5 mr-2" /> Descargar JSON Completo
+                                <DownloadIcon className="w-5 h-5 mr-2" /> Descargar JSON Maestro
                             </button>
                         </div>
 
+                        <div className="flex items-center justify-between px-1">
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tablas Individuales</h4>
+                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-md">
+                                <button 
+                                    onClick={() => setExportFormat('csv')}
+                                    className={`px-3 py-1 text-xs rounded ${exportFormat === 'csv' ? 'bg-white dark:bg-gray-700 shadow-sm font-bold' : 'text-gray-500'}`}
+                                >
+                                    CSV
+                                </button>
+                                <button 
+                                    onClick={() => setExportFormat('json')}
+                                    className={`px-3 py-1 text-xs rounded ${exportFormat === 'json' ? 'bg-white dark:bg-gray-700 shadow-sm font-bold' : 'text-gray-500'}`}
+                                >
+                                    JSON
+                                </button>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => exportCollection('productos', data.products)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                            <button onClick={() => exportCollection('productos', data.products, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <DownloadIcon className="w-3 h-3 mr-1" /> Productos
                             </button>
-                            <button onClick={() => exportCollection('proveedores', data.suppliers)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                            <button onClick={() => exportCollection('proveedores', data.suppliers, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <DownloadIcon className="w-3 h-3 mr-1" /> Proveedores
                             </button>
-                            <button onClick={() => exportCollection('profesores', data.users.filter(u => u.profiles.includes(Profile.TEACHER)))} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                            <button onClick={() => exportCollection('profesores', data.users.filter(u => u.profiles.includes(Profile.TEACHER)), exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <DownloadIcon className="w-3 h-3 mr-1" /> Profesores
                             </button>
-                            <button onClick={() => exportCollection('pedidos', data.orders)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                            <button onClick={() => exportCollection('pedidos', data.orders, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <DownloadIcon className="w-3 h-3 mr-1" /> Pedidos
                             </button>
-                            <button onClick={() => exportCollection('recetas', data.recipes)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                            <button onClick={() => exportCollection('recetas', data.recipes, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <DownloadIcon className="w-3 h-3 mr-1" /> Recetas
                             </button>
-                            <button onClick={() => exportCollection('eventos', data.events)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                            <button onClick={() => exportCollection('eventos', data.events, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <DownloadIcon className="w-3 h-3 mr-1" /> Eventos
                             </button>
-                            <button onClick={() => exportCollection('incidentes', data.incidents)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                            <button onClick={() => exportCollection('incidentes', data.incidents, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <DownloadIcon className="w-3 h-3 mr-1" /> Incidentes
                             </button>
-                            <button onClick={() => exportCollection('ciclos', data.training_cycles)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                            <button onClick={() => exportCollection('ciclos', data.training_cycles, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <DownloadIcon className="w-3 h-3 mr-1" /> Ciclos
                             </button>
                         </div>
