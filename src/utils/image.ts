@@ -1,5 +1,5 @@
 
-export const resizeImage = (file: File, maxWidth: number = 400, maxHeight: number = 400): Promise<string> => {
+export const resizeImage = (file: File, maxWidth: number = 400, maxHeight: number = 400, quality: number = 0.7): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -29,7 +29,7 @@ export const resizeImage = (file: File, maxWidth: number = 400, maxHeight: numbe
         ctx?.drawImage(img, 0, 0, width, height);
         
         // Use a lower quality to save space
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
+        resolve(canvas.toDataURL('image/jpeg', quality));
       };
       img.onerror = (err) => reject(err);
     };

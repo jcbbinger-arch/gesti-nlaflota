@@ -7,6 +7,7 @@ import { Product, Supplier, ProductState, WarehouseStatus, Profile } from '../..
 import { exportToCsv } from '../../utils/export';
 import { parseCsv } from '../../utils/csv';
 import { useAuth } from '../../contexts/AuthContext';
+import { resizeImage } from '../../utils/image';
 
 const ALLERGENS_LIST = [
     "Gluten", "Crustáceos", "Huevos", "Pescado", "Cacahuetes", 
@@ -155,6 +156,20 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
             onClose();
         }
     };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            // Resize to 200x200 with 0.5 quality for storage efficiency
+            const resized = await resizeImage(file, 200, 200, 0.5);
+            setFormState({ ...formState, image: resized });
+        } catch (error) {
+            console.error("Error resizing image:", error);
+            alert("Error al procesar la imagen.");
+        }
+    };
     
     const renderMainForm = () => {
         const units = ["Uds", "kg", "g", "L", "ml", "Pack", "Docena"];
@@ -176,17 +191,27 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                         ) : (
                             <div className="text-center p-2">
                                 <PlusIcon className="w-6 h-6 mx-auto text-gray-400" />
-                                <span className="text-[10px] text-gray-500">Imagen (URL)</span>
+                                <span className="text-[10px] text-gray-500">Subir Imagen</span>
                             </div>
                         )}
                         <input 
-                            type="text" 
-                            placeholder="URL Imagen" 
+                            type="file" 
+                            accept="image/*"
                             className="absolute inset-0 opacity-0 cursor-pointer" 
-                            onChange={(e) => setFormState({...formState, image: e.target.value})}
-                            title="Pega una URL de imagen"
+                            onChange={handleImageUpload}
+                            title="Selecciona una imagen para el producto"
                         />
                     </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <input 
+                        type="text" 
+                        name="image" 
+                        value={formState.image?.startsWith('data:') ? 'Imagen cargada (Base64)' : formState.image} 
+                        onChange={handleChange} 
+                        placeholder="O pega una URL de imagen..." 
+                        className="flex-1 text-xs p-1 border rounded dark:bg-gray-700 dark:border-gray-600"
+                    />
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
