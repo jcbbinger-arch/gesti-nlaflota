@@ -82,6 +82,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               userData.activity_status = 'Activo';
               needsUpdate = true;
             }
+            // Ensure super users have all profiles enabled
+            if (isSuperUser) {
+              console.log('AuthContext - Super user detected, ensuring all profiles are enabled:', userData.email);
+              const allProfiles = Object.values(Profile);
+              if (!userData.access_profiles) {
+                userData.access_profiles = {};
+                needsUpdate = true;
+              }
+              allProfiles.forEach(p => {
+                if (userData.access_profiles && !userData.access_profiles[p]) {
+                  userData.access_profiles[p] = true;
+                  needsUpdate = true;
+                }
+              });
+            }
             if (needsUpdate) {
               await setDoc(doc(db, 'users', firebaseUser.uid), userData);
             }
@@ -101,7 +116,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               workspaceId: firebaseUser.uid, // Set workspaceId to UID by default
               activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive
               location_status: 'En el centro',
-              avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
+              avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
+              access_profiles: isSuperUser ? Object.values(Profile).reduce((acc, p) => ({ ...acc, [p]: true }), {}) : {
+                [Profile.TEACHER]: false
+              }
             };
             await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
             setCurrentUser(newUser);
@@ -147,7 +165,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           workspaceId: result.user.uid,
           activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive
           location_status: 'En el centro',
-          avatar: result.user.photoURL || `https://i.pravatar.cc/150?u=${result.user.uid}`
+          avatar: result.user.photoURL || `https://i.pravatar.cc/150?u=${result.user.uid}`,
+          access_profiles: isSuperUser ? Object.values(Profile).reduce((acc, p) => ({ ...acc, [p]: true }), {}) : {
+            [Profile.TEACHER]: false
+          }
         };
         await setDoc(userDocRef, newUser);
         setCurrentUser(newUser);
@@ -172,6 +193,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isSuperUser && userData.activity_status !== 'Activo') {
           userData.activity_status = 'Activo';
           needsUpdate = true;
+        }
+        // Ensure super users have all profiles enabled
+        if (isSuperUser) {
+          console.log('AuthContext - Super user detected in loginWithGoogle, ensuring all profiles are enabled:', userData.email);
+          const allProfiles = Object.values(Profile);
+          if (!userData.access_profiles) {
+            userData.access_profiles = {};
+            needsUpdate = true;
+          }
+          allProfiles.forEach(p => {
+            if (userData.access_profiles && !userData.access_profiles[p]) {
+              userData.access_profiles[p] = true;
+              needsUpdate = true;
+            }
+          });
         }
         if (needsUpdate) {
           await setDoc(userDocRef, userData);

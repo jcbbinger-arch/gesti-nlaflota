@@ -7,7 +7,7 @@ export const ProfileSelector: React.FC = () => {
   const { currentUser, selectedProfile, selectProfile, logout, isAuthReady } = useAuth();
   const navigate = useNavigate();
 
-  console.log('ProfileSelector - isAuthReady:', isAuthReady, 'currentUser:', currentUser?.email, 'selectedProfile:', selectedProfile);
+  console.log('ProfileSelector - isAuthReady:', isAuthReady, 'currentUser:', currentUser?.email, 'access_profiles:', currentUser?.access_profiles);
 
   useEffect(() => {
     if (isAuthReady && currentUser && selectedProfile) {
