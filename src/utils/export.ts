@@ -15,7 +15,7 @@ export const exportToCsv = (filename: string, data: any[]) => {
 
     const headers = Object.keys(data[0]);
     const csvRows = [
-        headers.join(','),
+        headers.map(h => JSON.stringify(h)).join(','),
         ...data.map(row => 
             headers.map(fieldName => 
                 JSON.stringify(row[fieldName], (key, value) => value === null || value === undefined ? '' : value)

@@ -378,11 +378,11 @@ export const ProductManager: React.FC = () => {
                         tax: parseFloat(item.tax) || 21,
                         category: String(item.category || 'OTROS').toUpperCase(),
                         family: String(item.family || 'VARIOS').toUpperCase(),
-                        allergens: item.allergens ? String(item.allergens).split('|').map(a => a.trim()) : [],
+                        allergens: Array.isArray(item.allergens) ? item.allergens : (typeof item.allergens === 'string' ? item.allergens.split('|').map((a: string) => a.trim()) : []),
                         status: item.status === 'Inactivo' ? 'Inactivo' : 'Activo',
                         product_state: (item.product_state as ProductState) || 'Fresco',
                         warehouse_status: (item.warehouse_status as WarehouseStatus) || 'Disponible',
-                        suppliers: existingIndex >= 0 ? updatedProducts[existingIndex].suppliers : []
+                        suppliers: Array.isArray(item.suppliers) ? item.suppliers : (existingIndex >= 0 ? updatedProducts[existingIndex].suppliers : [])
                     };
 
                     if (existingIndex >= 0) {
@@ -417,10 +417,14 @@ export const ProductManager: React.FC = () => {
                 tax: 21,
                 category: "CARNES",
                 family: "Carnes",
-                allergens: "Gluten|Lácteos",
+                allergens: ["Gluten", "Lácteos"],
                 status: "Activo",
                 product_state: "Fresco",
-                warehouse_status: "Disponible"
+                warehouse_status: "Disponible",
+                suppliers: [
+                    { supplier_id: "ID_PROVEEDOR_1", price: 10.5 },
+                    { supplier_id: "ID_PROVEEDOR_2", price: 9.95 }
+                ]
             }
         ];
         exportToCsv("plantilla_productos.csv", template);

@@ -144,6 +144,12 @@ export const Support: React.FC = () => {
     };
 
     const exportCollection = (name: string, collection: any[]) => {
+        if (collection.length === 0) {
+            alert(`No hay datos en la colección ${name} para exportar.`);
+            return;
+        }
+        // Ensure all objects have the same keys by merging with a template if necessary
+        // or just use the keys from the first object but ensure it's representative.
         exportToCsv(`${name}_${new Date().toISOString().slice(0,10)}.csv`, collection);
     };
 
@@ -187,6 +193,12 @@ export const Support: React.FC = () => {
                             </button>
                             <button onClick={() => exportCollection('eventos', data.events)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
                                 <DownloadIcon className="w-3 h-3 mr-1" /> Eventos
+                            </button>
+                            <button onClick={() => exportCollection('incidentes', data.incidents)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                                <DownloadIcon className="w-3 h-3 mr-1" /> Incidentes
+                            </button>
+                            <button onClick={() => exportCollection('ciclos', data.training_cycles)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                                <DownloadIcon className="w-3 h-3 mr-1" /> Ciclos
                             </button>
                         </div>
 
