@@ -407,6 +407,7 @@ export interface DiningReservation {
   phone_1: string;
   phone_2?: string;
   total_price: number;
+  table_number?: string;
   diners_allergens: DinerAllergen[];
   created_by: string;
   created_at: string;

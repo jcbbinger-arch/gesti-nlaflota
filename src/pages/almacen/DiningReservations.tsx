@@ -35,6 +35,7 @@ export const DiningReservations: React.FC = () => {
         pax: 1,
         phone_1: '',
         phone_2: '',
+        table_number: '',
         diners_allergens: [] as DinerAllergen[]
     });
 
@@ -45,6 +46,7 @@ export const DiningReservations: React.FC = () => {
             pax: 1,
             phone_1: '',
             phone_2: '',
+            table_number: '',
             diners_allergens: []
         });
         setError(null);
@@ -102,6 +104,7 @@ export const DiningReservations: React.FC = () => {
                     pax: formData.pax,
                     phone_1: formData.phone_1,
                     phone_2: formData.phone_2,
+                    table_number: formData.table_number,
                     total_price: formData.pax * selectedService.menu_price,
                     diners_allergens: formData.diners_allergens.filter(d => d.allergens.length > 0),
                     created_by: currentUser.id,
@@ -170,6 +173,7 @@ export const DiningReservations: React.FC = () => {
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                                 <tr>
                                     <th className="px-4 py-3">Referencia</th>
+                                    <th className="px-4 py-3">Mesa</th>
                                     <th className="px-4 py-3">Cliente/Entidad</th>
                                     <th className="px-4 py-3 text-center">Pax</th>
                                     <th className="px-4 py-3">Teléfono</th>
@@ -180,6 +184,7 @@ export const DiningReservations: React.FC = () => {
                                 {serviceReservations.map((res: DiningReservation) => (
                                     <tr key={res.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                         <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{res.reference_name}</td>
+                                        <td className="px-4 py-3 font-bold text-primary-600">{res.table_number || '-'}</td>
                                         <td className="px-4 py-3">{res.client_entity}</td>
                                         <td className="px-4 py-3 text-center font-bold">{res.pax}</td>
                                         <td className="px-4 py-3">{res.phone_1}</td>
@@ -237,6 +242,16 @@ export const DiningReservations: React.FC = () => {
                                 max={selectedService ? selectedService.max_capacity - selectedService.current_pax : 1}
                                 value={formData.pax}
                                 onChange={e => setFormData({ ...formData, pax: parseInt(e.target.value) })}
+                                className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mesa</label>
+                            <input
+                                type="text"
+                                value={formData.table_number}
+                                onChange={e => setFormData({ ...formData, table_number: e.target.value })}
+                                placeholder="Ej: Mesa 5"
                                 className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             />
                         </div>

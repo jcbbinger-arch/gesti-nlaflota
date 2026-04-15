@@ -80,9 +80,10 @@ export const DiningServiceView: React.FC = () => {
         
         (doc as any).autoTable({
             startY: startY + 5,
-            head: [['Ref/Nombre', 'Cliente', 'Pax', 'Teléfono', 'Total']],
+            head: [['Ref/Nombre', 'Mesa', 'Cliente', 'Pax', 'Teléfono', 'Total']],
             body: serviceReservations.map(res => [
                 res.reference_name,
+                res.table_number || '-',
                 res.client_entity || '-',
                 res.pax.toString(),
                 res.phone_1,
@@ -109,7 +110,7 @@ export const DiningServiceView: React.FC = () => {
             reservationsWithAllergens.forEach(res => {
                 res.diners_allergens.forEach(diner => {
                     allergenBody.push([
-                        res.reference_name,
+                        `${res.reference_name}${res.table_number ? ` (${res.table_number})` : ''}`,
                         diner.diner_name || 'Comensal sin nombre',
                         diner.allergens.join(', ')
                     ]);
@@ -203,6 +204,7 @@ export const DiningServiceView: React.FC = () => {
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                                         <tr>
                                             <th className="px-4 py-3">Referencia</th>
+                                            <th className="px-4 py-3">Mesa</th>
                                             <th className="px-4 py-3 text-center">Pax</th>
                                             <th className="px-4 py-3">Teléfono</th>
                                             <th className="px-4 py-3">Alérgenos</th>
@@ -214,6 +216,9 @@ export const DiningServiceView: React.FC = () => {
                                                 <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
                                                     {res.reference_name}
                                                     {res.client_entity && <div className="text-xs text-gray-500">{res.client_entity}</div>}
+                                                </td>
+                                                <td className="px-4 py-3 font-bold text-primary-600">
+                                                    {res.table_number || '-'}
                                                 </td>
                                                 <td className="px-4 py-3 text-center font-bold">{res.pax}</td>
                                                 <td className="px-4 py-3">{res.phone_1}</td>
