@@ -3,8 +3,10 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, DownloadIcon, WarningIcon, TrashIcon } from '../../components/icons';
-import { Product, Supplier, ProductState, WarehouseStatus } from '../../types';
+import { Product, Supplier, ProductState, WarehouseStatus, Profile } from '../../types';
 import { exportToCsv } from '../../utils/export';
+import { parseCsv } from '../../utils/csv';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ALLERGENS_LIST = [
     "Gluten", "Crustáceos", "Huevos", "Pescado", "Cacahuetes", 
@@ -337,6 +339,92 @@ export const ProductManager: React.FC = () => {
     const [filter, setFilter] = useState('');
     const [familyFilter, setFamilyFilter] = useState('');
     const [deleteStep, setDeleteStep] = useState(1);
+    const [isImporting, setIsImporting] = useState(false);
+
+    const handleImportCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const text = event.target?.result as string;
+                const importedData = parseCsv(text);
+                
+                if (importedData.length === 0) {
+                    alert("El archivo CSV está vacío o no tiene el formato correcto.");
+                    return;
+                }
+
+                const updatedProducts = [...products];
+                let addedCount = 0;
+                let updatedCount = 0;
+
+                for (const item of importedData) {
+                    if (!item.name) continue;
+
+                    const existingIndex = updatedProducts.findIndex(p => 
+                        (item.reference && p.reference === String(item.reference)) || 
+                        (item.name && p.name.toLowerCase() === String(item.name).toLowerCase())
+                    );
+
+                    const productData: Product = {
+                        id: existingIndex >= 0 ? updatedProducts[existingIndex].id : `prod-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                        name: String(item.name),
+                        description: String(item.description || ''),
+                        reference: String(item.reference || `REF-${Math.random().toString(36).substr(2, 6).toUpperCase()}`),
+                        unit: String(item.unit || 'Uds'),
+                        tax: parseFloat(item.tax) || 21,
+                        category: String(item.category || 'OTROS').toUpperCase(),
+                        family: String(item.family || 'VARIOS').toUpperCase(),
+                        allergens: item.allergens ? String(item.allergens).split('|').map(a => a.trim()) : [],
+                        status: item.status === 'Inactivo' ? 'Inactivo' : 'Activo',
+                        product_state: (item.product_state as ProductState) || 'Fresco',
+                        warehouse_status: (item.warehouse_status as WarehouseStatus) || 'Disponible',
+                        suppliers: existingIndex >= 0 ? updatedProducts[existingIndex].suppliers : []
+                    };
+
+                    if (existingIndex >= 0) {
+                        updatedProducts[existingIndex] = productData;
+                        updatedCount++;
+                    } else {
+                        updatedProducts.push(productData);
+                        addedCount++;
+                    }
+                }
+
+                await setProducts(updatedProducts);
+                alert(`Importación finalizada: ${addedCount} productos añadidos, ${updatedCount} productos actualizados.`);
+            } catch (error) {
+                console.error("Error importing CSV:", error);
+                alert("Error al importar el archivo CSV. Asegúrate de que el formato sea correcto.");
+            } finally {
+                setIsImporting(false);
+                if (e.target) e.target.value = '';
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    const downloadTemplate = () => {
+        const template = [
+            {
+                name: "Ejemplo Producto",
+                description: "Descripción del producto",
+                reference: "REF001",
+                unit: "Kg",
+                tax: 21,
+                category: "CARNES",
+                family: "Carnes",
+                allergens: "Gluten|Lácteos",
+                status: "Activo",
+                product_state: "Fresco",
+                warehouse_status: "Disponible"
+            }
+        ];
+        exportToCsv("plantilla_productos.csv", template);
+    };
 
     const suppliersMap = useMemo(() => new Map(suppliers.map(s => [s.id, s])), [suppliers]);
     const activeSuppliers = useMemo(() => new Set(suppliers.filter(s => s.status === 'Activo').map(s => s.id)), [suppliers]);
@@ -412,11 +500,18 @@ export const ProductManager: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Productos</h1>
                 <div className="flex items-center space-x-2 no-print">
-                    <button onClick={handleExport} className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center">
-                        <DownloadIcon className="w-5 h-5 mr-1" /> Exportar CSV
+                    <button onClick={downloadTemplate} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center text-sm">
+                         Plantilla CSV
                     </button>
-                    <button onClick={() => handleOpenModal()} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
-                        <PlusIcon className="w-5 h-5 mr-1" /> Nuevo Producto
+                    <label className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center cursor-pointer text-sm">
+                        <PlusIcon className="w-4 h-4 mr-1" /> Importar CSV
+                        <input type="file" accept=".csv" onChange={handleImportCsv} className="hidden" disabled={isImporting} />
+                    </label>
+                    <button onClick={handleExport} className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center text-sm">
+                        <DownloadIcon className="w-4 h-4 mr-1" /> Exportar CSV
+                    </button>
+                    <button onClick={() => handleOpenModal()} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center text-sm">
+                        <PlusIcon className="w-4 h-4 mr-1" /> Nuevo Producto
                     </button>
                 </div>
             </div>

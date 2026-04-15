@@ -3,7 +3,8 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { DownloadIcon, UploadIcon, BookIcon, ShieldCheckIcon } from '../../components/icons';
 import { useCreator } from '../../contexts/CreatorContext';
-import { AppData } from '../../types';
+import { AppData, Profile } from '../../types';
+import { exportToCsv } from '../../utils/export';
 
 const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => (
     <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
@@ -142,28 +143,65 @@ export const Support: React.FC = () => {
         fileInputRef.current?.click();
     };
 
+    const exportCollection = (name: string, collection: any[]) => {
+        exportToCsv(`${name}_${new Date().toISOString().slice(0,10)}.csv`, collection);
+    };
+
     return (
         <div>
             {isRestoring && <RestoringOverlay />}
             <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Soporte y Mantenimiento</h1>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card title="Copia de Seguridad y Restauración">
-                    <p className="mb-4">Descarga una copia completa de todos los datos de la aplicación en un fichero JSON o restaura la aplicación a partir de uno.</p>
-                    <div className="space-y-3">
-                        <button onClick={handleBackup} className="w-full flex items-center justify-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
-                            <DownloadIcon className="w-5 h-5 mr-2" /> Descargar Copia de Seguridad
-                        </button>
-                        <div>
-                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
-                            <button onClick={triggerFileUpload} className="w-full flex items-center justify-center bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
-                                <UploadIcon className="w-5 h-5 mr-2" /> Seleccionar Copia para Restaurar
+                    <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                        Descarga una copia completa de todos los datos (JSON) o exporta tablas individuales (CSV).
+                    </p>
+                    <div className="space-y-4">
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                            <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center">
+                                <ShieldCheckIcon className="w-5 h-5 mr-2" /> Copia Completa (JSON)
+                            </h3>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
+                                Recomendado para migraciones o restauraciones totales. Incluye: Usuarios, Productos, Proveedores, Pedidos, Recetas, Eventos, etc.
+                            </p>
+                            <button onClick={handleBackup} className="w-full flex items-center justify-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
+                                <DownloadIcon className="w-5 h-5 mr-2" /> Descargar JSON Completo
                             </button>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                            <button onClick={() => exportCollection('productos', data.products)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                                <DownloadIcon className="w-3 h-3 mr-1" /> Productos
+                            </button>
+                            <button onClick={() => exportCollection('proveedores', data.suppliers)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                                <DownloadIcon className="w-3 h-3 mr-1" /> Proveedores
+                            </button>
+                            <button onClick={() => exportCollection('profesores', data.users.filter(u => u.profiles.includes(Profile.TEACHER)))} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                                <DownloadIcon className="w-3 h-3 mr-1" /> Profesores
+                            </button>
+                            <button onClick={() => exportCollection('pedidos', data.orders)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                                <DownloadIcon className="w-3 h-3 mr-1" /> Pedidos
+                            </button>
+                            <button onClick={() => exportCollection('recetas', data.recipes)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                                <DownloadIcon className="w-3 h-3 mr-1" /> Recetas
+                            </button>
+                            <button onClick={() => exportCollection('eventos', data.events)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+                                <DownloadIcon className="w-3 h-3 mr-1" /> Eventos
+                            </button>
+                        </div>
+
+                        <div className="pt-4 border-t dark:border-gray-700">
+                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
+                            <button onClick={triggerFileUpload} className="w-full flex items-center justify-center bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
+                                <UploadIcon className="w-5 h-5 mr-2" /> Restaurar desde JSON
+                            </button>
+                        </div>
+                        
                         {backupFile && (
-                            <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-center space-y-3">
-                                <p className="text-sm">Archivo seleccionado: <span className="font-semibold">{backupFile.name}</span></p>
-                                <button onClick={handleRestore} className="w-full bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600">
-                                    Confirmar Restauración
+                            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800 rounded-md text-center space-y-3">
+                                <p className="text-sm text-yellow-800 dark:text-yellow-300">Archivo: <span className="font-bold">{backupFile.name}</span></p>
+                                <button onClick={handleRestore} className="w-full bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 font-bold">
+                                    Confirmar Restauración Total
                                 </button>
                             </div>
                         )}
