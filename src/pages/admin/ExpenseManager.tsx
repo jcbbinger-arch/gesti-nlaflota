@@ -4,7 +4,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { ExpenseIcon, DownloadIcon, UsersIcon, ProductIcon } from '../../components/icons';
 import { printPage, exportToCsv } from '../../utils/export';
-import { Profile, SUPER_USER_EMAILS } from '../../types';
+import { Profile, SUPER_USER_EMAILS, StockItem } from '../../types';
 
 const formatCurrency = (amount: number) => amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
 
@@ -16,29 +16,59 @@ const StatCard: React.FC<{ title: string; value: string; }> = ({ title, value })
 );
 
 export const ExpenseManager: React.FC = () => {
-    const { orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products } = useData();
+    const { orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock } = useData();
 
     const analysisData = useMemo(() => {
         const teachers = users.filter(u => u.profiles.includes(Profile.TEACHER) && !SUPER_USER_EMAILS.includes(u.email));
         const completedOrders = orders.filter(o => o.status === 'Completado');
         
-        const gastoTotal = completedOrders.reduce((sum, order) => sum + (order.cost || 0), 0);
+        // Gasto Compartido Mini-Economato
+        const economatoOrders = completedOrders.filter(o => o.user_id === 'mini-economato');
+        let totalSharedEconomatoCost = 0;
+        economatoOrders.forEach(order => {
+            order.items.forEach(item => {
+                const stockItem = mini_economato_stock.find((s: StockItem) => s.id === item.product_id);
+                if (stockItem?.is_shared) {
+                    totalSharedEconomatoCost += (item.price * item.quantity) * (1 + item.tax / 100);
+                }
+            });
+        });
+
+        const sharedCostPerTeacher = teachers.length > 0 ? totalSharedEconomatoCost / teachers.length : 0;
+
+        const gastoTotal = completedOrders.reduce((sum, order) => {
+            if (order.user_id === 'mini-economato') {
+                let sharedOnlyCost = 0;
+                order.items.forEach(item => {
+                    const stockItem = mini_economato_stock.find((s: StockItem) => s.id === item.product_id);
+                    if (stockItem?.is_shared) {
+                        sharedOnlyCost += (item.price * item.quantity) * (1 + item.tax / 100);
+                    }
+                });
+                return sum + sharedOnlyCost;
+            }
+            return sum + (order.cost || 0);
+        }, 0);
+        
         const ingresosTotales = sales.reduce((sum, sale) => sum + sale.amount, 0);
         const balanceGeneral = ingresosTotales - gastoTotal;
 
-        const teachersWithOrders = new Set(completedOrders.map(o => o.user_id));
+        const teachersWithOrders = new Set(completedOrders.filter(o => o.user_id !== 'mini-economato').map(o => o.user_id));
         const gastoMedioPorProfesor = teachersWithOrders.size > 0 ? gastoTotal / teachersWithOrders.size : 0;
         
         // Data by Teacher
         const dataByTeacher = teachers.map(teacher => {
             const teacherOrders = completedOrders.filter(o => o.user_id === teacher.id);
             const teacherSales = sales.filter(s => s.teacher_id === teacher.id);
-            const totalSpend = teacherOrders.reduce((sum, o) => sum + (o.cost || 0), 0);
+            const directSpend = teacherOrders.reduce((sum, o) => sum + (o.cost || 0), 0);
+            const totalSpend = directSpend + sharedCostPerTeacher;
             const totalSales = teacherSales.reduce((sum, s) => sum + s.amount, 0);
             return {
                 id: teacher.id,
                 name: teacher.name,
                 orderCount: teacherOrders.length,
+                directSpend,
+                sharedSpend: sharedCostPerTeacher,
                 totalSpend,
                 totalSales,
                 balance: totalSales - totalSpend,
@@ -81,10 +111,11 @@ export const ExpenseManager: React.FC = () => {
 
         return {
             gastoTotal, ingresosTotales, balanceGeneral, gastoMedioPorProfesor,
+            totalSharedEconomatoCost, sharedCostPerTeacher,
             top5Teachers, dataByTeacher,
             costByCycle, costByModule, costByGroup, costBySupplier
         };
-    }, [orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products]);
+    }, [orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock]);
 
     return (
         <div>
@@ -102,6 +133,21 @@ export const ExpenseManager: React.FC = () => {
                 <StatCard title="Balance General" value={formatCurrency(analysisData.balanceGeneral)} />
                 <StatCard title="Gasto Medio / Profesor" value={formatCurrency(analysisData.gastoMedioPorProfesor)} />
             </div>
+
+            {analysisData.totalSharedEconomatoCost > 0 && (
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <p className="text-blue-700 font-bold">Gasto Compartido Mini-Economato</p>
+                            <p className="text-sm text-blue-600">Total acumulado en productos compartidos: {formatCurrency(analysisData.totalSharedEconomatoCost)}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-blue-700 font-bold">Imputación por Profesor</p>
+                            <p className="text-sm text-blue-600">{formatCurrency(analysisData.sharedCostPerTeacher)}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -133,16 +179,27 @@ export const ExpenseManager: React.FC = () => {
                     <button onClick={() => exportToCsv('gasto_por_profesor.csv', analysisData.dataByTeacher)} className="no-print mb-4 bg-blue-500 text-white text-xs py-1 px-3 rounded">Descargar CSV</button>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                           {/* ... table content ... */}
-                           <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th>Profesor</th><th>Nº Pedidos</th><th>Gasto Total</th><th>Ventas</th><th>Balance</th></tr></thead>
+                           <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                               <tr>
+                                   <th className="p-2 text-left">Profesor</th>
+                                   <th className="p-2 text-center">Nº Pedidos</th>
+                                   <th className="p-2 text-right">Gasto Directo</th>
+                                   <th className="p-2 text-right">Gasto Compartido</th>
+                                   <th className="p-2 text-right">Gasto Total</th>
+                                   <th className="p-2 text-right">Ventas</th>
+                                   <th className="p-2 text-right">Balance</th>
+                               </tr>
+                           </thead>
                            <tbody>
                                {analysisData.dataByTeacher.map(t => (
                                    <tr key={t.id} className="border-b dark:border-gray-700">
                                        <td className="p-2"><Link to={`/admin/expenses/${t.id}`} className="text-primary-600 hover:underline">{t.name}</Link></td>
-                                       <td className="p-2">{t.orderCount}</td>
-                                       <td className="p-2">{formatCurrency(t.totalSpend)}</td>
-                                       <td className="p-2">{formatCurrency(t.totalSales)}</td>
-                                       <td className={`p-2 font-semibold ${t.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.balance)}</td>
+                                       <td className="p-2 text-center">{t.orderCount}</td>
+                                       <td className="p-2 text-right">{formatCurrency(t.directSpend)}</td>
+                                       <td className="p-2 text-right text-blue-600">{formatCurrency(t.sharedSpend)}</td>
+                                       <td className="p-2 text-right font-bold">{formatCurrency(t.totalSpend)}</td>
+                                       <td className="p-2 text-right">{formatCurrency(t.totalSales)}</td>
+                                       <td className={`p-2 text-right font-semibold ${t.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.balance)}</td>
                                    </tr>
                                ))}
                            </tbody>

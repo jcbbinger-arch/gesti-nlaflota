@@ -155,7 +155,7 @@ export const OrderForm: React.FC = () => {
 
         const orderToSave: Order = {
             id: existingOrder?.id || `ord-${Date.now()}`,
-            user_id: currentUser.id,
+            user_id: isEconomatoOrder ? 'mini-economato' : currentUser.id,
             date: new Date().toISOString(),
             status,
             event_id: event.id,

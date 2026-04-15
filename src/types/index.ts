@@ -257,6 +257,7 @@ export interface StockItem {
     id: string; // productId
     stock: number;
     min_stock: number;
+    is_shared?: boolean;
 }
 
 export interface Sale {

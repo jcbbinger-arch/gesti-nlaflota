@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
@@ -10,6 +10,8 @@ import { exportToCsv } from '../../utils/export';
 export const OrderPortal: React.FC = () => {
     const { events, orders } = useData();
     const { currentUser } = useAuth();
+    const [searchParams] = useSearchParams();
+    const isEconomatoMode = searchParams.get('type') === 'economato';
     const isAlmacen = currentUser?.profiles.includes(Profile.ALMACEN);
     
     const now = new Date();
@@ -19,7 +21,8 @@ export const OrderPortal: React.FC = () => {
     const activeEvents = upcomingEvents.slice(0, 3);
 
     const getMyOrderForEvent = (event: Event) => {
-        return orders.find(o => o.user_id === currentUser?.id && o.event_id === event.id);
+        const userId = isEconomatoMode ? 'mini-economato' : currentUser?.id;
+        return orders.find(o => o.user_id === userId && o.event_id === event.id);
     };
 
     const handleExport = () => {
@@ -37,12 +40,20 @@ export const OrderPortal: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Portal de Pedidos</h1>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
+                    {isEconomatoMode ? 'Portal de Pedidos: Mini-Economato' : 'Portal de Pedidos'}
+                </h1>
                  <button onClick={handleExport} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
                     <DownloadIcon className="w-5 h-5 mr-2" />
                     Exportar a CSV
                 </button>
             </div>
+            {isEconomatoMode && (
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                    <p className="text-blue-700 font-medium">Modo Reposición Mini-Economato</p>
+                    <p className="text-sm text-blue-600">Los pedidos realizados aquí se cargarán al stock del Mini-Economato.</p>
+                </div>
+            )}
             <Card title="Eventos Activos">
                 {activeEvents.length > 0 ? (
                     <div className="overflow-x-auto">
@@ -51,13 +62,14 @@ export const OrderPortal: React.FC = () => {
                                 <tr>
                                     <th className="px-4 py-2">Evento</th>
                                     <th className="px-4 py-2">Finaliza</th>
-                                    <th className="px-4 py-2">Estado de Mi Pedido</th>
+                                    <th className="px-4 py-2">{isEconomatoMode ? 'Estado Pedido Economato' : 'Estado de Mi Pedido'}</th>
                                     <th className="px-4 py-2">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {activeEvents.map(event => {
                                     const myOrder = getMyOrderForEvent(event);
+                                    const linkSuffix = isEconomatoMode ? '?type=economato' : '';
                                     return (
                                         <tr key={event.id} className="border-b dark:border-gray-700">
                                             <td className="px-4 py-3 font-medium">{event.name}</td>
@@ -65,11 +77,11 @@ export const OrderPortal: React.FC = () => {
                                             <td className="px-4 py-3">{myOrder ? myOrder.status : 'No realizado'}</td>
                                             <td className="px-4 py-3 no-print">
                                                 {myOrder ? (
-                                                    <Link to={`/teacher/order-portal/edit/${myOrder.id}`} className="text-primary-600 hover:underline">
+                                                    <Link to={`/teacher/order-portal/edit/${myOrder.id}${linkSuffix}`} className="text-primary-600 hover:underline">
                                                         {myOrder.status === 'Procesado' ? 'Ver' : 'Editar'}
                                                     </Link>
                                                 ) : (
-                                                    <Link to={`/teacher/order-portal/new/${event.id}`} className="text-green-600 hover:underline">Crear Pedido</Link>
+                                                    <Link to={`/teacher/order-portal/new/${event.id}${linkSuffix}`} className="text-green-600 hover:underline">Crear Pedido</Link>
                                                 )}
                                                 <span className="ml-2 text-sm text-gray-500">{myOrder?.status}</span>
                                             </td>

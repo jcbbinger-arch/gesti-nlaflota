@@ -4,12 +4,13 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { DownloadIcon } from '../../components/icons';
 import { printPage, exportToCsv } from '../../utils/export';
+import { Profile, SUPER_USER_EMAILS, StockItem } from '../../types';
 
 const formatCurrency = (amount: number) => amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
 
 export const ExpenseDetailByTeacher: React.FC = () => {
     const { teacher_id } = useParams<{ teacher_id: string }>();
-    const { users, orders, sales, products, events } = useData();
+    const { users, orders, sales, products, events, mini_economato_stock } = useData();
 
     const teacher = useMemo(() => users.find(u => u.id === teacher_id), [users, teacher_id]);
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p.name])), [products]);
@@ -21,7 +22,23 @@ export const ExpenseDetailByTeacher: React.FC = () => {
         const teacherOrders = orders.filter(o => o.user_id === teacher.id && o.status === 'Completado');
         const teacherSales = sales.filter(s => s.teacher_id === teacher.id);
 
-        const totalSpend = teacherOrders.reduce((sum, o) => sum + (o.cost || 0), 0);
+        // Calculate Shared Mini-Economato Expense
+        const teachers = users.filter(u => u.profiles.includes(Profile.TEACHER) && !SUPER_USER_EMAILS.includes(u.email));
+        const completedOrders = orders.filter(o => o.status === 'Completado');
+        const economatoOrders = completedOrders.filter(o => o.user_id === 'mini-economato');
+        let totalSharedEconomatoCost = 0;
+        economatoOrders.forEach(order => {
+            order.items.forEach(item => {
+                const stockItem = mini_economato_stock.find((s: StockItem) => s.id === item.product_id);
+                if (stockItem?.is_shared) {
+                    totalSharedEconomatoCost += (item.price * item.quantity) * (1 + item.tax / 100);
+                }
+            });
+        });
+        const sharedSpend = teachers.length > 0 ? totalSharedEconomatoCost / teachers.length : 0;
+
+        const directSpend = teacherOrders.reduce((sum, o) => sum + (o.cost || 0), 0);
+        const totalSpend = directSpend + sharedSpend;
         const totalSales = teacherSales.reduce((sum, s) => sum + s.amount, 0);
         const balance = totalSales - totalSpend;
         
@@ -32,6 +49,9 @@ export const ExpenseDetailByTeacher: React.FC = () => {
             if (!monthlyData[month]) monthlyData[month] = { spend: 0, sales: 0 };
             monthlyData[month].spend += o.cost || 0;
         });
+        // Note: Shared spend is currently not distributed monthly in this simplified logic, 
+        // but we could add it to the current month if needed.
+        
         teacherSales.forEach(s => {
             const month = new Date(s.date).toISOString().slice(0, 7);
             if (!monthlyData[month]) monthlyData[month] = { spend: 0, sales: 0 };
@@ -41,12 +61,14 @@ export const ExpenseDetailByTeacher: React.FC = () => {
         return {
             teacherOrders,
             teacherSales,
+            directSpend,
+            sharedSpend,
             totalSpend,
             totalSales,
             balance,
             monthlyData: Object.entries(monthlyData).sort(([a], [b]) => a.localeCompare(b)),
         };
-    }, [teacher, orders, sales]);
+    }, [teacher, orders, sales, users, mini_economato_stock]);
 
     if (!teacher || !teacherData) {
         return <Card title="Error"><p>Profesor no encontrado.</p></Card>;
@@ -67,7 +89,9 @@ export const ExpenseDetailByTeacher: React.FC = () => {
             </div>
             
             {/* KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
+                <Card title="Gasto Directo"><p className="text-2xl font-bold">{formatCurrency(teacherData.directSpend)}</p></Card>
+                <Card title="Gasto Compartido"><p className="text-2xl font-bold text-blue-600">{formatCurrency(teacherData.sharedSpend)}</p></Card>
                 <Card title="Gasto Total"><p className="text-2xl font-bold">{formatCurrency(teacherData.totalSpend)}</p></Card>
                 <Card title="Ventas Totales"><p className="text-2xl font-bold">{formatCurrency(teacherData.totalSales)}</p></Card>
                 <Card title="Balance"><p className={`text-2xl font-bold ${teacherData.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(teacherData.balance)}</p></Card>
