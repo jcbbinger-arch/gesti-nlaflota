@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
-import { PlusIcon, DownloadIcon, WarningIcon, TrashIcon } from '../../components/icons';
+import { PlusIcon, DownloadIcon, WarningIcon, TrashIcon, ProductIcon } from '../../components/icons';
 import { Product, Supplier, ProductState, WarehouseStatus, Profile } from '../../types';
 import { exportToCsv } from '../../utils/export';
 import { parseCsv } from '../../utils/csv';
@@ -42,7 +42,7 @@ const WAREHOUSE_STATUSES: WarehouseStatus[] = ['Disponible', 'Bajo Pedido', 'Des
 export const ProductFormModal: React.FC<{ product: Product | null; onClose: () => void; onSave: (product: Product) => void; allProducts: Product[]; allSuppliers: Supplier[] }> = ({ product, onClose, onSave, allProducts, allSuppliers }) => {
     const { workspaceSettings, setWorkspaceSettings } = useData();
     const [formState, setFormState] = useState<Product>(product || { 
-        id: '', name: '', description: '', reference: `REF-${Date.now().toString().slice(-6)}`, unit: 'Uds', suppliers: [], tax: 21, category: '', family: '', allergens: [], status: 'Activo', product_state: 'Fresco', warehouse_status: 'Disponible'
+        id: '', name: '', description: '', reference: `REF-${Date.now().toString().slice(-6)}`, unit: 'Uds', suppliers: [], tax: 21, category: '', family: '', allergens: [], status: 'Activo', product_state: 'Fresco', warehouse_status: 'Disponible', image: ''
     });
     
     const families = useMemo(() => {
@@ -160,8 +160,34 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
         const units = ["Uds", "kg", "g", "L", "ml", "Pack", "Docena"];
         return (
             <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto p-1">
-                <input type="text" name="name" value={formState.name} onChange={handleChange} placeholder="Nombre del Producto" required className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600"/>
-                <textarea name="description" value={formState.description} onChange={handleChange} placeholder="Descripción" rows={2} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600"/>
+                <div className="flex items-start space-x-4">
+                    <div className="flex-1 space-y-4">
+                        <input type="text" name="name" value={formState.name} onChange={handleChange} placeholder="Nombre del Producto" required className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600"/>
+                        <textarea name="description" value={formState.description} onChange={handleChange} placeholder="Descripción" rows={2} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600"/>
+                    </div>
+                    <div className="w-32 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800 relative group">
+                        {formState.image ? (
+                            <>
+                                <img src={formState.image} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                <button type="button" onClick={() => setFormState({...formState, image: ''})} className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <TrashIcon className="w-3 h-3" />
+                                </button>
+                            </>
+                        ) : (
+                            <div className="text-center p-2">
+                                <PlusIcon className="w-6 h-6 mx-auto text-gray-400" />
+                                <span className="text-[10px] text-gray-500">Imagen (URL)</span>
+                            </div>
+                        )}
+                        <input 
+                            type="text" 
+                            placeholder="URL Imagen" 
+                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                            onChange={(e) => setFormState({...formState, image: e.target.value})}
+                            title="Pega una URL de imagen"
+                        />
+                    </div>
+                </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -369,6 +395,24 @@ export const ProductManager: React.FC = () => {
                         (item.name && p.name.toLowerCase() === String(item.name).toLowerCase())
                     );
 
+                    // Handle Suppliers Matching by Name
+                    let itemSuppliers = Array.isArray(item.suppliers) ? [...item.suppliers] : [];
+                    
+                    // If CSV has a 'supplier_name' and 'price' column, try to match
+                    const csvSupplierName = item.supplier_name || item.proveedor || item.supplier;
+                    const csvPrice = parseFloat(item.price || item.precio);
+                    
+                    if (csvSupplierName && !isNaN(csvPrice)) {
+                        const matchedSupplier = suppliers.find(s => s.name.toLowerCase() === String(csvSupplierName).toLowerCase());
+                        if (matchedSupplier) {
+                            // Check if already in itemSuppliers
+                            const alreadyExists = itemSuppliers.some((s: any) => s.supplier_id === matchedSupplier.id);
+                            if (!alreadyExists) {
+                                itemSuppliers.push({ supplier_id: matchedSupplier.id, price: csvPrice });
+                            }
+                        }
+                    }
+
                     const productData: Product = {
                         id: existingIndex >= 0 ? updatedProducts[existingIndex].id : `prod-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                         name: String(item.name),
@@ -382,7 +426,8 @@ export const ProductManager: React.FC = () => {
                         status: item.status === 'Inactivo' ? 'Inactivo' : 'Activo',
                         product_state: (item.product_state as ProductState) || 'Fresco',
                         warehouse_status: (item.warehouse_status as WarehouseStatus) || 'Disponible',
-                        suppliers: Array.isArray(item.suppliers) ? item.suppliers : (existingIndex >= 0 ? updatedProducts[existingIndex].suppliers : [])
+                        suppliers: itemSuppliers.length > 0 ? itemSuppliers : (existingIndex >= 0 ? updatedProducts[existingIndex].suppliers : []),
+                        image: item.image || item.imagen || (existingIndex >= 0 ? updatedProducts[existingIndex].image : '')
                     };
 
                     if (existingIndex >= 0) {
@@ -421,10 +466,9 @@ export const ProductManager: React.FC = () => {
                 status: "Activo",
                 product_state: "Fresco",
                 warehouse_status: "Disponible",
-                suppliers: [
-                    { supplier_id: "ID_PROVEEDOR_1", price: 10.5 },
-                    { supplier_id: "ID_PROVEEDOR_2", price: 9.95 }
-                ]
+                image: "https://picsum.photos/seed/product/200/200",
+                supplier_name: "Makro",
+                price: 10.5
             }
         ];
         exportToCsv("plantilla_productos.csv", template);
@@ -532,6 +576,7 @@ export const ProductManager: React.FC = () => {
                     <table className="w-full text-sm">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
+                                <th className="px-4 py-2 text-left w-16">Imagen</th>
                                 <th className="px-4 py-2 text-left">Nombre</th>
                                 <th className="px-4 py-2 text-left">Mejor Precio</th>
                                 <th className="px-4 py-2 text-left">Proveedor Principal</th>
@@ -544,6 +589,15 @@ export const ProductManager: React.FC = () => {
                                 const bestPriceInfo = getBestPriceInfo(product);
                                 return (
                                 <tr key={product.id} className="border-b dark:border-gray-700">
+                                    <td className="px-4 py-2">
+                                        <div className="w-10 h-10 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden border dark:border-gray-600">
+                                            {product.image ? (
+                                                <img src={product.image} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                            ) : (
+                                                <ProductIcon className="w-5 h-5 text-gray-400" />
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-2 font-medium">{product.name}</td>
                                     <td className="px-4 py-2 font-mono">
                                         {bestPriceInfo.price !== null ? `${bestPriceInfo.price.toFixed(2)}€` : 'N/A'}

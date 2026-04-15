@@ -124,6 +124,7 @@ export interface Product {
   status: 'Activo' | 'Inactivo';
   product_state?: ProductState;
   warehouse_status?: WarehouseStatus;
+  image?: string;
 }
 
 export interface Supplier {
