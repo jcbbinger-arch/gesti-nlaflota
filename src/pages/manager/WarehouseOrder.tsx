@@ -1,0 +1,149 @@
+import React, { useState, useMemo } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useData } from '../../contexts/DataContext';
+import { Card } from '../../components/Card';
+import { Order, Product, StockItem, Message } from '../../types';
+
+// Component to select an order
+const OrderSelector: React.FC = () => {
+    const { orders, users } = useData();
+    const now = new Date();
+    
+    // Show all orders that are not 'Procesado' (active or future)
+    const activeOrders = orders.filter(o => o.status !== 'Procesado');
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Asignación de Stock a Pedidos</h1>
+            <Card title="Selecciona un Pedido Activo">
+                {activeOrders.length > 0 ? (
+                    <div className="space-y-3">
+                        {activeOrders.map(order => {
+                            const user = users.find(u => u.id === order.user_id);
+                            return (
+                                <Link key={order.id} to={`/almacen/warehouse-order/${order.id}`} className="block p-4 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600">
+                                    <p className="font-bold">Pedido {order.id} - {user?.name || 'Desconocido'}</p>
+                                    <p className="text-sm text-gray-500">Estado: {order.status} | Fecha: {new Date(order.date).toLocaleDateString()}</p>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                ) : <p>No hay pedidos activos en este momento.</p>}
+            </Card>
+        </div>
+    );
+};
+
+// Component for the assignment form
+const AssignmentForm: React.FC<{ order: Order }> = ({ order }) => {
+    const navigate = useNavigate();
+    const { products, mini_economato_stock, setOrders, setMiniEconomatoStock, setMessages, users } = useData();
+    const [selectedProductId, setSelectedProductId] = useState('');
+    const [quantity, setQuantity] = useState(1);
+    
+    const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
+    const stockMap = useMemo(() => new Map(mini_economato_stock.map(s => [s.id, s])), [mini_economato_stock]);
+
+    const handleAssign = () => {
+        const product = productsMap.get(selectedProductId);
+        const stockItem = stockMap.get(selectedProductId);
+        
+        if (!product || !stockItem || stockItem.stock < quantity) {
+            alert("Producto no encontrado o stock insuficiente.");
+            return;
+        }
+
+        // 1. Update order
+        const updatedOrder = {
+            ...order,
+            items: [...order.items, { product_id: selectedProductId, quantity, price: 0, tax: product.tax }], // Assigned as extra
+            cost: (order.cost || 0) // Should ideally update cost
+        };
+        setOrders(prev => prev.map(o => o.id === order.id ? updatedOrder : o));
+
+        // 2. Update stock
+        setMiniEconomatoStock(prev => prev.map(s => s.id === selectedProductId ? { ...s, stock: s.stock - quantity } : s));
+
+        // 3. Send message
+        const newMessage: Message = {
+            id: `msg-${Date.now()}`,
+            sender_id: '0', // Warehouse ID
+            recipient_ids: [order.user_id],
+            subject: 'Asignación de Stock Extra',
+            body: `Se le han asignado ${quantity} ${product.unit} de ${product.name} a su pedido de la semana.`,
+            date: new Date().toISOString(),
+            read_by: {}
+        };
+        setMessages(prev => [...prev, newMessage]);
+
+        alert('Stock asignado y mensaje enviado.');
+        navigate('/almacen/warehouse-order');
+    };
+
+    return (
+        <div>
+            <Link to="/almacen/warehouse-order" className="text-sm text-primary-600 hover:underline mb-4 block">&larr; Cambiar pedido</Link>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Asignar Stock al Pedido: {order.id}</h1>
+            
+            <Card title="Resumen del Pedido" className="mb-6">
+                <p><strong>Profesor:</strong> {users.find(u => u.id === order.user_id)?.name}</p>
+                <p><strong>Estado:</strong> {order.status}</p>
+                <div className="mt-2">
+                    {order.items.map(item => {
+                        const product = productsMap.get(item.product_id);
+                        return (
+                            <div key={item.product_id} className="text-sm">
+                                {product?.name}: {item.quantity} {product?.unit}
+                            </div>
+                        );
+                    })}
+                </div>
+            </Card>
+
+            <Card title="Buscar y Asignar Producto del Stock">
+                <div className="space-y-4">
+                    <select 
+                        className="w-full p-2 border rounded dark:bg-gray-700"
+                        value={selectedProductId}
+                        onChange={e => setSelectedProductId(e.target.value)}
+                    >
+                        <option value="">Selecciona un producto del stock...</option>
+                        {mini_economato_stock.map(s => {
+                            const product = productsMap.get(s.id);
+                            return product ? (
+                                <option key={s.id} value={s.id}>{product.name} (Stock: {s.stock})</option>
+                            ) : null;
+                        })}
+                    </select>
+                    <input
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={e => setQuantity(Number(e.target.value))}
+                        className="w-full p-2 border rounded dark:bg-gray-700"
+                        placeholder="Cantidad"
+                    />
+                    <button 
+                        onClick={handleAssign} 
+                        disabled={order.status !== 'Cerrado'}
+                        className={`w-full text-white p-2 rounded ${order.status === 'Cerrado' ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                    >
+                        {order.status === 'Cerrado' ? 'Asignar al Pedido' : 'Pedido no cerrado'}
+                    </button>
+                </div>
+            </Card>
+        </div>
+    );
+};
+
+// Main component
+export const WarehouseOrder: React.FC = () => {
+    const { orderId } = useParams<{ orderId?: string }>();
+    const { orders } = useData();
+    const order = useMemo(() => orders.find(o => o.id === orderId), [orders, orderId]);
+
+    if (orderId && order) {
+        return <AssignmentForm order={order} />;
+    }
+    return <OrderSelector />;
+};

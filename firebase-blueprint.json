@@ -1,0 +1,260 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "avatar": { "type": "string" },
+        "profiles": { "type": "array", "items": { "type": "string" } },
+        "activityStatus": { "type": "string", "enum": ["Activo", "De Baja"] },
+        "locationStatus": { "type": "string", "enum": ["En el centro", "Fuera del centro"] },
+        "contractType": { "type": "string", "enum": ["Fijo", "Interino"] },
+        "roleType": { "type": "string", "enum": ["Titular", "Sustituto"] },
+        "classroomId": { "type": "string" },
+        "phone": { "type": "string" },
+        "secondaryPhone": { "type": "string" },
+        "address": { "type": "string" },
+        "studentSimulatedProfile": { "type": "string", "enum": ["teacher", "almacen"] }
+      },
+      "required": ["id", "name", "email", "profiles", "activityStatus", "locationStatus"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Product information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "reference": { "type": "string" },
+        "unit": { "type": "string" },
+        "suppliers": { "type": "array", "items": { "$ref": "ProductSupplier" } },
+        "tax": { "type": "number" },
+        "category": { "type": "string" },
+        "family": { "type": "string" },
+        "allergens": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["Activo", "Inactivo"] },
+        "productState": { "type": "string" },
+        "warehouseStatus": { "type": "string" }
+      },
+      "required": ["id", "name", "reference", "unit", "tax", "category", "family", "status"]
+    },
+    "ProductSupplier": {
+      "title": "ProductSupplier",
+      "type": "object",
+      "properties": {
+        "supplierId": { "type": "string" },
+        "price": { "type": "number" }
+      }
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Supplier information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "cif": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "contactPerson": { "type": "string" },
+        "status": { "type": "string", "enum": ["Activo", "Inactivo"] },
+        "website": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "name", "cif", "status"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Event information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["Regular", "Extraordinario"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "budgetPerTeacher": { "type": "number" },
+        "authorizedTeachers": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["Activo", "Inactivo"] }
+      },
+      "required": ["id", "name", "type", "startDate", "endDate", "budgetPerTeacher", "status"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Order information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" },
+        "eventId": { "type": "string" },
+        "items": { "type": "array", "items": { "$ref": "OrderItem" } },
+        "cost": { "type": "number" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "userId", "date", "status", "eventId", "items"]
+    },
+    "OrderItem": {
+      "title": "OrderItem",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "price": { "type": "number" },
+        "tax": { "type": "number" }
+      }
+    },
+    "Recipe": {
+      "title": "Recipe",
+      "description": "Recipe information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "authorId": { "type": "string" },
+        "yieldAmount": { "type": "number" },
+        "yieldUnit": { "type": "string" },
+        "category": { "type": "string" },
+        "ingredients": { "type": "array", "items": { "$ref": "RecipeIngredient" } },
+        "preparationSteps": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "cost": { "type": "number" },
+        "price": { "type": "number" }
+      },
+      "required": ["id", "name", "authorId", "yieldAmount", "yieldUnit", "category", "ingredients", "preparationSteps", "isPublic", "cost", "price"]
+    },
+    "RecipeIngredient": {
+      "title": "RecipeIngredient",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" }
+      }
+    },
+    "WorkspaceSettings": {
+      "title": "WorkspaceSettings",
+      "description": "Settings specific to a workspace",
+      "type": "object",
+      "properties": {
+        "workspaceId": { "type": "string" },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "categoryConfigs": { "type": "array", "items": { "type": "object" } }
+      },
+      "required": ["workspaceId", "categories"]
+    },
+    "SaleItem": {
+      "title": "SaleItem",
+      "description": "Information about a meal for sale",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "rations": { "type": "number" },
+        "allergens": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "status": { "type": "string", "enum": ["Activo", "Inactivo"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "price", "rations", "workspaceId", "status", "createdAt"]
+    },
+    "Reservation": {
+      "title": "Reservation",
+      "description": "Reservation for a meal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "saleItemId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "quantity": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "saleItemId", "userId", "userName", "quantity", "createdAt"]
+    },
+    "DiningService": {
+      "title": "DiningService",
+      "description": "Dining hall service information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "max_capacity": { "type": "number" },
+        "current_pax": { "type": "number" },
+        "menu_price": { "type": "number" },
+        "status": { "type": "string", "enum": ["borrador", "abierto", "cerrado"] },
+        "created_by": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "date", "max_capacity", "current_pax", "menu_price", "status", "created_by", "created_at"]
+    },
+    "DiningReservation": {
+      "title": "DiningReservation",
+      "description": "Reservation for a dining hall service",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "service_id": { "type": "string" },
+        "reference_name": { "type": "string" },
+        "client_entity": { "type": "string" },
+        "pax": { "type": "number" },
+        "phone_1": { "type": "string" },
+        "phone_2": { "type": "string" },
+        "total_price": { "type": "number" },
+        "diners_allergens": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "diner_name": { "type": "string" },
+              "allergens": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "created_by": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "service_id", "reference_name", "pax", "total_price", "created_by", "created_at"]
+    }
+  },
+  "firestore": {
+    "/users": { "schema": "User", "description": "Collection of users" },
+    "/products": { "schema": "Product", "description": "Collection of products" },
+    "/suppliers": { "schema": "Supplier", "description": "Collection of suppliers" },
+    "/events": { "schema": "Event", "description": "Collection of events" },
+    "/orders": { "schema": "Order", "description": "Collection of orders" },
+    "/recipes": { "schema": "Recipe", "description": "Collection of recipes" },
+    "/incidents": { "schema": "Incident", "description": "Collection of incidents" },
+    "/sales": { "schema": "Sale", "description": "Collection of sales" },
+    "/messages": { "schema": "Message", "description": "Collection of messages" },
+    "/classrooms": { "schema": "Classroom", "description": "Collection of classrooms" },
+    "/classroom_products": { "schema": "ClassroomProduct", "description": "Collection of classroom products" },
+    "/classroom_suppliers": { "schema": "ClassroomSupplier", "description": "Collection of classroom suppliers" },
+    "/classroom_events": { "schema": "ClassroomEvent", "description": "Collection of classroom events" },
+    "/classroom_orders": { "schema": "ClassroomOrder", "description": "Collection of classroom orders" },
+    "/service_groups": { "schema": "ServiceGroup", "description": "Collection of service groups" },
+    "/services": { "schema": "Service", "description": "Collection of services" },
+    "/training_cycles": { "schema": "TrainingCycle", "description": "Collection of training cycles" },
+    "/modules": { "schema": "Module", "description": "Collection of modules" },
+    "/groups": { "schema": "Group", "description": "Collection of groups" },
+    "/assignments": { "schema": "Assignment", "description": "Collection of assignments" },
+    "/mini_economato_stock": { "schema": "StockItem", "description": "Collection of mini economato stock" },
+    "/workspace_settings/{workspaceId}": { "schema": "WorkspaceSettings", "description": "Settings specific to a workspace" },
+    "/sale_items": { "schema": "SaleItem", "description": "Collection of sale items" },
+    "/reservations": { "schema": "Reservation", "description": "Collection of reservations" },
+    "/dining_services": { "schema": "DiningService", "description": "Collection of dining services" },
+    "/dining_reservations": { "schema": "DiningReservation", "description": "Collection of dining reservations" }
+  }
+}

@@ -1,0 +1,236 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['admin', 'creator']) ||
+          request.auth.token.email in ['jcbprofesor@gmail.com', 'managerproapp@gmail.com']);
+    }
+
+    function validString(field, min, max) {
+      return request.resource.data[field] is string &&
+             request.resource.data[field].size() >= min &&
+             request.resource.data[field].size() <= max;
+    }
+
+    function isAlmacen() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['almacen', 'admin', 'creator']);
+    }
+
+    function isTeacher() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['teacher', 'admin', 'creator']);
+    }
+
+    function isSalesManager() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['sales_manager', 'admin', 'creator']);
+    }
+
+    function isStudent() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['student', 'admin', 'creator']);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isApproved() {
+      return isAuthenticated();
+    }
+
+    function getUserWorkspace() {
+      return request.auth.uid;
+    }
+
+    function isValidWorkspaceSettings(data) {
+      return data.keys().hasAll(['workspaceId', 'categories']) &&
+             data.keys().hasOnly(['workspaceId', 'categories', 'categoryConfigs']) &&
+             data.workspaceId is string &&
+             data.categories is list &&
+             data.categories.size() < 50 &&
+             (!('categoryConfigs' in data) || data.categoryConfigs is list);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /invitations/{invitationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() || isTeacher();
+      allow delete: if isAdmin() || isTeacher();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if (isAdmin() || isOwner(userId)) && validString('name', 1, 100) && validString('email', 5, 100);
+      allow update: if (isAdmin() || isOwner(userId)) && validString('name', 1, 100) && validString('email', 5, 100);
+      allow delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if isAuthenticated();
+      allow write: if isAlmacen() && validString('name', 1, 100) && validString('description', 0, 500);
+    }
+
+    match /suppliers/{supplierId} {
+      allow read: if isAuthenticated();
+      allow write: if isAlmacen() && validString('name', 1, 100) && validString('address', 0, 200);
+    }
+
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && validString('name', 1, 100);
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow create: if (isTeacher() || isAlmacen()) && validString('notes', 0, 500);
+      allow update: if (isTeacher() || isAlmacen()) && validString('notes', 0, 500);
+      allow delete: if isAdmin();
+    }
+
+    match /recipes/{recipeId} {
+      allow read: if isAuthenticated();
+      allow create: if isTeacher() && validString('name', 1, 100) && validString('description', 0, 500);
+      allow update: if isTeacher() && (resource.data.authorId == request.auth.uid || isAdmin()) && validString('name', 1, 100) && validString('description', 0, 500);
+      allow delete: if isAdmin() || (isTeacher() && resource.data.authorId == request.auth.uid);
+    }
+
+    match /incidents/{incidentId} {
+      allow read: if isAuthenticated();
+      allow write: if (isAlmacen() || isTeacher()) && validString('description', 1, 500);
+    }
+
+    match /sales/{saleId} {
+      allow read: if isAuthenticated();
+      allow write: if isTeacher() && validString('category', 1, 50);
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && validString('subject', 1, 100) && validString('body', 1, 1000);
+      allow update: if isAuthenticated();
+    }
+
+    match /classrooms/{classroomId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /classroom_products/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isTeacher() || isStudent();
+    }
+
+    match /classroom_suppliers/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isTeacher() || isStudent();
+    }
+
+    match /classroom_events/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isTeacher();
+    }
+
+    match /classroom_orders/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isStudent() || isTeacher();
+    }
+
+    match /service_groups/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /services/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isTeacher();
+    }
+
+    match /training_cycles/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /modules/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /groups/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isTeacher();
+    }
+
+    match /assignments/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isTeacher();
+    }
+
+    match /mini_economato_stock/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAlmacen() || isTeacher();
+    }
+
+    match /workspace_settings/{workspaceId} {
+      // Solo el usuario del centro (profesor) puede leer su propia configuración
+      allow read: if isApproved() && (isAdmin() || workspaceId == getUserWorkspace());
+      // Solo el usuario del centro puede crear/actualizar su propia configuración
+      allow create: if isApproved() && (isAdmin() || (workspaceId == getUserWorkspace() && isValidWorkspaceSettings(request.resource.data)));
+      allow update: if isApproved() && (isAdmin() || (workspaceId == getUserWorkspace() && isValidWorkspaceSettings(request.resource.data)));
+      allow delete: if isAdmin();
+    }
+
+    match /sale_items/{saleItemId} {
+      allow read: if true;
+      allow create, delete: if isTeacher() && validString('name', 1, 100) && validString('description', 0, 500);
+      allow update: if (isTeacher() && validString('name', 1, 100) && validString('description', 0, 500)) || 
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rations']) && 
+                     request.resource.data.rations >= 0 && 
+                     request.resource.data.rations < resource.data.rations);
+    }
+
+    match /reservations/{reservationId} {
+      allow read: if isAuthenticated();
+      allow create: if validString('user_name', 1, 100) && request.resource.data.quantity is number && request.resource.data.quantity > 0;
+      allow update: if isAuthenticated() && (isTeacher() || isSalesManager() || isOwner(resource.data.user_id));
+      allow delete: if isAdmin() || isTeacher() || isSalesManager();
+    }
+
+    match /dining_services/{serviceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /dining_reservations/{reservationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAlmacen() && 
+                      get(/databases/$(database)/documents/dining_services/$(request.resource.data.service_id)).data.status == 'abierto';
+      allow update: if (isAlmacen() && 
+                       get(/databases/$(database)/documents/dining_services/$(resource.data.service_id)).data.status == 'abierto') || 
+                      isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}
