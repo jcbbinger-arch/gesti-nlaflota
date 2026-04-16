@@ -23,7 +23,11 @@ export const ExpenseDetailByTeacher: React.FC = () => {
         const teacherSales = sales.filter(s => s.teacher_id === teacher.id);
 
         // Calculate Shared Mini-Economato Expense
-        const teachers = users.filter(u => u.profiles.includes(Profile.TEACHER) && !SUPER_USER_EMAILS.includes(u.email));
+        const teachers = users.filter(u => 
+            u.profiles.includes(Profile.TEACHER) && 
+            !u.profiles.includes(Profile.ALMACEN) &&
+            !SUPER_USER_EMAILS.includes(u.email)
+        );
         const completedOrders = orders.filter(o => o.status === 'Completado');
         const economatoOrders = completedOrders.filter(o => o.user_id === 'mini-economato');
         let totalSharedEconomatoCost = 0;

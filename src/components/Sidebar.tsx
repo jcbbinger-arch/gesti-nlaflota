@@ -50,6 +50,7 @@ const almacenNav = [
   { name: 'Proveedores', href: '/almacen/suppliers', icon: <TruckIcon /> },
   { name: 'Productos', href: '/almacen/products', icon: <AppleIcon /> },
   { name: 'Mini-Economato', href: '/almacen/mini-economato', icon: <HouseIcon /> },
+  { name: 'Reposiciones Economato', href: '/teacher/order-portal?type=economato', icon: <ShoppingCartIcon /> },
   { name: 'Reservas Comedor', href: '/almacen/dining-reservations', icon: <ClipboardDocumentListIcon /> },
   { name: 'Vista Comedor', href: '/almacen/dining-view', icon: <UserGroupIcon /> },
   { name: 'Historial de Pedidos', href: '/almacen/order-history', icon: <HistoryIcon /> },

@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { EventIcon, PlusIcon, HistoryIcon, RecipeIcon, SaleIcon, DownloadIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
-import { Profile } from '../../types';
+import { Profile, SUPER_USER_EMAILS } from '../../types';
 
 export const TeacherDashboard: React.FC = () => {
     const { events, orders, users, mini_economato_stock } = useData();
@@ -24,7 +24,12 @@ export const TeacherDashboard: React.FC = () => {
     
     const eventsMap = new Map(events.map(e => [e.id, e.name]));
 
-    const activeTeachersCount = users.filter(u => u.profiles.includes(Profile.TEACHER) && u.activity_status === 'Activo').length || 1;
+    const activeTeachersCount = users.filter(u => 
+        u.profiles.includes(Profile.TEACHER) && 
+        !u.profiles.includes(Profile.ALMACEN) &&
+        !SUPER_USER_EMAILS.includes(u.email) &&
+        u.activity_status === 'Activo'
+    ).length || 1;
     const miniEconomatoOrders = orders.filter(o => o.user_id === 'mini-economato' && o.status === 'Completado');
     const totalSharedCost = miniEconomatoOrders.reduce((sum, order) => {
         let sharedOnlyCost = 0;

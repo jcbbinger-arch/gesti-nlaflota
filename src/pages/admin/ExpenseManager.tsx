@@ -19,7 +19,11 @@ export const ExpenseManager: React.FC = () => {
     const { orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock } = useData();
 
     const analysisData = useMemo(() => {
-        const teachers = users.filter(u => u.profiles.includes(Profile.TEACHER) && !SUPER_USER_EMAILS.includes(u.email));
+        const teachers = users.filter(u => 
+            u.profiles.includes(Profile.TEACHER) && 
+            !u.profiles.includes(Profile.ALMACEN) &&
+            !SUPER_USER_EMAILS.includes(u.email)
+        );
         const completedOrders = orders.filter(o => o.status === 'Completado');
         
         // Gasto Compartido Mini-Economato

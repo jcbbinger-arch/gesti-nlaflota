@@ -159,7 +159,7 @@ const AppContent: React.FC = () => {
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute allowedProfiles={[Profile.TEACHER]} />}>
+        <Route element={<ProtectedRoute allowedProfiles={[Profile.TEACHER, Profile.ALMACEN, Profile.ADMIN]} />}>
           <Route path="/teacher" element={<TeacherLayout />}>
               <Route path="dashboard" element={<TeacherDashboard />} />
               <Route path="service-planner" element={<ServiceViewer />} />

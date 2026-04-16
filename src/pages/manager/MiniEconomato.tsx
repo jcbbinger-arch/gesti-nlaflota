@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
+import { useAuth } from '../../contexts/AuthContext';
 import { Product, User, Profile, Order, StockItem, Event, OrderItem } from '../../types';
 import { DownloadIcon, PlusIcon, PencilIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
@@ -101,11 +102,17 @@ const EditStockModal: React.FC<{ item: StockItem, productName: string, onClose: 
 
 export const MiniEconomato: React.FC = () => {
     const { mini_economato_stock, setMiniEconomatoStock, products, users, orders, setOrders, events } = useData();
+    const { currentUser } = useAuth();
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [productToAssign, setProductToAssign] = useState<Product | null>(null);
     const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
+
+    const canManage = useMemo(() => 
+        currentUser?.profiles.includes(Profile.ALMACEN) || 
+        currentUser?.profiles.includes(Profile.ADMIN)
+    , [currentUser]);
 
     const productsMap = useMemo(() => new Map(products.map((p: Product) => [p.id, p])), [products]);
     const stockMap = useMemo(() => new Map(mini_economato_stock.map((s: StockItem) => [s.id, s])), [mini_economato_stock]);
@@ -196,17 +203,23 @@ export const MiniEconomato: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Mini-Economato</h1>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
+                    {canManage ? 'Gestión de Mini-Economato' : 'Consulta de Mini-Economato'}
+                </h1>
                 <div className="flex space-x-2">
-                    <button onClick={() => setIsAddModalOpen(true)} className="no-print bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center">
-                        <PlusIcon className="w-5 h-5 mr-2" /> Añadir Producto
-                    </button>
-                    <Link to="/teacher/order-portal?type=economato" className="no-print bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center">
-                        <PlusIcon className="w-5 h-5 mr-2" /> Hacer Pedido de Reposición
-                    </Link>
-                    <Link to="/almacen/warehouse-order" className="no-print bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 flex items-center">
-                        <PlusIcon className="w-5 h-5 mr-2" /> Gestionar Pedidos
-                    </Link>
+                    {canManage && (
+                        <>
+                            <button onClick={() => setIsAddModalOpen(true)} className="no-print bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center">
+                                <PlusIcon className="w-5 h-5 mr-2" /> Añadir Producto
+                            </button>
+                            <Link to="/teacher/order-portal?type=economato" className="no-print bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center">
+                                <PlusIcon className="w-5 h-5 mr-2" /> Hacer Pedido de Reposición
+                            </Link>
+                            <Link to="/almacen/warehouse-order" className="no-print bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 flex items-center">
+                                <PlusIcon className="w-5 h-5 mr-2" /> Gestionar Pedidos
+                            </Link>
+                        </>
+                    )}
                     <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
                         <DownloadIcon className="w-5 h-5 mr-2" />
                         Descargar PDF
@@ -259,12 +272,16 @@ export const MiniEconomato: React.FC = () => {
                                 )}
                             </div>
                             <div className="mt-2 space-x-2 no-print">
-                                <button onClick={() => { setItemToEdit(stock); setIsEditModalOpen(true); }} className="text-xs bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
-                                    <PencilIcon className="w-4 h-4 inline-block mr-1"/> Editar Stock
-                                </button>
-                                <button onClick={() => handleOpenAssignModal(product)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:bg-gray-400" disabled={stock.stock <= 0}>
-                                    Asignar Producto
-                                </button>
+                                {canManage && (
+                                    <>
+                                        <button onClick={() => { setItemToEdit(stock); setIsEditModalOpen(true); }} className="text-xs bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
+                                            <PencilIcon className="w-4 h-4 inline-block mr-1"/> Editar Stock
+                                        </button>
+                                        <button onClick={() => handleOpenAssignModal(product)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:bg-gray-400" disabled={stock.stock <= 0}>
+                                            Asignar Producto
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )})}
