@@ -233,6 +233,14 @@ export const MiniEconomato: React.FC = () => {
                         const stockLevel = getStockLevel(stock.stock, stock.min_stock);
                         return (
                         <div key={product.id} className={`p-4 rounded-lg border flex flex-col ${stockLevel.className}`}>
+                            <div className="w-full h-32 mb-3 rounded-md overflow-hidden bg-gray-100/50">
+                                <img 
+                                    src={product.image || `https://picsum.photos/seed/${encodeURIComponent(product.name)}/400/300`} 
+                                    alt={product.name} 
+                                    className="w-full h-full object-cover" 
+                                    referrerPolicy="no-referrer"
+                                />
+                            </div>
                             <div className="flex justify-between items-start">
                                 <h4 className="font-bold">{product.name}</h4>
                                 {stock.is_shared && (

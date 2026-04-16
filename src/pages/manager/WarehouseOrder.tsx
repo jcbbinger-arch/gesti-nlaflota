@@ -88,12 +88,20 @@ const AssignmentForm: React.FC<{ order: Order }> = ({ order }) => {
             <Card title="Resumen del Pedido" className="mb-6">
                 <p><strong>Profesor:</strong> {users.find(u => u.id === order.user_id)?.name}</p>
                 <p><strong>Estado:</strong> {order.status}</p>
-                <div className="mt-2">
+                <div className="mt-2 space-y-2">
                     {order.items.map(item => {
                         const product = productsMap.get(item.product_id);
                         return (
-                            <div key={item.product_id} className="text-sm">
-                                {product?.name}: {item.quantity} {product?.unit}
+                            <div key={item.product_id} className="text-sm flex items-center space-x-3 p-1 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                <div className="w-8 h-8 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+                                    <img 
+                                        src={product?.image || `https://picsum.photos/seed/${encodeURIComponent(product?.name || '')}/80/80`} 
+                                        alt={product?.name} 
+                                        className="w-full h-full object-cover" 
+                                        referrerPolicy="no-referrer"
+                                    />
+                                </div>
+                                <span>{product?.name}: {item.quantity} {product?.unit}</span>
                             </div>
                         );
                     })}

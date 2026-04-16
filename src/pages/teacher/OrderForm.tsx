@@ -221,6 +221,14 @@ export const OrderForm: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {familyProducts.map(product => (
                                 <div key={product.id} className="p-3 border rounded-lg dark:border-gray-600 flex flex-col h-full">
+                                    <div className="w-full h-32 mb-3 rounded-md overflow-hidden bg-gray-100">
+                                        <img 
+                                            src={product.image || `https://picsum.photos/seed/${encodeURIComponent(product.name)}/400/300`} 
+                                            alt={product.name} 
+                                            className="w-full h-full object-cover" 
+                                            referrerPolicy="no-referrer"
+                                        />
+                                    </div>
                                     <h4 className="font-semibold">{product.name}</h4>
                                     {product.description && (
                                         <p className="text-xs text-gray-400 mt-1 line-clamp-2 italic" title={product.description}>
@@ -265,7 +273,17 @@ export const OrderForm: React.FC = () => {
                             const product = productsMap.get(product_id);
                             return product ? (
                                 <div key={product_id} className="flex justify-between items-center p-2 border rounded">
-                                    <span>{product.name} - {quantity} {product.unit}</span>
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+                                            <img 
+                                                src={product.image || `https://picsum.photos/seed/${encodeURIComponent(product.name)}/100/100`} 
+                                                alt={product.name} 
+                                                className="w-full h-full object-cover" 
+                                                referrerPolicy="no-referrer"
+                                            />
+                                        </div>
+                                        <span className="font-medium">{product.name} - {quantity} {product.unit}</span>
+                                    </div>
                                     {isEditable && (
                                         <button onClick={() => handleQuantityChange(product_id, 0)} className="text-red-500">
                                             <TrashIcon className="w-5 h-5"/>

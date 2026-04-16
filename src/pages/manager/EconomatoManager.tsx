@@ -261,7 +261,19 @@ export const EconomatoManager: React.FC = () => {
 
                                 return (
                                     <tr key={product.id} className={`border-b dark:border-gray-700 ${statusClasses[itemState.status]}`}>
-                                        <td className="p-2 font-semibold">{product.name}</td>
+                                        <td className="p-2">
+                                            <div className="flex items-center space-x-3">
+                                                <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+                                                    <img 
+                                                        src={product.image || `https://picsum.photos/seed/${encodeURIComponent(product.name)}/100/100`} 
+                                                        alt={product.name} 
+                                                        className="w-full h-full object-cover" 
+                                                        referrerPolicy="no-referrer"
+                                                    />
+                                                </div>
+                                                <span className="font-semibold">{product.name}</span>
+                                            </div>
+                                        </td>
                                         <td className="p-2">{itemState.ordered_quantity}</td>
                                         <td className="p-2">
                                             <input 
