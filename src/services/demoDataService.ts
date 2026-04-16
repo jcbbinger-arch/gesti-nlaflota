@@ -1,4 +1,4 @@
-import { AppData, Profile, User, Supplier, Product, Event, Order, Incident, ServiceGroup, Service } from '../types';
+import { AppData, Profile, User, Supplier, Product, AppEvent, Order, Incident, ServiceGroup, Service } from '../types';
 import { users as initialUsers } from './authService';
 import { trainingCycles, modules, groups } from './dataService';
 
@@ -24,7 +24,7 @@ const demoProducts: Product[] = [
     { id: 'prod-4', name: 'Lechuga Romana', description: 'Caja 12 unidades', reference: 'VER-LEC-01', unit: 'Uds', suppliers: [{ supplier_id: 'sup-2', price: 0.60 }], tax: 4, category: 'VERDURAS', family: 'Vegetales', allergens: [], status: 'Activo', product_state: 'Fresco', warehouse_status: 'Disponible' },
 ];
 
-const demoEvents: Event[] = [
+const demoEvents: AppEvent[] = [
     { id: 'evt-1', name: 'Pedido Semanal Ordinario', type: 'Regular', start_date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), end_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), budget_per_teacher: 300, status: 'Activo' },
     { id: 'evt-2', name: 'Extra Navidad', type: 'Extraordinario', start_date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), end_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), budget_per_teacher: 500, authorized_teachers: ['teacher-1'], status: 'Activo' }
 ];
@@ -170,5 +170,6 @@ export const demoData: AppData = {
     service_groups: demoServiceGroups,
     services: demoServices,
     dining_services: [],
-    dining_reservations: []
+    dining_reservations: [],
+    stock_receptions: []
 };

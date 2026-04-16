@@ -3,14 +3,14 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, TrashIcon, WarningIcon, DownloadIcon } from '../../components/icons';
-import { Event, User, Profile } from '../../types';
+import { AppEvent, User, Profile } from '../../types';
 import { exportToCsv, printPage } from '../../utils/export';
 // Fix: Added missing import for useCompany hook.
 import { useCompany } from '../../contexts/CompanyContext';
 
 const spanishMonths = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-const getEventStatus = (event: Event) => {
+const getEventStatus = (event: AppEvent) => {
     const now = new Date();
     const startDate = new Date(event.start_date);
     const endDate = new Date(event.end_date);
@@ -26,7 +26,7 @@ export const EventManager: React.FC = () => {
     const { events, setEvents, users } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+    const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
     const [deleteStep, setDeleteStep] = useState(1);
     const { companyInfo } = useCompany();
 
@@ -37,7 +37,7 @@ export const EventManager: React.FC = () => {
         const generateAutomaticEvents = () => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const generatedEvents: Event[] = [];
+            const generatedEvents: AppEvent[] = [];
             
             // Generate for the next 8 weeks
             for (let i = 0; i < 8; i++) {
@@ -65,7 +65,7 @@ export const EventManager: React.FC = () => {
                     const orderOpenDate = new Date(orderCloseDate);
                     orderOpenDate.setDate(orderCloseDate.getDate() - 5); // Wednesday before that
 
-                    const newEvent: Event = {
+                    const newEvent: AppEvent = {
                         id: `evt-auto-${year}-${weekOfYear}`,
                         name: eventName,
                         type: 'Regular',
@@ -89,12 +89,12 @@ export const EventManager: React.FC = () => {
     }, []); // Run only once on component mount
 
 
-    const handleOpenModal = (event: Event | null = null) => {
+    const handleOpenModal = (event: AppEvent | null = null) => {
         setSelectedEvent(event);
         setIsModalOpen(true);
     };
 
-    const handleSaveEvent = (event: Event) => {
+    const handleSaveEvent = (event: AppEvent) => {
         if (selectedEvent) {
             setEvents(events.map(e => (e.id === event.id ? event : e)));
         } else {
@@ -104,7 +104,7 @@ export const EventManager: React.FC = () => {
         setSelectedEvent(null);
     };
 
-    const handleOpenDeleteModal = (event: Event) => {
+    const handleOpenDeleteModal = (event: AppEvent) => {
         setSelectedEvent(event);
         setDeleteStep(1);
         setIsDeleteModalOpen(true);
@@ -269,9 +269,9 @@ const MultiSelectTeachers: React.FC<{ teachers: User[], selected: string[], onCh
     );
 };
 
-const EventFormModal: React.FC<{ event: Event | null; onClose: () => void; onSave: (event: Event) => void; teachers: User[] }> = ({ event, onClose, onSave, teachers }) => {
+const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; onSave: (event: AppEvent) => void; teachers: User[] }> = ({ event, onClose, onSave, teachers }) => {
     const { companyInfo } = useCompany();
-    const [formState, setFormState] = useState<Event>(event || { 
+    const [formState, setFormState] = useState<AppEvent>(event || { 
         id: '', name: '', type: 'Regular', 
         start_date: new Date().toISOString(), 
         end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), 

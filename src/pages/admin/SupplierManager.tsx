@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, DownloadIcon, WarningIcon, TrashIcon } from '../../components/icons';
-import { Supplier, Product, Incident, Event, Order } from '../../types';
+import { Supplier, Product, Incident, AppEvent, Order } from '../../types';
 import { exportToCsv, printPage } from '../../utils/export';
 import { ProductFormModal } from './ProductManager';
 
@@ -253,7 +253,7 @@ const SupplierFormModal: React.FC<{ supplier: Supplier | null; onClose: () => vo
     );
 };
 
-const SupplierDetailModal: React.FC<{supplier: Supplier, incidents: Incident[], productsMap: Map<string, Product>, eventsMap: Map<string, Event>, onClose: () => void}> = ({supplier, incidents, productsMap, eventsMap, onClose}) => (
+const SupplierDetailModal: React.FC<{supplier: Supplier, incidents: Incident[], productsMap: Map<string, Product>, eventsMap: Map<string, AppEvent>, onClose: () => void}> = ({supplier, incidents, productsMap, eventsMap, onClose}) => (
     <Modal isOpen={true} onClose={onClose} title={`Ficha Completa de ${supplier.name}`}>
         <div className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-4">

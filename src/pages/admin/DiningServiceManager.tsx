@@ -67,6 +67,27 @@ export const DiningServiceManager: React.FC = () => {
             };
 
             await setDoc(doc(db, 'dining_services', serviceId), newService);
+
+            // If it's a new service, create a skeleton "Staff Meal" order
+            if (!editingService) {
+                const linkedSvc = services.find(s => s.id === formData.service_id);
+                const firstTeacherId = linkedSvc ? services.find(s => s.id === formData.service_id)?.roles?.Cocina || currentUser.id : currentUser.id;
+
+                const staffMealOrder = {
+                    id: `staff-${serviceId}`,
+                    user_id: firstTeacherId,
+                    date: new Date().toISOString(),
+                    status: 'Borrador',
+                    event_id: 'STAFF_MEAL_EVENT', // A special event ID or use a regular active event
+                    items: [],
+                    is_staff_meal: true,
+                    dining_service_id: serviceId,
+                    notes: `Pedido de Comida de Familia para el servicio del ${new Date(formData.date).toLocaleDateString()}`
+                };
+                
+                await setDoc(doc(db, 'orders', staffMealOrder.id), staffMealOrder);
+            }
+
             setIsModalOpen(false);
         } catch (err) {
             console.error("Error saving dining service:", err);

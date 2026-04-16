@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
-import { Order, OrderStatus, Incident, Supplier, Event, Product, ReceptionItem } from '../../types';
+import { Order, OrderStatus, Incident, Supplier, AppEvent, Product, ReceptionItem } from '../../types';
 import { Modal } from '../../components/Modal';
 import { useAuth } from '../../contexts/AuthContext';
 import { DownloadIcon } from '../../components/icons';

@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { useAuth } from '../../contexts/AuthContext';
-import { Product, User, Profile, Order, StockItem, Event, OrderItem } from '../../types';
+import { Product, User, Profile, Order, StockItem, AppEvent, OrderItem } from '../../types';
 import { DownloadIcon, PlusIcon, PencilIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
 import { Link } from 'react-router-dom';
@@ -101,13 +101,22 @@ const EditStockModal: React.FC<{ item: StockItem, productName: string, onClose: 
 
 
 export const MiniEconomato: React.FC = () => {
-    const { mini_economato_stock, setMiniEconomatoStock, products, users, orders, setOrders, events } = useData();
+    const { mini_economato_stock, setMiniEconomatoStock, products, users, orders, setOrders, events, stock_receptions, setStockReceptions, suppliers } = useData();
     const { currentUser } = useAuth();
+    const [view, setView] = useState<'inventory' | 'receptions'>('inventory');
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isReceptionModalOpen, setIsReceptionModalOpen] = useState(false);
     const [productToAssign, setProductToAssign] = useState<Product | null>(null);
     const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
+
+    const [receptionForm, setReceptionForm] = useState({
+        supplier_id: '',
+        date: new Date().toISOString().split('T')[0],
+        products: [] as { product_id: string; quantity: number }[],
+        notes: ''
+    });
 
     const canManage = useMemo(() => 
         currentUser?.profiles.includes(Profile.ALMACEN) || 
@@ -196,9 +205,73 @@ export const MiniEconomato: React.FC = () => {
     
     const handleEditStock = (stock: number, min_stock: number, is_shared: boolean) => {
         if (!itemToEdit) return;
-        setMiniEconomatoStock((prev: StockItem[]) => prev.map((item: StockItem) => item.id === itemToEdit.id ? {...item, stock, min_stock, is_shared} : item));
+        setMiniEconomatoStock((prev: StockItem[]) => prev.map((item: StockItem) => item.id === itemToEdit.id ? {...item, stock, min_stock, is_shared, last_update: new Date().toISOString()} : item));
         setIsEditModalOpen(false);
     }
+
+    const handleSaveReception = () => {
+        if (!receptionForm.supplier_id || receptionForm.products.length === 0) {
+            alert("Por favor, selecciona un proveedor y añade al menos un producto.");
+            return;
+        }
+
+        const newReception = {
+            id: `rec-${Date.now()}`,
+            ...receptionForm
+        };
+
+        setStockReceptions(prev => [...prev, newReception]);
+
+        // Update Stock
+        setMiniEconomatoStock((prevStock: StockItem[]) => {
+            const newStock = [...prevStock];
+            receptionForm.products.forEach(p => {
+                const existing = newStock.find(s => s.id === p.product_id);
+                if (existing) {
+                    existing.stock += p.quantity;
+                    existing.last_update = new Date().toISOString();
+                } else {
+                    newStock.push({
+                        id: p.product_id,
+                        stock: p.quantity,
+                        min_stock: 0,
+                        is_shared: false,
+                        last_update: new Date().toISOString()
+                    });
+                }
+            });
+            return newStock;
+        });
+
+        setIsReceptionModalOpen(false);
+        setReceptionForm({
+            supplier_id: '',
+            date: new Date().toISOString().split('T')[0],
+            products: [],
+            notes: ''
+        });
+        alert("Recepción de stock guardada correctamente.");
+    };
+
+    const addProductToReception = () => {
+        setReceptionForm(prev => ({
+            ...prev,
+            products: [...prev.products, { product_id: '', quantity: 0 }]
+        }));
+    };
+
+    const updateReceptionProduct = (index: number, field: string, value: any) => {
+        const newProducts = [...receptionForm.products];
+        newProducts[index] = { ...newProducts[index], [field]: value };
+        setReceptionForm({ ...receptionForm, products: newProducts });
+    };
+
+    const removeReceptionProduct = (index: number) => {
+        setReceptionForm({
+            ...receptionForm,
+            products: receptionForm.products.filter((_, i) => i !== index)
+        });
+    };
 
     return (
         <div>
@@ -209,14 +282,14 @@ export const MiniEconomato: React.FC = () => {
                 <div className="flex space-x-2">
                     {canManage && (
                         <>
+                            <button onClick={() => setIsReceptionModalOpen(true)} className="no-print bg-amber-600 text-white py-2 px-4 rounded-md hover:bg-amber-700 flex items-center">
+                                <PlusIcon className="w-5 h-5 mr-2" /> Recibir Pedido (Empresa)
+                            </button>
                             <button onClick={() => setIsAddModalOpen(true)} className="no-print bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center">
-                                <PlusIcon className="w-5 h-5 mr-2" /> Añadir Producto
+                                <PlusIcon className="w-5 h-5 mr-2" /> Stock Manual
                             </button>
                             <Link to="/teacher/order-portal?type=economato" className="no-print bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center">
                                 <PlusIcon className="w-5 h-5 mr-2" /> Hacer Pedido de Reposición
-                            </Link>
-                            <Link to="/almacen/warehouse-order" className="no-print bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 flex items-center">
-                                <PlusIcon className="w-5 h-5 mr-2" /> Gestionar Pedidos
                             </Link>
                         </>
                     )}
@@ -226,8 +299,33 @@ export const MiniEconomato: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            <div className="flex border-b border-gray-200 mb-6 dark:border-gray-700">
+                <button
+                    onClick={() => setView('inventory')}
+                    className={`py-2 px-4 font-medium text-sm transition-colors duration-200 border-b-2 ${
+                        view === 'inventory'
+                        ? 'border-primary-600 text-primary-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    Inventario Actual
+                </button>
+                <button
+                    onClick={() => setView('receptions')}
+                    className={`py-2 px-4 font-medium text-sm transition-colors duration-200 border-b-2 ${
+                        view === 'receptions'
+                        ? 'border-primary-600 text-primary-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    Historial de Recepciones
+                </button>
+            </div>
             
-            <Card title="Stock Interno">
+            {view === 'inventory' ? (
+                <Card title="Stock Interno">
+                    {/* ... (existing inventory grid) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {economatoProducts.map(({ product, stock }) => {
                         const stockLevel = getStockLevel(stock.stock, stock.min_stock);
@@ -296,6 +394,121 @@ export const MiniEconomato: React.FC = () => {
                      {economatoProducts.length === 0 && <p className="text-gray-500 col-span-full">No hay productos en el mini-economato. Añade uno para empezar.</p>}
                 </div>
             </Card>
+            ) : (
+                <Card title="Historial de Entradas de Mercancía">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th className="p-3">Fecha</th>
+                                    <th className="p-3">Proveedor</th>
+                                    <th className="p-3">Productos</th>
+                                    <th className="p-3">Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stock_receptions.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((reception: any) => (
+                                    <tr key={reception.id} className="border-t dark:border-gray-700">
+                                        <td className="p-3">{new Date(reception.date).toLocaleDateString()}</td>
+                                        <td className="p-3 font-semibold">{suppliers.find(s => s.id === reception.supplier_id)?.name || 'N/A'}</td>
+                                        <td className="p-3">
+                                            <ul className="text-xs">
+                                                {reception.products.map((p: any, i: number) => (
+                                                    <li key={i}>{p.quantity} x {productsMap.get(p.product_id)?.name || 'Desconocido'}</li>
+                                                ))}
+                                            </ul>
+                                        </td>
+                                        <td className="p-3 text-sm italic">{reception.notes}</td>
+                                    </tr>
+                                ))}
+                                {stock_receptions.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="p-10 text-center text-gray-500">No hay recepciones registradas.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            )}
+
+            {isReceptionModalOpen && (
+                <Modal isOpen={true} onClose={() => setIsReceptionModalOpen(false)} title="Recibir Mercancía (Entrada en Almacén)">
+                    <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-2">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium">Proveedor</label>
+                                <select 
+                                    value={receptionForm.supplier_id} 
+                                    onChange={e => setReceptionForm({...receptionForm, supplier_id: e.target.value})}
+                                    className="w-full mt-1 p-2 border rounded dark:bg-gray-700"
+                                >
+                                    <option value="">Seleccionar Proveedor...</option>
+                                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium">Fecha Entrada</label>
+                                <input 
+                                    type="date" 
+                                    value={receptionForm.date} 
+                                    onChange={e => setReceptionForm({...receptionForm, date: e.target.value})}
+                                    className="w-full mt-1 p-2 border rounded dark:bg-gray-700"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-2 rounded mb-2">
+                                <h4 className="font-bold text-sm">Productos Recibidos</h4>
+                                <button onClick={addProductToReception} className="text-xs text-primary-600 font-bold hover:underline">+ Añadir Producto</button>
+                            </div>
+                            <div className="space-y-2">
+                                {receptionForm.products.map((p, index) => (
+                                    <div key={index} className="flex space-x-2 items-end border-b pb-2 dark:border-gray-700">
+                                        <div className="flex-1">
+                                            <select 
+                                                value={p.product_id}
+                                                onChange={e => updateReceptionProduct(index, 'product_id', e.target.value)}
+                                                className="w-full p-2 text-sm border rounded dark:bg-gray-700"
+                                            >
+                                                <option value="">Seleccionar Producto...</option>
+                                                {products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="w-24">
+                                            <input 
+                                                type="number" 
+                                                value={p.quantity}
+                                                placeholder="Cant"
+                                                onChange={e => updateReceptionProduct(index, 'quantity', Number(e.target.value))}
+                                                className="w-full p-2 text-sm border rounded dark:bg-gray-700"
+                                            />
+                                        </div>
+                                        <button onClick={() => removeReceptionProduct(index)} className="text-red-500 p-2">×</button>
+                                    </div>
+                                ))}
+                                {receptionForm.products.length === 0 && <p className="text-center text-xs text-gray-400 py-4">Añade los productos que han llegado del proveedor.</p>}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium">Notas / Observaciones</label>
+                            <textarea 
+                                value={receptionForm.notes}
+                                onChange={e => setReceptionForm({...receptionForm, notes: e.target.value})}
+                                placeholder="Ej: Pedido incompleto, se guarda en estante A..."
+                                className="w-full mt-1 p-2 border rounded dark:bg-gray-700 h-20"
+                            />
+                        </div>
+
+                        <div className="flex justify-end space-x-2 pt-4">
+                            <button onClick={() => setIsReceptionModalOpen(false)} className="bg-gray-200 px-4 py-2 rounded-md">Cancelar</button>
+                            <button onClick={handleSaveReception} className="bg-primary-600 text-white px-4 py-2 rounded-md">Confirmar Entrada y Actualizar Stock</button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
 
             {isAssignModalOpen && productToAssign && (
                 <AssignExpenseModal 

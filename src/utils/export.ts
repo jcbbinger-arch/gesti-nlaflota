@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { Company, Event, Incident, Order, Product, Supplier, User, ReceptionItem } from '../types';
+import { Company, AppEvent, Incident, Order, Product, Supplier, User, ReceptionItem } from '../types';
 
 /**
  * Converts an array of objects to a CSV string and triggers a download.
@@ -139,7 +139,7 @@ export const generateOrderPdf = (
  * @param appName - The name of the application for the footer.
  */
 export const generateReceptionSheetPdf = (
-    event: Event,
+    event: AppEvent,
     receptionData: { product: Product, receptionInfo: ReceptionItem }[],
     incidents: Incident[],
     companyInfo: Company,

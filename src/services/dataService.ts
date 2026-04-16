@@ -2,7 +2,7 @@ import {
   User,
   Product,
   Supplier,
-  Event,
+  AppEvent,
   Order,
   Incident,
   TrainingCycle,
@@ -23,6 +23,7 @@ import {
   AppData,
   ServiceGroup,
   Service,
+  StockReception,
 } from '../types';
 import { users as initialUsers } from './authService';
 
@@ -32,7 +33,7 @@ import { users as initialUsers } from './authService';
 export const users: User[] = initialUsers;
 export const products: Product[] = [];
 export const suppliers: Supplier[] = [];
-export const events: Event[] = [];
+export const events: AppEvent[] = [];
 export const orders: Order[] = [];
 export const incidents: Incident[] = [];
 export const trainingCycles: TrainingCycle[] = [
@@ -175,5 +176,6 @@ export const initialData: AppData = {
   service_groups: serviceGroups,
   services,
   dining_services: [],
-  dining_reservations: []
+  dining_reservations: [],
+  stock_receptions: []
 };

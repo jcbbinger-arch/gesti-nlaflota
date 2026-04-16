@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
-import { Service, ServiceGroup, User, Profile, ServiceRole, Recipe, Order, Event } from '../../types';
+import { Service, ServiceGroup, User, Profile, ServiceRole, Recipe, Order, AppEvent } from '../../types';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, TrashIcon, PrinterIcon } from '../../components/icons';
 import { useNavigate } from 'react-router-dom';

@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
-import { Event, Profile } from '../../types';
+import { AppEvent, Profile } from '../../types';
 import { DownloadIcon } from '../../components/icons';
 import { exportToCsv } from '../../utils/export';
 
@@ -20,7 +20,9 @@ export const OrderPortal: React.FC = () => {
         .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
     const activeEvents = upcomingEvents.slice(0, 3);
 
-    const getMyOrderForEvent = (event: Event) => {
+    const staffMealOrders = orders.filter(o => o.is_staff_meal && o.user_id === currentUser?.id);
+
+    const getMyOrderForEvent = (event: AppEvent) => {
         const userId = isEconomatoMode ? 'mini-economato' : currentUser?.id;
         return orders.find(o => o.user_id === userId && o.event_id === event.id);
     };
@@ -57,10 +59,10 @@ export const OrderPortal: React.FC = () => {
             <Card title="Eventos Activos">
                 {activeEvents.length > 0 ? (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full text-center">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                                 <tr>
-                                    <th className="px-4 py-2">Evento</th>
+                                    <th className="px-4 py-2 text-left">Evento</th>
                                     <th className="px-4 py-2">Finaliza</th>
                                     <th className="px-4 py-2">{isEconomatoMode ? 'Estado Pedido Economato' : 'Estado de Mi Pedido'}</th>
                                     <th className="px-4 py-2">Acciones</th>
@@ -72,7 +74,7 @@ export const OrderPortal: React.FC = () => {
                                     const linkSuffix = isEconomatoMode ? '?type=economato' : '';
                                     return (
                                         <tr key={event.id} className="border-b dark:border-gray-700">
-                                            <td className="px-4 py-3 font-medium">{event.name}</td>
+                                            <td className="px-4 py-3 font-medium text-left">{event.name}</td>
                                             <td className="px-4 py-3">{new Date(event.end_date).toLocaleString()}</td>
                                             <td className="px-4 py-3">{myOrder ? myOrder.status : 'No realizado'}</td>
                                             <td className="px-4 py-3 no-print">
@@ -81,9 +83,8 @@ export const OrderPortal: React.FC = () => {
                                                         {myOrder.status === 'Procesado' ? 'Ver' : 'Editar'}
                                                     </Link>
                                                 ) : (
-                                                    <Link to={`/teacher/order-portal/new/${event.id}${linkSuffix}`} className="text-green-600 hover:underline">Crear Pedido</Link>
+                                                    <Link to={`/teacher/order-portal/new/${event.id}${linkSuffix}`} className="text-green-600 hover:underline font-bold">Crear Pedido</Link>
                                                 )}
-                                                <span className="ml-2 text-sm text-gray-500">{myOrder?.status}</span>
                                             </td>
                                         </tr>
                                     );
@@ -92,9 +93,50 @@ export const OrderPortal: React.FC = () => {
                         </table>
                     </div>
                 ) : (
-                    <p>No hay eventos de pedido activos actualmente.</p>
+                    <p className="p-4 text-center text-gray-500">No hay eventos de pedido activos actualmente.</p>
                 )}
             </Card>
+
+            {staffMealOrders.length > 0 && (
+                <Card title="Pedidos de Comida de Familia (Automáticos)" className="mt-6 border-l-4 border-amber-500">
+                    <p className="text-sm text-gray-500 mb-4">Estos pedidos se generan automáticamente cuando se programa un servicio de comedor.</p>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                                <tr>
+                                    <th className="px-4 py-2">Servicio / Fecha</th>
+                                    <th className="px-4 py-2">Estado</th>
+                                    <th className="px-4 py-2">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {staffMealOrders.map(order => (
+                                    <tr key={order.id} className="border-b dark:border-gray-700">
+                                        <td className="px-4 py-3 font-medium">
+                                            {order.notes?.replace('Pedido de Comida de Familia para el servicio del ', '') || order.id}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                                order.status === 'Borrador' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                                            }`}>
+                                                {order.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <Link 
+                                                to={`/teacher/order-portal/edit/${order.id}`} 
+                                                className="text-primary-600 font-bold hover:underline"
+                                            >
+                                                {order.status === 'Borrador' ? 'Rellenar Pedido' : 'Ver/Modificar'}
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            )}
         </div>
     );
 };

@@ -67,6 +67,7 @@ export const Support: React.FC = () => {
             reservations: data.reservations,
             dining_services: data.dining_services,
             dining_reservations: data.dining_reservations,
+            stock_receptions: data.stock_receptions,
         };
         const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(backupData, null, 2))}`;
         const link = document.createElement("a");
@@ -121,6 +122,9 @@ export const Support: React.FC = () => {
                         data.setClassroomOrders(restoredData.classroom_orders || []);
                         data.setServiceGroups(restoredData.service_groups || []);
                         data.setServices(restoredData.services || []);
+                        data.setDiningServices(restoredData.dining_services || []);
+                        data.setDiningReservations(restoredData.dining_reservations || []);
+                        data.setStockReceptions(restoredData.stock_receptions || []);
                         data.setSaleItems(restoredData.sale_items || []);
                         data.setReservations(restoredData.reservations || []);
                         

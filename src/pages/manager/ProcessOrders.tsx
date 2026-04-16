@@ -4,7 +4,7 @@ import { useData } from '../../contexts/DataContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
-import { Product, Supplier, Order, OrderItem, OrderStatus, Profile, NewProductRequest, Message } from '../../types';
+import { Product, Supplier, Order, OrderItem, OrderStatus, Profile, NewProductRequest, Message, AppEvent } from '../../types';
 import { generateOrderPdf } from '../../utils/export';
 import { PlusIcon, TrashIcon, HistoryIcon, UserCircleIcon, TruckIcon, AppleIcon, MessageIcon } from '../../components/icons';
 import { useCreator } from '../../contexts/CreatorContext';
@@ -37,9 +37,26 @@ export const ProcessOrders: React.FC = () => {
                     if (o.status === 'Procesado') info.status = 'Procesado';
                 }
             });
-            return events
+            const processable = events
                 .filter(e => eventStatusMap.has(e.id))
-                .map(e => ({ ...e, ...eventStatusMap.get(e.id)! }));
+                .map(e => ({ 
+                    id: e.id,
+                    name: e.name,
+                    start_date: e.start_date,
+                    end_date: e.end_date,
+                    ...eventStatusMap.get(e.id)! 
+                }));
+            
+            if (eventStatusMap.has('STAFF_MEAL_EVENT')) {
+                processable.push({
+                    id: 'STAFF_MEAL_EVENT',
+                    name: 'Comidas de Familia',
+                    start_date: new Date().toISOString(),
+                    end_date: new Date().toISOString(),
+                    ...eventStatusMap.get('STAFF_MEAL_EVENT')!
+                });
+            }
+            return processable;
         }, [events, orders]);
 
         return (
@@ -99,7 +116,18 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
     const teachers = useMemo(() => users.filter(u => u.profiles.includes(Profile.TEACHER)), [users]);
     const activeSuppliers = useMemo(() => suppliers.filter(s => s.status === 'Activo'), [suppliers]);
     
-    const event = useMemo(() => events.find(e => e.id === eventId), [events, eventId]);
+    const event = useMemo(() => {
+        if (eventId === 'STAFF_MEAL_EVENT') return {
+            id: 'STAFF_MEAL_EVENT',
+            name: 'Comidas de Familia',
+            type: 'Regular',
+            start_date: new Date().toISOString(),
+            end_date: new Date().toISOString(),
+            budget_per_teacher: 9999,
+            status: 'Activo'
+        } as AppEvent;
+        return events.find(e => e.id === eventId);
+    }, [events, eventId]);
     const eventOrders = useMemo(() => orders.filter(o => o.event_id === eventId && (o.status === 'Enviado' || o.status === 'Procesado')), [orders, eventId]);
     
     // Total Weekly Gasto (including current edits)
@@ -413,7 +441,16 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                     {eventOrders
                       .filter(o => selectedTeacherId === 'all' || o.user_id === selectedTeacherId)
                       .map(order => (
-                        <Card key={order.id} title={`Pedido de: ${usersMap.get(order.user_id)}`}>
+                        <Card key={order.id} title={
+                            <div className="flex justify-between items-center w-full">
+                                <span>Pedido de: {usersMap.get(order.user_id)}</span>
+                                {order.is_staff_meal && (
+                                    <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-full border border-amber-300">
+                                        COMIDA DE FAMILIA
+                                    </span>
+                                )}
+                            </div>
+                        }>
                             <div className="text-gray-500 text-xs mb-4">
                                 Fecha: {new Date(order.date).toLocaleString()} | Estado: {order.status}
                             </div>

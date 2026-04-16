@@ -143,7 +143,7 @@ export interface Supplier {
   notes?: string;
 }
 
-export interface Event {
+export interface AppEvent {
     id: string;
     name: string;
     type: 'Regular' | 'Extraordinario';
@@ -177,6 +177,8 @@ export interface Order {
   new_product_requests?: NewProductRequest[];
   cost?: number;
   notes?: string;
+  is_staff_meal?: boolean;
+  dining_service_id?: string;
 }
 
 export interface Incident {
@@ -259,6 +261,19 @@ export interface StockItem {
     stock: number;
     min_stock: number;
     is_shared?: boolean;
+    last_update?: string;
+}
+
+export interface StockReception {
+    id: string;
+    date: string;
+    supplier_id: string;
+    products: {
+        product_id: string;
+        quantity: number;
+        price?: number;
+    }[];
+    notes?: string;
 }
 
 export interface Sale {
@@ -418,7 +433,7 @@ export interface AppData {
     users: User[];
     products: Product[];
     suppliers: Supplier[];
-    events: Event[];
+    events: AppEvent[];
     orders: Order[];
     incidents: Incident[];
     training_cycles: TrainingCycle[];
@@ -430,6 +445,7 @@ export interface AppData {
     sale_items: SaleItem[];
     reservations: Reservation[];
     mini_economato_stock: StockItem[];
+    stock_receptions: StockReception[];
     messages: Message[];
     classrooms: Classroom[];
     classroom_products: ClassroomProduct[];

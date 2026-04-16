@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
-import { Event, Order, OrderItem, Product, NewProductRequest, Profile } from '../../types';
+import { AppEvent, Order, OrderItem, Product, NewProductRequest, Profile } from '../../types';
 import { BlockedAccess } from '../shared/BlockedAccess';
 import { TrashIcon, PlusIcon, MinusIcon } from '../../components/icons';
 
@@ -38,8 +38,16 @@ export const OrderForm: React.FC = () => {
             const matchesId = e.id === eventId;
             const matchesOrder = orderId && orders.find(o => o.id === orderId)?.event_id === e.id;
             return matchesId || matchesOrder;
-        });
-    }, [events, eventId, orderId, orders, isEconomatoOrder]);
+        }) || (existingOrder?.event_id === 'STAFF_MEAL_EVENT' ? {
+            id: 'STAFF_MEAL_EVENT',
+            name: 'Comida de Familia',
+            type: 'Regular',
+            start_date: new Date().toISOString(),
+            end_date: new Date(Date.now() + 86400000 * 365).toISOString(),
+            budget_per_teacher: 9999, // High budget for staff meals as they are collective
+            status: 'Activo'
+        } as AppEvent : null);
+    }, [events, eventId, orderId, orders, isEconomatoOrder, existingOrder]);
 
     const isEditable = useMemo(() => {
         if (!existingOrder) return true; // New order
@@ -166,6 +174,8 @@ export const OrderForm: React.FC = () => {
             new_product_requests: new_requests,
             cost: calculateTotalCost,
             notes: notes,
+            is_staff_meal: existingOrder?.is_staff_meal,
+            dining_service_id: existingOrder?.dining_service_id
         };
         
         const newOrders = existingOrder 
@@ -233,6 +243,19 @@ export const OrderForm: React.FC = () => {
                                         />
                                     </div>
                                     <h4 className="font-semibold">{product.name}</h4>
+                                    {(() => {
+                                        const stock = mini_economato_stock.find(s => s.id === product.id);
+                                        if (stock && stock.stock > 0) {
+                                            return (
+                                                <div className="mt-1 flex items-center">
+                                                    <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">
+                                                        En Mini-Economato: {stock.stock.toFixed(1)} {product.unit}
+                                                    </span>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                     {product.description && (
                                         <p className="text-xs text-gray-400 mt-1 line-clamp-2 italic" title={product.description}>
                                             {product.description}
