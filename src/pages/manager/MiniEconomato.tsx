@@ -126,18 +126,24 @@ export const MiniEconomato: React.FC = () => {
     const productsMap = useMemo(() => new Map(products.map((p: Product) => [p.id, p])), [products]);
     const stockMap = useMemo(() => new Map(mini_economato_stock.map((s: StockItem) => [s.id, s])), [mini_economato_stock]);
 
-    const economatoProducts = useMemo(() => 
-        Array.from(stockMap.values()).map((stockItem: StockItem) => ({
+    const [filter, setFilter] = useState('');
+
+    const economatoProducts = useMemo(() => {
+        const mapped = Array.from(stockMap.values()).map((stockItem: StockItem) => ({
             product: productsMap.get(stockItem.id)!,
             stock: stockItem
-        })).filter(item => item.product)
-    , [stockMap, productsMap]);
+        })).filter(item => item.product);
+
+        if (!filter) return mapped;
+        const lowerFilter = filter.toLowerCase();
+        return mapped.filter(item => item.product.name.toLowerCase().includes(lowerFilter));
+    }, [stockMap, productsMap, filter]);
 
     const getStockLevel = (current: number, min: number) => {
-        if (current === 0) return { text: 'Agotado', className: 'bg-red-200 dark:bg-red-900 border-red-400' };
-        if (current <= min * 0.5) return { text: 'Bajo Mínimos', className: 'bg-red-300 dark:bg-red-800 border-red-500' };
-        if (current <= min) return { text: 'Nivel Bajo', className: 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' };
-        return { text: 'Saludable', className: 'bg-green-200 dark:bg-green-900 border-green-400' };
+        if (current === 0) return { text: 'Agotado', textClass: 'text-red-800', bgClass: 'bg-red-100', className: 'bg-red-200 dark:bg-red-900 border-red-400' };
+        if (current <= min * 0.5) return { text: 'Bajo Mínimos', textClass: 'text-red-800', bgClass: 'bg-red-100', className: 'bg-red-300 dark:bg-red-800 border-red-500' };
+        if (current <= min) return { text: 'Nivel Bajo', textClass: 'text-yellow-800', bgClass: 'bg-yellow-100', className: 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' };
+        return { text: 'Saludable', textClass: 'text-green-800', bgClass: 'bg-green-100', className: 'bg-green-200 dark:bg-green-900 border-green-400' };
     };
 
     const handleOpenAssignModal = (product: Product) => {
@@ -325,75 +331,105 @@ export const MiniEconomato: React.FC = () => {
             
             {view === 'inventory' ? (
                 <Card title="Stock Interno">
-                    {/* ... (existing inventory grid) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {economatoProducts.map(({ product, stock }) => {
-                        const stockLevel = getStockLevel(stock.stock, stock.min_stock);
-                        return (
-                        <div key={product.id} className={`p-4 rounded-lg border flex flex-col ${stockLevel.className}`}>
-                            <div className="w-full h-32 mb-3 rounded-md overflow-hidden bg-gray-100/50">
-                                <img 
-                                    src={product.image || `https://picsum.photos/seed/${encodeURIComponent(product.name)}/400/300`} 
-                                    alt={product.name} 
-                                    className="w-full h-full object-cover" 
-                                    referrerPolicy="no-referrer"
-                                />
-                            </div>
-                            <div className="flex justify-between items-start">
-                                <h4 className="font-bold">{product.name}</h4>
-                                {stock.is_shared && (
-                                    <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-bold uppercase">Compartido</span>
-                                )}
-                            </div>
-                            <p>Stock: <span className="font-bold text-xl">{stock.stock.toFixed(2)}</span> / Mínimo: {stock.min_stock}</p>
-                            <div className="mt-1 flex items-baseline justify-between">
-                                <p className="text-xs font-semibold">{stockLevel.text}</p>
-                                {product.unit === 'Uds' && product.unit_size && product.suppliers?.[0] && (
-                                    <div className="text-[10px] text-primary-600 font-bold">
-                                        {(() => {
-                                            const bestPrice = [...product.suppliers].sort((a,b) => a.price - b.price)[0]?.price;
-                                            if (!bestPrice) return '';
-                                            const size = product.unit_size;
-                                            const type = product.unit_size_type || 'g';
-                                            let pricePerBase = 0;
-                                            let baseLabel = '';
+                    <div className="flex space-x-4 mb-4 no-print">
+                        <input type="text" placeholder="Buscar producto por nombre..." value={filter} onChange={e => setFilter(e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700"/>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                                <tr>
+                                    <th className="px-4 py-2 text-left w-16">Imagen</th>
+                                    <th className="px-4 py-2 text-left">Nombre</th>
+                                    <th className="px-4 py-2 text-left">Stock Actual</th>
+                                    <th className="px-4 py-2 text-left">Estado</th>
+                                    <th className="px-4 py-2 text-left">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {economatoProducts.map(({ product, stock }) => {
+                                    const stockLevel = getStockLevel(stock.stock, stock.min_stock);
+                                    return (
+                                        <tr key={product.id} className="border-b dark:border-gray-700">
+                                            <td className="px-4 py-2">
+                                                <div className="w-10 h-10 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden border dark:border-gray-600">
+                                                    {product.image ? (
+                                                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                    ) : (
+                                                        <div className="w-5 h-5 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-2 font-medium">
+                                                <div className="flex items-center space-x-2">
+                                                    <span>{product.name}</span>
+                                                    {stock.is_shared && (
+                                                        <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-bold uppercase">Compartido</span>
+                                                    )}
+                                                </div>
+                                                {product.unit === 'Uds' && product.unit_size && (
+                                                    <div className="text-[10px] text-gray-500">
+                                                        1 ud = {product.unit_size}{product.unit_size_type || 'g'}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <div className="font-mono text-sm font-bold">
+                                                    {stock.stock.toFixed(2)} <span className="text-xs text-gray-500 font-normal">/ Mín: {stock.min_stock}</span>
+                                                </div>
+                                                {product.unit === 'Uds' && product.unit_size && product.suppliers?.[0] && (
+                                                    <div className="text-[10px] text-primary-600 font-bold">
+                                                        {(() => {
+                                                            const bestPrice = [...product.suppliers].sort((a,b) => a.price - b.price)[0]?.price;
+                                                            if (!bestPrice) return '';
+                                                            const size = product.unit_size;
+                                                            const type = product.unit_size_type || 'g';
+                                                            let pricePerBase = 0;
+                                                            let baseLabel = '';
 
-                                            if (type === 'g') {
-                                                pricePerBase = (bestPrice / size) * 1000;
-                                                baseLabel = 'kg';
-                                            } else if (type === 'kg') {
-                                                pricePerBase = bestPrice / size;
-                                                baseLabel = 'kg';
-                                            } else if (type === 'ml') {
-                                                pricePerBase = (bestPrice / size) * 1000;
-                                                baseLabel = 'L';
-                                            } else if (type === 'L') {
-                                                pricePerBase = bestPrice / size;
-                                                baseLabel = 'L';
-                                            }
+                                                            if (type === 'g') {
+                                                                pricePerBase = (bestPrice / size) * 1000;
+                                                                baseLabel = 'kg';
+                                                            } else if (type === 'kg') {
+                                                                pricePerBase = bestPrice / size;
+                                                                baseLabel = 'kg';
+                                                            } else if (type === 'ml') {
+                                                                pricePerBase = (bestPrice / size) * 1000;
+                                                                baseLabel = 'L';
+                                                            } else if (type === 'L') {
+                                                                pricePerBase = bestPrice / size;
+                                                                baseLabel = 'L';
+                                                            }
 
-                                            return pricePerBase > 0 ? `${pricePerBase.toFixed(2)}€/${baseLabel}` : '';
-                                        })()}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="mt-2 space-x-2 no-print">
-                                {canManage && (
-                                    <>
-                                        <button onClick={() => { setItemToEdit(stock); setIsEditModalOpen(true); }} className="text-xs bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
-                                            <PencilIcon className="w-4 h-4 inline-block mr-1"/> Editar Stock
-                                        </button>
-                                        <button onClick={() => handleOpenAssignModal(product)} className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:bg-gray-400" disabled={stock.stock <= 0}>
-                                            Asignar Producto
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )})}
-                     {economatoProducts.length === 0 && <p className="text-gray-500 col-span-full">No hay productos en el mini-economato. Añade uno para empezar.</p>}
-                </div>
-            </Card>
+                                                            return pricePerBase > 0 ? `(${pricePerBase.toFixed(2)}€/${baseLabel})` : '';
+                                                        })()}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${stockLevel.bgClass} ${stockLevel.textClass}`}>
+                                                    {stockLevel.text}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-2 space-x-2 no-print">
+                                                {canManage && (
+                                                    <>
+                                                        <button onClick={() => { setItemToEdit(stock); setIsEditModalOpen(true); }} className="text-primary-600 hover:underline">
+                                                            Editar
+                                                        </button>
+                                                        <button onClick={() => handleOpenAssignModal(product)} className="text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline" disabled={stock.stock <= 0}>
+                                                            Asignar
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        {economatoProducts.length === 0 && <p className="text-gray-500 text-center py-4">No hay productos en el mini-economato. Añade uno para empezar.</p>}
+                    </div>
+                </Card>
             ) : (
                 <Card title="Historial de Entradas de Mercancía">
                     <div className="overflow-x-auto">

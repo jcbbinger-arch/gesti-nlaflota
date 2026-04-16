@@ -6,7 +6,7 @@ import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon } from '../../com
 import { WorkspaceSettings } from '../../types';
 
 export const ProductMetadataManager: React.FC = () => {
-    const { workspaceSettings, setWorkspaceSettings, products } = useData();
+    const { workspaceSettings, setWorkspaceSettings, products, setProducts } = useData();
     const { currentUser } = useAuth();
     
     // Local state for adding new items
@@ -71,16 +71,20 @@ export const ProductMetadataManager: React.FC = () => {
 
         let key: keyof WorkspaceSettings;
         let currentList: string[] = [];
+        let productKey: 'family' | 'category' | 'product_state';
 
         if (type === 'family') {
             key = 'families';
             currentList = families;
+            productKey = 'family';
         } else if (type === 'category') {
             key = 'categories';
             currentList = categories;
+            productKey = 'category';
         } else {
             key = 'product_conditions';
             currentList = conditions;
+            productKey = 'product_state';
         }
 
         // Check if new value already exists
@@ -95,6 +99,20 @@ export const ProductMetadataManager: React.FC = () => {
             ...workspaceSettings,
             [key]: updatedList
         });
+
+        // Update all existing products that use the old value
+        let changed = false;
+        const updatedProducts = products.map(product => {
+            if (product[productKey] === originalValue) {
+                changed = true;
+                return { ...product, [productKey]: trimmedNewValue };
+            }
+            return product;
+        });
+
+        if (changed) {
+            setProducts(updatedProducts);
+        }
 
         setEditingItem(null);
     };
