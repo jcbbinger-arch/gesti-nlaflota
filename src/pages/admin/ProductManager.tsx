@@ -58,8 +58,14 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
         return [...new Set([...PREDEFINED_CATEGORIES, ...productCategories, ...customCategories])].sort();
     }, [allProducts, workspaceSettings]);
 
-    const [addModalType, setAddModalType] = useState<'family' | 'category' | null>(null);
-    const [removeModalType, setRemoveModalType] = useState<'family' | 'category' | null>(null);
+    const conditions = useMemo(() => {
+        const customConditions = workspaceSettings?.product_conditions || [];
+        const productStates = allProducts.map(p => p.product_state).filter((s): s is ProductState => !!s);
+        return [...new Set([...PRODUCT_STATES, ...productStates, ...customConditions])].sort();
+    }, [allProducts, workspaceSettings]);
+
+    const [addModalType, setAddModalType] = useState<'family' | 'category' | 'condition' | null>(null);
+    const [removeModalType, setRemoveModalType] = useState<'family' | 'category' | 'condition' | null>(null);
     const [newListItemName, setNewListItemName] = useState('');
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -80,7 +86,7 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
         setFormState({ ...formState, allergens: newAllergens });
     };
 
-    const handleAddNew = (type: 'family' | 'category') => {
+    const handleAddNew = (type: 'family' | 'category' | 'condition') => {
         setNewListItemName('');
         setAddModalType(type);
     };
@@ -105,11 +111,19 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                 });
                 setFormState(prev => ({...prev, category: newValue}));
             }
+            if (addModalType === 'condition' && !conditions.includes(newValue)) {
+                const currentCustom = workspaceSettings?.product_conditions || [];
+                await setWorkspaceSettings({
+                    ...workspaceSettings!,
+                    product_conditions: [...currentCustom, newValue]
+                });
+                setFormState(prev => ({...prev, product_state: newValue}));
+            }
         }
         setAddModalType(null);
     };
 
-    const handleRemoveNew = (type: 'family' | 'category') => {
+    const handleRemoveNew = (type: 'family' | 'category' | 'condition') => {
         setRemoveModalType(type);
     };
 
@@ -135,6 +149,16 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                 });
                  if (formState.category === valueToRemove) {
                     setFormState(prev => ({ ...prev, category: '' }));
+                }
+            }
+            if (removeModalType === 'condition') {
+                const currentCustom = workspaceSettings?.product_conditions || [];
+                await setWorkspaceSettings({
+                    ...workspaceSettings!,
+                    product_conditions: currentCustom.filter(c => c !== valueToRemove)
+                });
+                 if (formState.product_state === valueToRemove) {
+                    setFormState(prev => ({ ...prev, product_state: '' }));
                 }
             }
         }
@@ -279,9 +303,15 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                         </select>
                      </div>
                       <div>
-                        <label className="text-sm">Condición del Producto</label>
+                        <label className="text-sm flex justify-between items-center">Condición del Producto
+                            <span className="space-x-2 text-[10px]">
+                                <button type="button" onClick={() => handleAddNew('condition')} className="text-primary-600 hover:underline">Añadir</button>
+                                <button type="button" onClick={() => handleRemoveNew('condition')} className="text-red-500 hover:underline">Eliminar</button>
+                            </span>
+                        </label>
                         <select name="product_state" value={formState.product_state} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
-                            {PRODUCT_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                             <option value="">-- Selecciona --</option>
+                            {conditions.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                      </div>
                      <div>
@@ -352,11 +382,11 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
 
     const renderAddForm = () => {
         const type = addModalType!;
-        const placeholder = type === 'family' ? 'Ej: LACTEOS Y DERIVADOS' : 'Ej: VERDURAS';
-        const buttonText = type === 'family' ? 'Guardar Familia' : 'Guardar Categoría';
+        const placeholder = type === 'family' ? 'Ej: LACTEOS Y DERIVADOS' : type === 'category' ? 'Ej: VERDURAS' : 'Ej: BOTELLINES DE CRISTAL';
+        const buttonText = type === 'family' ? 'Guardar Familia' : type === 'category' ? 'Guardar Categoría' : 'Guardar Condición';
         return (
             <form onSubmit={handleSaveNew}>
-                <label>Nombre de la {type === 'family' ? 'Familia' : 'Categoría'}</label>
+                <label>Nombre de la {type === 'family' ? 'Familia' : type === 'category' ? 'Categoría' : 'Condición'}</label>
                 <input
                     type="text"
                     value={newListItemName}
@@ -375,8 +405,8 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
 
     const renderRemoveList = () => {
         const type = removeModalType!;
-        const items = type === 'family' ? families : categories;
-        const predefinedItems = type === 'family' ? PREDEFINED_FAMILIES : PREDEFINED_CATEGORIES;
+        const items = type === 'family' ? families : type === 'category' ? categories : conditions;
+        const predefinedItems = type === 'family' ? PREDEFINED_FAMILIES : type === 'category' ? PREDEFINED_CATEGORIES : PRODUCT_STATES;
         const removableItems = items.filter(item => !predefinedItems.includes(item));
 
         return (
@@ -392,7 +422,7 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                             </div>
                         ))
                     ) : (
-                        <p className="text-gray-500">No hay elementos personalizados para eliminar.</p>
+                        <p className="text-gray-500 text-sm">No hay elementos personalizados para eliminar.</p>
                     )}
                 </div>
                  <div className="flex justify-end mt-4">
@@ -406,11 +436,11 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
     let modalSize: 'sm' | 'xl' = 'xl';
 
     if (addModalType) {
-        title = addModalType === 'family' ? 'Añadir Nueva Familia' : 'Añadir Nueva Categoría';
+        title = addModalType === 'family' ? 'Añadir Nueva Familia' : addModalType === 'category' ? 'Añadir Nueva Categoría' : 'Añadir Nueva Condición';
         content = renderAddForm();
         modalSize = 'sm';
     } else if (removeModalType) {
-        title = removeModalType === 'family' ? 'Eliminar Familia de la Lista' : 'Eliminar Categoría de la Lista';
+        title = removeModalType === 'family' ? 'Eliminar Familia de la Lista' : removeModalType === 'category' ? 'Eliminar Categoría de la Lista' : 'Eliminar Condición de la Lista';
         content = renderRemoveList();
         modalSize = 'sm';
     } else {

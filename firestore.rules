@@ -56,6 +56,13 @@ service cloud.firestore {
           ((request.auth.token.email == "jcbprofesor@gmail.com" || request.auth.token.email == "managerproapp@gmail.com") && request.auth.token.email_verified == true));
     }
 
+    function isManager() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['admin', 'almacen']) || 
+        isAdmin()
+      );
+    }
+
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
@@ -132,17 +139,17 @@ service cloud.firestore {
 
     match /products/{productId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin() && isValidProduct(request.resource.data);
+      allow write: if isManager() && isValidProduct(request.resource.data);
     }
 
     match /suppliers/{supplierId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isManager();
     }
 
     match /events/{eventId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isManager();
     }
 
     match /orders/{orderId} {
@@ -187,9 +194,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    match /settings/{settingId} {
-      allow read: if true; // Public branding/settings
-      allow write: if isAdmin();
+    match /workspace_settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isManager();
     }
 
     // Default deny

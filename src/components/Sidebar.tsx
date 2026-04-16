@@ -49,6 +49,7 @@ const almacenNav = [
   { name: 'Economato', href: '/almacen/economato', icon: <ShoppingCartIcon /> },
   { name: 'Proveedores', href: '/almacen/suppliers', icon: <TruckIcon /> },
   { name: 'Productos', href: '/almacen/products', icon: <AppleIcon /> },
+  { name: 'Familias y Categorías', href: '/almacen/product-metadata', icon: <BookIcon /> },
   { name: 'Mini-Economato', href: '/almacen/mini-economato', icon: <HouseIcon /> },
   { name: 'Reposiciones Economato', href: '/teacher/order-portal?type=economato', icon: <ShoppingCartIcon /> },
   { name: 'Reservas Comedor', href: '/almacen/dining-reservations', icon: <ClipboardDocumentListIcon /> },

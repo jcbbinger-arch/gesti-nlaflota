@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Event, Order, OrderItem, Product, NewProductRequest, Profile } from '../../types';
 import { BlockedAccess } from '../shared/BlockedAccess';
-import { TrashIcon, PlusIcon } from '../../components/icons';
+import { TrashIcon, PlusIcon, MinusIcon } from '../../components/icons';
 
 export const OrderForm: React.FC = () => {
     const { eventId, orderId } = useParams<{ eventId?: string; orderId?: string }>();
@@ -95,11 +95,16 @@ export const OrderForm: React.FC = () => {
     }, [isDirty]);
 
 
-    const handleQuantityChange = (product_id: string, quantity: number) => {
+    const handleQuantityChange = (product_id: string, quantity: number, append: boolean = false) => {
         setIsDirty(true);
         const newItems = new Map(orderItems);
         if (quantity > 0) {
-            newItems.set(product_id, quantity);
+            if (append) {
+                const current = newItems.get(product_id) || 0;
+                newItems.set(product_id, current + quantity);
+            } else {
+                newItems.set(product_id, quantity);
+            }
         } else {
             newItems.delete(product_id);
         }
@@ -250,12 +255,15 @@ export const OrderForm: React.FC = () => {
                                         <button 
                                             disabled={!isEditable}
                                             onClick={() => {
-                                                handleQuantityChange(product.id, pendingQuantities[product.id] || 0);
-                                                setPendingQuantities({...pendingQuantities, [product.id]: 0});
+                                                const qty = pendingQuantities[product.id] || 0;
+                                                if (qty > 0) {
+                                                    handleQuantityChange(product.id, qty, true);
+                                                    setPendingQuantities({...pendingQuantities, [product.id]: 0});
+                                                }
                                             }}
                                             className="bg-blue-500 text-white px-2 py-1 rounded"
                                         >
-                                            Agregar
+                                            {orderItems.has(product.id) ? 'Sumar' : 'Agregar'}
                                         </button>
                                     </div>
                                 </div>
@@ -272,9 +280,9 @@ export const OrderForm: React.FC = () => {
                         {Array.from(orderItems.entries()).map(([product_id, quantity]) => {
                             const product = productsMap.get(product_id);
                             return product ? (
-                                <div key={product_id} className="flex justify-between items-center p-2 border rounded">
+                                <div key={product_id} className="flex justify-between items-center p-3 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
                                     <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+                                        <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex-shrink-0 border dark:border-gray-700">
                                             <img 
                                                 src={product.image || `https://picsum.photos/seed/${encodeURIComponent(product.name)}/100/100`} 
                                                 alt={product.name} 
@@ -282,13 +290,47 @@ export const OrderForm: React.FC = () => {
                                                 referrerPolicy="no-referrer"
                                             />
                                         </div>
-                                        <span className="font-medium">{product.name} - {quantity} {product.unit}</span>
+                                        <div>
+                                            <p className="font-semibold text-gray-800 dark:text-gray-200">{product.name}</p>
+                                            <p className="text-xs text-gray-500">{product.unit}</p>
+                                        </div>
                                     </div>
-                                    {isEditable && (
-                                        <button onClick={() => handleQuantityChange(product_id, 0)} className="text-red-500">
-                                            <TrashIcon className="w-5 h-5"/>
-                                        </button>
-                                    )}
+                                    <div className="flex items-center space-x-4">
+                                        <div className="flex items-center border rounded-md dark:border-gray-600">
+                                            <button 
+                                                disabled={!isEditable}
+                                                onClick={() => handleQuantityChange(product_id, Math.max(0, quantity - 1))}
+                                                className="p-1 px-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+                                            >
+                                                <MinusIcon className="w-4 h-4" />
+                                            </button>
+                                            <input 
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                disabled={!isEditable}
+                                                value={quantity}
+                                                onChange={(e) => handleQuantityChange(product_id, parseFloat(e.target.value) || 0)}
+                                                className="w-16 text-center border-x dark:border-gray-600 py-1 bg-transparent text-sm focus:outline-none"
+                                            />
+                                            <button 
+                                                disabled={!isEditable}
+                                                onClick={() => handleQuantityChange(product_id, quantity + 1)}
+                                                className="p-1 px-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
+                                            >
+                                                <PlusIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        {isEditable && (
+                                            <button 
+                                                onClick={() => handleQuantityChange(product_id, 0)} 
+                                                className="text-red-500 hover:text-red-700 transition-colors p-1"
+                                                title="Eliminar del pedido"
+                                            >
+                                                <TrashIcon className="w-5 h-5"/>
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             ) : null;
                         })}

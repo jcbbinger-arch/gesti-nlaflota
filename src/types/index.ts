@@ -30,7 +30,7 @@ export type OrderStatus = 'Borrador' | 'Enviado' | 'Cerrado' | 'Procesado' | 'Re
 export type UserActivityStatus = 'Activo' | 'De Baja';
 export type UserLocationStatus = 'En el centro' | 'Fuera del centro';
 export type SupplierStatus = 'Activo' | 'Inactivo';
-export type ProductState = 'Fresco' | 'Congelado' | 'Otros' | 'Conservas' | 'Ahumado' | 'Desalado' | 'UHT' | 'Esterilizado' | 'Enlatado' | 'Deshidratado';
+export type ProductState = string;
 export type WarehouseStatus = 'Disponible' | 'Bajo Pedido' | 'Descontinuado';
 export type ReceptionLineStatus = 'pendiente' | 'ok' | 'parcial' | 'incidencia';
 
@@ -43,6 +43,7 @@ export interface WorkspaceSettings {
   workspaceId: string;
   categories: string[];
   families?: string[];
+  product_conditions?: string[];
   categoryConfigs?: CategoryConfig[];
 }
 
