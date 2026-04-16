@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { PlusIcon, TrashIcon } from '../../components/icons';
+import { WorkspaceSettings } from '../../types';
 
 export const ProductMetadataManager: React.FC = () => {
     const { workspaceSettings, setWorkspaceSettings, products } = useData();
+    const { currentUser } = useAuth();
     
     // Local state for adding new items
     const [newFamily, setNewFamily] = useState('');
@@ -16,11 +19,9 @@ export const ProductMetadataManager: React.FC = () => {
     const conditions = useMemo(() => workspaceSettings?.product_conditions || [], [workspaceSettings]);
 
     const handleAdd = async (type: 'family' | 'category' | 'condition') => {
-        if (!workspaceSettings) return;
-
         let value = '';
         let currentList: string[] = [];
-        let key: keyof typeof workspaceSettings;
+        let key: keyof WorkspaceSettings;
 
         if (type === 'family') {
             value = newFamily.trim().toUpperCase();
@@ -40,9 +41,16 @@ export const ProductMetadataManager: React.FC = () => {
         }
 
         if (value && !currentList.includes(value)) {
+            const currentSettings: WorkspaceSettings = workspaceSettings || {
+                workspaceId: currentUser?.workspaceId || '',
+                families: [],
+                categories: [],
+                product_conditions: []
+            };
+
             await setWorkspaceSettings({
-                ...workspaceSettings,
-                [key]: [...currentList, value]
+                ...currentSettings,
+                [key]: [...(currentSettings[key] as string[] || []), value]
             });
         }
     };

@@ -6,8 +6,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Product, Supplier, Order, OrderItem, OrderStatus, Profile, NewProductRequest, Message } from '../../types';
 import { generateOrderPdf } from '../../utils/export';
-import { PlusIcon, TrashIcon } from '../../components/icons';
+import { PlusIcon, TrashIcon, HistoryIcon, UserCircleIcon, TruckIcon, AppleIcon, MessageIcon } from '../../components/icons';
 import { useCreator } from '../../contexts/CreatorContext';
+
+type ViewMode = 'Global' | 'Teacher' | 'Supplier';
 
 type AggregatedProduct = {
     product: Product;
@@ -84,6 +86,9 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
     const { currentUser } = useAuth();
     const { creatorInfo } = useCreator();
 
+    const [viewMode, setViewMode] = useState<ViewMode>('Global');
+    const [selectedTeacherId, setSelectedTeacherId] = useState<string>('all');
+    const [selectedSupplierId, setSelectedSupplierId] = useState<string>('all');
     const [editedQuantities, setEditedQuantities] = useState<Record<string, number>>({});
     const [selectedSuppliers, setSelectedSuppliers] = useState<Record<string, string>>({});
     const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
@@ -91,10 +96,28 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
     const suppliersMap = useMemo(() => new Map(suppliers.map(s => [s.id, s])), [suppliers]);
     const usersMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
-    const managerUser = useMemo(() => users.find(u => u.id === companyInfo.manager_user_id), [users, companyInfo]);
+    const teachers = useMemo(() => users.filter(u => u.profiles.includes(Profile.TEACHER)), [users]);
+    const activeSuppliers = useMemo(() => suppliers.filter(s => s.status === 'Activo'), [suppliers]);
     
     const event = useMemo(() => events.find(e => e.id === eventId), [events, eventId]);
     const eventOrders = useMemo(() => orders.filter(o => o.event_id === eventId && (o.status === 'Enviado' || o.status === 'Procesado')), [orders, eventId]);
+    
+    // Total Weekly Gasto (including current edits)
+    const totalWeeklyGasto = useMemo(() => {
+        let total = 0;
+        eventOrders.forEach(order => {
+            order.items.forEach(item => {
+                const product = productsMap.get(item.product_id);
+                if (!product) return;
+                const editedQty = editedQuantities[`${order.id}-${item.product_id}`] ?? item.quantity;
+                const priceInfo = product.suppliers.find(s => s.supplier_id === selectedSuppliers[product.id]);
+                const price = priceInfo?.price || item.price;
+                total += (editedQty * price * (1 + item.tax / 100));
+            });
+        });
+        return total;
+    }, [eventOrders, editedQuantities, selectedSuppliers, productsMap]);
+
     const isProcessed = useMemo(() => eventOrders.length > 0 && eventOrders.every(o => o.status === 'Procesado'), [eventOrders]);
 
     const { aggregatedProducts, newProductRequests } = useMemo(() => {
@@ -171,17 +194,20 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
 
     const handleGeneratePdfs = () => {
          const ordersBySupplier = new Map<string, { product: Product; quantity: number; price: number }[]>();
-        supplierSummary.forEach(({ supplier, totalCost }) => {
+        supplierSummary.forEach(({ supplier }) => {
             const itemsForSupplier = aggregatedProducts
                 .filter(agg => selectedSuppliers[agg.product.id] === supplier.id)
                 .map(agg => {
                     const totalQuantity = agg.orders.reduce((sum, detail) => sum + (editedQuantities[`${detail.order.id}-${agg.product.id}`] ?? detail.item.quantity), 0);
                     const priceInfo = agg.product.suppliers.find(s => s.supplier_id === supplier.id);
                     return { product: agg.product, quantity: totalQuantity, price: priceInfo?.price || 0 };
-                });
-            ordersBySupplier.set(supplier.id, itemsForSupplier);
+                })
+                .filter(item => item.quantity > 0);
+            if (itemsForSupplier.length > 0) {
+                ordersBySupplier.set(supplier.id, itemsForSupplier);
+            }
         });
-        generateOrderPdf(ordersBySupplier, suppliersMap, companyInfo, managerUser, creatorInfo.app_name);
+        generateOrderPdf(ordersBySupplier, suppliersMap, companyInfo, currentUser || undefined, creatorInfo.app_name);
     };
 
     const handleModifyOrders = () => {
@@ -261,62 +287,232 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
     return (
         <div>
             <Link to="/almacen/process-orders" className="text-sm text-primary-600 hover:underline no-print">&larr; Volver a la selección de eventos</Link>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">Procesar Pedido: {event.name}</h1>
-            <p className="mb-6 text-gray-500">Agrupa, revisa y genera las hojas de pedido para los proveedores.</p>
+            
+            <div className="flex justify-between items-start mt-2 mb-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Procesar Pedido: {event.name}</h1>
+                    <p className="text-gray-500">Agrupa, revisa y gestiona los pedidos semanales.</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-sm font-medium text-gray-500">Gasto Total Semanal (Estimado)</p>
+                    <p className="text-3xl font-bold text-primary-600">
+                        {totalWeeklyGasto.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                    </p>
+                </div>
+            </div>
 
-            <Card title="Revisión de Pedidos Pendientes">
-                <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                        <tr>
-                            <th className="px-2 py-2">Producto</th>
-                            <th className="px-2 py-2">Cantidad Total</th>
-                            <th className="px-2 py-2 w-1/3">Proveedor Asignado</th>
-                            <th className="px-2 py-2">Coste Total (Aprox)</th>
-                            <th className="px-2 py-2">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {aggregatedProducts.map(({ product, orders: orderDetails }) => {
-                            const totalQuantity = orderDetails.reduce((sum, detail) => sum + (editedQuantities[`${detail.order.id}-${product.id}`] ?? detail.item.quantity), 0);
-                            const selectedSupId = selectedSuppliers[product.id];
-                            const price = product.suppliers.find(s => s.supplier_id === selectedSupId)?.price || 0;
-                            const totalCost = totalQuantity * price;
-                            const isExpanded = expandedProducts.has(product.id);
-                             return (
-                                <React.Fragment key={product.id}>
-                                <tr className="border-b dark:border-gray-700">
-                                    <td className="p-2 font-semibold">{product.name}</td>
-                                    <td className="p-2 text-center">{totalQuantity} {product.unit}</td>
-                                    <td className="p-2">
-                                        <select value={selectedSupId || ''} disabled={isProcessed} onChange={(e) => setSelectedSuppliers({...selectedSuppliers, [product.id]: e.target.value})} className="w-full p-1 border rounded dark:bg-gray-800">
-                                            {product.suppliers.map(ps => suppliersMap.get(ps.supplier_id)).filter(s => s?.status === 'Activo').map(s => s && <option key={s.id} value={s.id}>{s.name} ({product.suppliers.find(ps => ps.supplier_id === s.id)?.price.toFixed(2)}€)</option>)}
-                                        </select>
-                                    </td>
-                                    <td className="p-2 text-center">{totalCost.toFixed(2)}€</td>
-                                    <td className="p-2"><button onClick={() => toggleExpand(product.id)} className="text-primary-600 text-xs">{isExpanded ? 'Ocultar' : 'Ver/Editar Desglose'}</button></td>
-                                </tr>
-                                {isExpanded && (
-                                    <tr className="bg-gray-50 dark:bg-gray-900">
-                                        <td colSpan={5} className="p-4">
-                                            <h4 className="font-bold mb-2">Desglose para {product.name}</h4>
-                                            {orderDetails.map(({ order, item }) => (
-                                                <div key={order.id} className="grid grid-cols-3 gap-2 items-center text-xs mb-1">
-                                                    <span>{usersMap.get(order.user_id)}:</span>
-                                                    <input type="number" step="0.01" disabled={isProcessed} value={editedQuantities[`${order.id}-${item.product_id}`] ?? item.quantity} onChange={e => handleQuantityChange(order.id, item.product_id, parseFloat(e.target.value) || 0)} className="w-20 p-1 border rounded dark:bg-gray-800"/>
-                                                    <em className="text-gray-500 truncate" title={order.notes}>"{order.notes}"</em>
-                                                </div>
-                                            ))}
+            <div className="flex flex-wrap gap-2 mb-6 no-print">
+                <button onClick={() => setViewMode('Global')} className={`px-4 py-2 rounded-md flex items-center ${viewMode === 'Global' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border'}`}>
+                    <HistoryIcon className="w-4 h-4 mr-2" /> Global (Por Producto)
+                </button>
+                <button onClick={() => setViewMode('Teacher')} className={`px-4 py-2 rounded-md flex items-center ${viewMode === 'Teacher' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border'}`}>
+                    <UserCircleIcon className="w-4 h-4 mr-2" /> Por Profesor
+                </button>
+                <button onClick={() => setViewMode('Supplier')} className={`px-4 py-2 rounded-md flex items-center ${viewMode === 'Supplier' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border'}`}>
+                    <TruckIcon className="w-4 h-4 mr-2" /> Por Proveedor
+                </button>
+            </div>
+
+            {viewMode === 'Teacher' && (
+                <div className="mb-6 p-4 bg-white dark:bg-gray-800 border rounded-lg shadow-sm no-print">
+                    <label className="block text-sm font-medium mb-1">Seleccionar Profesor:</label>
+                    <select 
+                        value={selectedTeacherId} 
+                        onChange={e => setSelectedTeacherId(e.target.value)}
+                        className="w-full p-2 border rounded-md dark:bg-gray-700"
+                    >
+                        <option value="all">Ver todos los profesores</option>
+                        {teachers.filter(t => eventOrders.some(o => o.user_id === t.id)).map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {viewMode === 'Global' && (
+                <Card title="Revisión Agregada por Productos">
+                    <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <tr>
+                                <th className="px-2 py-2 text-left">Producto</th>
+                                <th className="px-2 py-2">Cantidad Total</th>
+                                <th className="px-2 py-2 w-1/3">Proveedor Asignado</th>
+                                <th className="px-2 py-2">Coste Total (Aprox)</th>
+                                <th className="px-2 py-2 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {aggregatedProducts.map(({ product, orders: orderDetails }) => {
+                                const totalQuantity = orderDetails.reduce((sum, detail) => sum + (editedQuantities[`${detail.order.id}-${product.id}`] ?? detail.item.quantity), 0);
+                                const selectedSupId = selectedSuppliers[product.id];
+                                const price = product.suppliers.find(s => s.supplier_id === selectedSupId)?.price || 0;
+                                const totalCost = totalQuantity * price;
+                                const isExpanded = expandedProducts.has(product.id);
+                                return (
+                                    <React.Fragment key={product.id}>
+                                    <tr className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                        <td className="p-2 font-semibold">
+                                            <div className="flex items-center">
+                                                <AppleIcon className="w-4 h-4 mr-2 text-primary-500" />
+                                                {product.name}
+                                            </div>
+                                        </td>
+                                        <td className="p-2 text-center font-mono">{totalQuantity} {product.unit}</td>
+                                        <td className="p-2">
+                                            <select value={selectedSupId || ''} disabled={isProcessed} onChange={(e) => setSelectedSuppliers({...selectedSuppliers, [product.id]: e.target.value})} className="w-full p-1 border rounded dark:bg-gray-800">
+                                                {product.suppliers.map(ps => suppliersMap.get(ps.supplier_id)).filter(s => s?.status === 'Activo').map(s => s && <option key={s.id} value={s.id}>{s.name} ({product.suppliers.find(ps => ps.supplier_id === s.id)?.price.toFixed(2)}€)</option>)}
+                                            </select>
+                                        </td>
+                                        <td className="p-2 text-center text-primary-600 font-bold">{totalCost.toFixed(2)}€</td>
+                                        <td className="p-2 text-right">
+                                            <button onClick={() => toggleExpand(product.id)} className="text-primary-600 text-xs font-medium hover:underline">
+                                                {isExpanded ? 'Ocultar' : 'Ver Desglose'}
+                                            </button>
                                         </td>
                                     </tr>
-                                )}
-                                </React.Fragment>
-                             );
-                        })}
-                    </tbody>
-                </table>
+                                    {isExpanded && (
+                                        <tr className="bg-gray-50 dark:bg-gray-900 shadow-inner">
+                                            <td colSpan={5} className="p-4">
+                                                <div className="border-l-4 border-primary-500 pl-4 space-y-2">
+                                                    <h4 className="font-bold flex items-center"><UserCircleIcon className="w-4 h-4 mr-1" /> Distribución por Profesor</h4>
+                                                    {orderDetails.map(({ order, item }) => (
+                                                        <div key={order.id} className="flex justify-between items-center text-xs p-1 bg-white dark:bg-gray-800 rounded border dark:border-gray-700">
+                                                            <span className="w-1/3">{usersMap.get(order.user_id)}:</span>
+                                                            <div className="flex items-center">
+                                                                <input 
+                                                                    type="number" 
+                                                                    step="0.01" 
+                                                                    disabled={isProcessed} 
+                                                                    value={editedQuantities[`${order.id}-${item.product_id}`] ?? item.quantity} 
+                                                                    onChange={e => handleQuantityChange(order.id, item.product_id, parseFloat(e.target.value) || 0)} 
+                                                                    className="w-20 p-1 border rounded dark:bg-gray-900 text-center"
+                                                                />
+                                                                <span className="ml-1 text-gray-500">{product.unit}</span>
+                                                            </div>
+                                                            <em className="text-gray-400 truncate ml-4 w-1/3 text-right italic" title={order.notes}>
+                                                                {order.notes ? `"${order.notes}"` : '(Sin notas)'}
+                                                            </em>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                    </div>
+                </Card>
+            )}
+
+            {viewMode === 'Teacher' && (
+                <div className="space-y-6">
+                    {eventOrders
+                      .filter(o => selectedTeacherId === 'all' || o.user_id === selectedTeacherId)
+                      .map(order => (
+                        <Card key={order.id} title={`Pedido de: ${usersMap.get(order.user_id)}`}>
+                            <div className="text-gray-500 text-xs mb-4">
+                                Fecha: {new Date(order.date).toLocaleString()} | Estado: {order.status}
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50 dark:bg-gray-700">
+                                        <tr>
+                                            <th className="px-2 py-2 text-left">Producto</th>
+                                            <th className="px-2 py-2">Cantidad</th>
+                                            <th className="px-2 py-2">Precio/U</th>
+                                            <th className="px-2 py-2">Importe</th>
+                                            <th className="px-2 py-2 text-right">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {order.items.map(item => {
+                                            const p = productsMap.get(item.product_id);
+                                            const editedQty = editedQuantities[`${order.id}-${item.product_id}`] ?? item.quantity;
+                                            const itemPrice = p?.suppliers.find(s => s.supplier_id === selectedSuppliers[p.id])?.price || item.price;
+                                            return (
+                                                <tr key={item.product_id} className="border-b dark:border-gray-700">
+                                                    <td className="p-2 font-medium">{p?.name || 'N/A'}</td>
+                                                    <td className="p-2">
+                                                        <input 
+                                                            type="number" 
+                                                            step="0.01" 
+                                                            disabled={isProcessed}
+                                                            value={editedQty} 
+                                                            onChange={e => handleQuantityChange(order.id, item.product_id, parseFloat(e.target.value) || 0)}
+                                                            className="w-24 p-1 border rounded dark:bg-gray-700"
+                                                        />
+                                                    </td>
+                                                    <td className="p-2">{itemPrice.toFixed(2)}€</td>
+                                                    <td className="p-2 font-bold">{(editedQty * itemPrice).toFixed(2)}€</td>
+                                                    <td className="p-2 text-right">
+                                                        {!isProcessed && (
+                                                            <button onClick={() => handleQuantityChange(order.id, item.product_id, 0)} className="text-red-500 hover:text-red-700">
+                                                                <TrashIcon className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded italic text-sm text-gray-500">
+                                <strong>Notas del profesor:</strong> {order.notes || 'Ninguna'}
+                            </div>
+                        </Card>
+                    ))}
                 </div>
-            </Card>
+            )}
+
+            {viewMode === 'Supplier' && (
+                <div className="space-y-6">
+                    {activeSuppliers.filter(s => supplierSummary.some(ss => ss.supplier.id === s.id)).map(supplier => {
+                        const summary = supplierSummary.find(ss => ss.supplier.id === supplier.id)!;
+                         return (
+                             <Card key={supplier.id} title={`Proveedor: ${supplier.name}`}>
+                                <div className="text-gray-500 text-xs mb-4">
+                                    {summary.items.length} productos diferentes
+                                </div>
+                                <div className="space-y-4">
+                                     <table className="w-full text-sm">
+                                        <thead className="bg-gray-50 dark:bg-gray-700">
+                                            <tr>
+                                                <th className="px-2 py-2 text-left">Producto</th>
+                                                <th className="px-2 py-2">Cantidad Total</th>
+                                                <th className="px-2 py-2 text-right">Coste Est.</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {aggregatedProducts
+                                                .filter(agg => selectedSuppliers[agg.product.id] === supplier.id)
+                                                .map(agg => {
+                                                    const totalQty = agg.orders.reduce((sum, d) => sum + (editedQuantities[`${d.order.id}-${agg.product.id}`] ?? d.item.quantity), 0);
+                                                    const price = agg.product.suppliers.find(s => s.supplier_id === supplier.id)?.price || 0;
+                                                    if (totalQty === 0) return null;
+                                                    return (
+                                                        <tr key={agg.product.id} className="border-b dark:border-gray-700">
+                                                            <td className="p-2 font-medium">{agg.product.name}</td>
+                                                            <td className="p-2">{totalQty} {agg.product.unit}</td>
+                                                            <td className="p-2 text-right font-bold">{(totalQty * price).toFixed(2)}€</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                        </tbody>
+                                     </table>
+                                     <div className="text-right text-lg">
+                                         Total estimado para {supplier.name}: <span className="font-bold text-primary-600">{summary.totalCost.toFixed(2)}€</span>
+                                     </div>
+                                </div>
+                            </Card>
+                         )
+                    })}
+                </div>
+            )}
 
             {newProductRequests.length > 0 && (
                 <Card title="Solicitudes de Nuevos Productos" className="mt-6 border-yellow-400">

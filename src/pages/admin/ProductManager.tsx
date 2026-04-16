@@ -330,8 +330,10 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                                 <button type="button" onClick={() => handleRemoveNew('family')} className="text-xs text-red-500 hover:underline">Eliminar</button>
                             </span>
                         </label>
-                        <input list="families" name="family" value={formState.family} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600"/>
-                        <datalist id="families">{families.map(f => <option key={f} value={f}/>)}</datalist>
+                        <select name="family" value={formState.family} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                            <option value="">-- Selecciona --</option>
+                            {families.map(f => <option key={f} value={f}>{f}</option>)}
+                        </select>
                     </div>
                      <div>
                         <label className="text-sm flex justify-between items-center">Categoría 
@@ -340,8 +342,10 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                                 <button type="button" onClick={() => handleRemoveNew('category')} className="text-xs text-red-500 hover:underline">Eliminar</button>
                             </span>
                         </label>
-                        <input list="categories" name="category" value={formState.category} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600"/>
-                        <datalist id="categories">{categories.map(c => <option key={c} value={c}/>)}</datalist>
+                        <select name="category" value={formState.category} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                            <option value="">-- Selecciona --</option>
+                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
                     </div>
                 </div>
 

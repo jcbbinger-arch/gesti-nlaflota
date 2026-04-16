@@ -71,13 +71,11 @@ export const OrderForm: React.FC = () => {
     useEffect(() => {
         if (existingOrder) {
             const itemsMap = new Map<string, number>();
-            const pendingMap: Record<string, number> = {};
             existingOrder.items.forEach(item => {
                 itemsMap.set(item.product_id, item.quantity);
-                pendingMap[item.product_id] = item.quantity;
             });
             setOrderItems(itemsMap);
-            setPendingQuantities(pendingMap);
+            setPendingQuantities({});
             setNotes(existingOrder.notes || '');
             set_new_requests(existingOrder.new_product_requests || []);
         }
@@ -250,7 +248,7 @@ export const OrderForm: React.FC = () => {
                                             value={pendingQuantities[product.id] || ''}
                                             onChange={e => setPendingQuantities({...pendingQuantities, [product.id]: parseFloat(e.target.value) || 0})}
                                             className="w-full p-1 border rounded dark:bg-gray-700"
-                                            placeholder="Cantidad"
+                                            placeholder="Añadir cant."
                                         />
                                         <button 
                                             disabled={!isEditable}
@@ -261,7 +259,7 @@ export const OrderForm: React.FC = () => {
                                                     setPendingQuantities({...pendingQuantities, [product.id]: 0});
                                                 }
                                             }}
-                                            className="bg-blue-500 text-white px-2 py-1 rounded"
+                                            className="bg-blue-500 text-white px-2 py-1 rounded text-sm whitespace-nowrap"
                                         >
                                             {orderItems.has(product.id) ? 'Sumar' : 'Agregar'}
                                         </button>

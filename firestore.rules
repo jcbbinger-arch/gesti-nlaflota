@@ -58,8 +58,8 @@ service cloud.firestore {
 
     function isManager() {
       return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['admin', 'almacen']) || 
-        isAdmin()
+        isAdmin() ||
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.profiles.hasAny(['admin', 'almacen']))
       );
     }
 
@@ -94,12 +94,10 @@ service cloud.firestore {
 
     function isValidProduct(data) {
       return data.id is string &&
-             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 400 &&
              data.reference is string &&
              data.unit is string &&
              data.tax is number &&
-             data.category is string &&
-             data.family is string &&
              data.status in ['Activo', 'Inactivo'];
     }
 
