@@ -23,7 +23,11 @@ export const ComposeMessageModal: React.FC<{
     const isStudent = currentUser?.profiles.includes(Profile.STUDENT);
 
     const recipientOptions = useMemo(() => {
-        const potentialRecipients = users.filter(u => u.id !== currentUser?.id && !SUPER_USER_EMAILS.includes(u.email));
+        const potentialRecipients = users.filter(u => 
+            u.id !== currentUser?.id && 
+            !SUPER_USER_EMAILS.includes(u.email) &&
+            !u.profiles.includes(Profile.ALMACEN)
+        );
 
         if (isStudent && currentUser?.classroom_id) {
             const myClassroom = classrooms.find(c => c.id === currentUser.classroom_id);
@@ -60,7 +64,6 @@ export const ComposeMessageModal: React.FC<{
                     {!isStudent && (
                         <div className="flex space-x-2 mt-1">
                             <button type="button" onClick={() => handleSelectGroup(Profile.TEACHER)} className="text-xs bg-gray-200 px-2 py-1 rounded">Profesores</button>
-                            <button type="button" onClick={() => handleSelectGroup(Profile.ALMACEN)} className="text-xs bg-gray-200 px-2 py-1 rounded">Almacén</button>
                              <button type="button" onClick={() => handleSelectGroup(Profile.ADMIN)} className="text-xs bg-gray-200 px-2 py-1 rounded">Admins</button>
                         </div>
                     )}

@@ -18,7 +18,7 @@ export const DiningReservations: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const activeServices = useMemo(() => {
-        return dining_services.filter((s: DiningService) => s.status === 'abierto' || s.status === 'borrador');
+        return [...dining_services].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [dining_services]);
 
     const selectedService = useMemo(() => {
@@ -128,7 +128,7 @@ export const DiningReservations: React.FC = () => {
 
             <Card>
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Seleccionar Servicio Abierto</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Seleccionar Servicio</label>
                     <select
                         value={selectedServiceId}
                         onChange={e => setSelectedServiceId(e.target.value)}
@@ -167,7 +167,27 @@ export const DiningReservations: React.FC = () => {
             </Card>
 
             {selectedService && (
-                <Card title="Listado de Reservas">
+                <div className="space-y-6">
+                    {serviceReservations.some(r => r.diners_allergens.length > 0) && (
+                        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 mb-4">
+                            <h3 className="text-red-800 dark:text-red-200 font-bold mb-2 flex items-center">
+                                <AlertTriangle className="w-5 h-5 mr-2" />
+                                Alerta de Alérgenos en Mesa
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {serviceReservations.filter(r => r.diners_allergens.length > 0).map(res => (
+                                    <div key={res.id} className="text-sm bg-white dark:bg-gray-800 p-2 rounded shadow-sm border border-red-100 dark:border-red-900">
+                                        <span className="font-bold">Mesa {res.table_number || '?'}:</span> {res.reference_name}
+                                        <div className="text-[10px] text-red-600 dark:text-red-400 mt-1">
+                                            {res.diners_allergens.map(d => `${d.diner_name || 'Comensal'}: ${d.allergens.join(', ')}`).join(' | ')}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <Card title="Listado de Reservas">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -202,6 +222,7 @@ export const DiningReservations: React.FC = () => {
                         </table>
                     </div>
                 </Card>
+            </div>
             )}
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nueva Reserva de Comedor" size="lg">

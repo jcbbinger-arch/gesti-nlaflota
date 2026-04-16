@@ -176,6 +176,7 @@ const AppContent: React.FC = () => {
               <Route path="recipes" element={<RecipeManager />} />
               <Route path="recipes/new" element={<RecipeForm />} />
               <Route path="recipes/edit/:recipeId" element={<RecipeForm />} />
+              <Route path="mini-economato" element={<MiniEconomato />} />
               <Route path="aula" element={<ClassroomList />} />
               <Route path="messaging" element={<Messaging />} />
               <Route path="profile" element={<MyProfile />} />

@@ -228,7 +228,8 @@
       "properties": {
         "id": { "type": "string" },
         "stock": { "type": "number" },
-        "min_stock": { "type": "number" }
+        "min_stock": { "type": "number" },
+        "is_shared": { "type": "boolean" }
       },
       "required": ["id", "stock", "min_stock"]
     },
@@ -454,7 +455,8 @@
           }
         },
         "created_by": { "type": "string" },
-        "created_at": { "type": "string", "format": "date-time" }
+        "created_at": { "type": "string", "format": "date-time" },
+        "table_number": { "type": "string" }
       },
       "required": ["id", "service_id", "reference_name", "pax", "total_price", "created_by", "created_at"]
     }

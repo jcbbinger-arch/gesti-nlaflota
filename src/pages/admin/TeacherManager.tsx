@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, WarningIcon, DownloadIcon } from '../../components/icons';
-import { User, Profile, Assignment, Group, Module, getProfileDisplayName } from '../../types';
+import { User, Profile, Assignment, Group, Module, getProfileDisplayName, SUPER_USER_EMAILS } from '../../types';
 import { exportToCsv } from '../../utils/export';
 
 export const TeacherManager: React.FC = () => {
@@ -15,7 +15,9 @@ export const TeacherManager: React.FC = () => {
     const [deleteStep, setDeleteStep] = useState(1);
 
     const staff = useMemo(() => users.filter(u => 
-        u.profiles.includes(Profile.TEACHER)
+        u.profiles.includes(Profile.TEACHER) && 
+        !u.profiles.includes(Profile.ALMACEN) && 
+        !SUPER_USER_EMAILS.includes(u.email)
     ), [users]);
 
     const takeawayCustomers = useMemo(() => users.filter(u => 

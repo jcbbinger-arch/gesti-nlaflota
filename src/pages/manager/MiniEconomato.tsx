@@ -227,7 +227,37 @@ export const MiniEconomato: React.FC = () => {
                                 )}
                             </div>
                             <p>Stock: <span className="font-bold text-xl">{stock.stock.toFixed(2)}</span> / Mínimo: {stock.min_stock}</p>
-                             <p className="text-xs font-semibold">{stockLevel.text}</p>
+                            <div className="mt-1 flex items-baseline justify-between">
+                                <p className="text-xs font-semibold">{stockLevel.text}</p>
+                                {product.unit === 'Uds' && product.unit_size && product.suppliers?.[0] && (
+                                    <div className="text-[10px] text-primary-600 font-bold">
+                                        {(() => {
+                                            const bestPrice = [...product.suppliers].sort((a,b) => a.price - b.price)[0]?.price;
+                                            if (!bestPrice) return '';
+                                            const size = product.unit_size;
+                                            const type = product.unit_size_type || 'g';
+                                            let pricePerBase = 0;
+                                            let baseLabel = '';
+
+                                            if (type === 'g') {
+                                                pricePerBase = (bestPrice / size) * 1000;
+                                                baseLabel = 'kg';
+                                            } else if (type === 'kg') {
+                                                pricePerBase = bestPrice / size;
+                                                baseLabel = 'kg';
+                                            } else if (type === 'ml') {
+                                                pricePerBase = (bestPrice / size) * 1000;
+                                                baseLabel = 'L';
+                                            } else if (type === 'L') {
+                                                pricePerBase = bestPrice / size;
+                                                baseLabel = 'L';
+                                            }
+
+                                            return pricePerBase > 0 ? `${pricePerBase.toFixed(2)}€/${baseLabel}` : '';
+                                        })()}
+                                    </div>
+                                )}
+                            </div>
                             <div className="mt-2 space-x-2 no-print">
                                 <button onClick={() => { setItemToEdit(stock); setIsEditModalOpen(true); }} className="text-xs bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
                                     <PencilIcon className="w-4 h-4 inline-block mr-1"/> Editar Stock

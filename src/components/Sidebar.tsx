@@ -68,6 +68,7 @@ const teacherNav = [
   { name: 'Catálogo de Ventas', href: '/teacher/takeaway-catalog', icon: <ShoppingCartIcon /> },
   { name: 'Reservas Take Away', href: '/teacher/reservations', icon: <ClipboardDocumentListIcon /> },
   { name: 'Vista Comedor', href: '/teacher/dining-view', icon: <UserGroupIcon /> },
+  { name: 'Mini-Economato (Consulta)', href: '/teacher/mini-economato', icon: <HouseIcon /> },
   { name: 'Notificaciones', href: '/teacher/notifications', icon: <ShareIcon /> },
   { name: 'Aula de Almacén', href: '/teacher/aula', icon: <BookIcon /> },
   { name: 'Mensajería', href: '/teacher/messaging', icon: <MessageIcon /> },

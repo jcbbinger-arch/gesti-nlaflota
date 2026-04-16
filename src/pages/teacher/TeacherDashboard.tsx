@@ -8,7 +8,7 @@ import { printPage } from '../../utils/export';
 import { Profile } from '../../types';
 
 export const TeacherDashboard: React.FC = () => {
-    const { events, orders } = useData();
+    const { events, orders, users, mini_economato_stock } = useData();
     const { currentUser, selectedProfile } = useAuth();
 
     const isStudent = selectedProfile === Profile.STUDENT;
@@ -24,14 +24,42 @@ export const TeacherDashboard: React.FC = () => {
     
     const eventsMap = new Map(events.map(e => [e.id, e.name]));
 
+    const activeTeachersCount = users.filter(u => u.profiles.includes(Profile.TEACHER) && u.activity_status === 'Activo').length || 1;
+    const miniEconomatoOrders = orders.filter(o => o.user_id === 'mini-economato' && o.status === 'Completado');
+    const totalSharedCost = miniEconomatoOrders.reduce((sum, order) => {
+        let sharedOnlyCost = 0;
+        order.items.forEach(item => {
+            const stockItem = mini_economato_stock.find((s: any) => s.id === item.product_id);
+            if (stockItem?.is_shared) {
+                sharedOnlyCost += (item.price * item.quantity) * (1 + (item.tax || 0) / 100);
+            }
+        });
+        return sum + sharedOnlyCost;
+    }, 0);
+    const mySharedSpend = totalSharedCost / activeTeachersCount;
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Bienvenido, {currentUser?.name}</h1>
-                <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
-                    <DownloadIcon className="w-5 h-5 mr-2" />
-                    Descargar PDF
-                </button>
+                {!isStudent && (
+                    <div className="flex items-center space-x-4">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg border border-blue-100 dark:border-blue-800">
+                             <p className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase">Gasto Compartido</p>
+                             <p className="text-lg font-bold text-blue-800 dark:text-blue-200">{mySharedSpend.toFixed(2)}€</p>
+                        </div>
+                        <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center h-fit">
+                            <DownloadIcon className="w-5 h-5 mr-2" />
+                            Descargar PDF
+                        </button>
+                    </div>
+                )}
+                {isStudent && (
+                    <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center h-fit">
+                        <DownloadIcon className="w-5 h-5 mr-2" />
+                        Descargar PDF
+                    </button>
+                )}
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
