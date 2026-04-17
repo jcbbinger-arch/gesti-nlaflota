@@ -2,13 +2,16 @@
 import React, { useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCompany } from '../../contexts/CompanyContext';
 import { Card } from '../../components/Card';
 import { DownloadIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
+import { PrintHeader } from '../../components/PrintHeader';
 
 export const TeacherOrderHistory: React.FC = () => {
     const { orders, events, products } = useData();
     const { currentUser } = useAuth();
+    const { companyInfo } = useCompany();
     
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
     const eventsMap = useMemo(() => new Map(events.map(e => [e.id, e.name])), [events]);
@@ -22,6 +25,12 @@ export const TeacherOrderHistory: React.FC = () => {
 
     return (
         <div>
+            {companyInfo && (
+                <PrintHeader 
+                    companyInfo={companyInfo} 
+                    currentUser={currentUser || undefined}
+                />
+            )}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Mi Historial de Pedidos</h1>
                 <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">

@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
+import { Modal } from '../../components/Modal';
 import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon } from '../../components/icons';
 import { WorkspaceSettings } from '../../types';
+import { PREDEFINED_FAMILIES, PREDEFINED_CATEGORIES, PRODUCT_STATES } from '../../constants/productTypology';
 
 export const ProductMetadataManager: React.FC = () => {
     const { workspaceSettings, setWorkspaceSettings, products, setProducts } = useData();
@@ -14,8 +16,34 @@ export const ProductMetadataManager: React.FC = () => {
     const [newCategory, setNewCategory] = useState('');
     const [newCondition, setNewCondition] = useState('');
 
-    // State for editing items
-    const [editingItem, setEditingItem] = useState<{ type: 'family' | 'category'| 'condition', originalValue: string, newValue: string } | null>(null);
+    const [editingItem, setEditingItem] = useState<{ type: 'family' | 'category' | 'condition', originalValue: string, newValue: string } | null>(null);
+    const [deletingItem, setDeletingItem] = useState<{ type: 'family' | 'category'| 'condition', value: string, productsCount: number } | null>(null);
+    const [migrationTarget, setMigrationTarget] = useState('');
+
+    // Initial sync of predefined values to workspaceSettings if empty
+    useEffect(() => {
+        if (!workspaceSettings) return;
+
+        let needsUpdate = false;
+        const newSettings = { ...workspaceSettings };
+
+        if (!newSettings.families || newSettings.families.length === 0) {
+            newSettings.families = [...PREDEFINED_FAMILIES];
+            needsUpdate = true;
+        }
+        if (!newSettings.categories || newSettings.categories.length === 0) {
+            newSettings.categories = [...PREDEFINED_CATEGORIES];
+            needsUpdate = true;
+        }
+        if (!newSettings.product_conditions || newSettings.product_conditions.length === 0) {
+            newSettings.product_conditions = [...PRODUCT_STATES];
+            needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+            setWorkspaceSettings(newSettings);
+        }
+    }, [workspaceSettings, setWorkspaceSettings]);
 
     const families = useMemo(() => workspaceSettings?.families || [], [workspaceSettings]);
     const categories = useMemo(() => workspaceSettings?.categories || [], [workspaceSettings]);
@@ -37,7 +65,7 @@ export const ProductMetadataManager: React.FC = () => {
             key = 'categories';
             setNewCategory('');
         } else {
-            value = newCondition.trim();
+            value = newCondition.trim().toUpperCase();
             currentList = conditions;
             key = 'product_conditions';
             setNewCondition('');
@@ -62,7 +90,7 @@ export const ProductMetadataManager: React.FC = () => {
         if (!editingItem || !workspaceSettings) return;
 
         const { type, originalValue, newValue } = editingItem;
-        const trimmedNewValue = type === 'condition' ? newValue.trim() : newValue.trim().toUpperCase();
+        const trimmedNewValue = newValue.trim().toUpperCase();
 
         if (!trimmedNewValue || trimmedNewValue === originalValue) {
             setEditingItem(null);
@@ -87,23 +115,21 @@ export const ProductMetadataManager: React.FC = () => {
             productKey = 'product_state';
         }
 
-        // Check if new value already exists
         if (currentList.includes(trimmedNewValue)) {
             alert('Este valor ya existe.');
             return;
         }
 
-        const updatedList = currentList.map(item => item === originalValue ? trimmedNewValue : item);
+        const updatedList = currentList.map(item => item === originalValue.toUpperCase() ? trimmedNewValue : item);
 
         await setWorkspaceSettings({
             ...workspaceSettings,
             [key]: updatedList
         });
 
-        // Update all existing products that use the old value
         let changed = false;
         const updatedProducts = products.map(product => {
-            if (product[productKey] === originalValue) {
+            if ((product[productKey] || '').toUpperCase() === originalValue.toUpperCase()) {
                 changed = true;
                 return { ...product, [productKey]: trimmedNewValue };
             }
@@ -111,7 +137,7 @@ export const ProductMetadataManager: React.FC = () => {
         });
 
         if (changed) {
-            setProducts(updatedProducts);
+            await setProducts(updatedProducts);
         }
 
         setEditingItem(null);
@@ -120,26 +146,63 @@ export const ProductMetadataManager: React.FC = () => {
     const handleRemove = async (type: 'family' | 'category' | 'condition', value: string) => {
         if (!workspaceSettings) return;
 
-        if (!window.confirm(`¿Estás seguro de que quieres eliminar "${value}"?`)) return;
+        const productKey = type === 'family' ? 'family' : (type === 'category' ? 'category' : 'product_state');
+        const affectedProducts = products.filter(p => (p[productKey] || '').toUpperCase() === value.toUpperCase());
 
+        if (affectedProducts.length > 0) {
+            setDeletingItem({ type, value, productsCount: affectedProducts.length });
+            return;
+        }
+
+        await executeDelete(type, value);
+    };
+
+    const executeDelete = async (type: 'family' | 'category' | 'condition', value: string, targetValue?: string) => {
+        if (!workspaceSettings) return;
+
+        let key: keyof WorkspaceSettings;
         let currentList: string[] = [];
-        let key: keyof typeof workspaceSettings;
+        let productKey: 'family' | 'category' | 'product_state';
 
         if (type === 'family') {
-            currentList = families;
             key = 'families';
+            currentList = families;
+            productKey = 'family';
         } else if (type === 'category') {
-            currentList = categories;
             key = 'categories';
+            currentList = categories;
+            productKey = 'category';
         } else {
-            currentList = conditions;
             key = 'product_conditions';
+            currentList = conditions;
+            productKey = 'product_state';
         }
 
         await setWorkspaceSettings({
             ...workspaceSettings,
-            [key]: currentList.filter(item => item !== value)
+            [key]: currentList.filter(item => item.toUpperCase() !== value.toUpperCase())
         });
+
+        if (targetValue) {
+            const updatedProducts = products.map(product => {
+                if ((product[productKey] || '').toUpperCase() === value.toUpperCase()) {
+                    return { ...product, [productKey]: targetValue };
+                }
+                return product;
+            });
+            await setProducts(updatedProducts);
+        } else {
+            const updatedProducts = products.map(product => {
+                if ((product[productKey] || '').toUpperCase() === value.toUpperCase()) {
+                    return { ...product, [productKey]: '' };
+                }
+                return product;
+            });
+            await setProducts(updatedProducts);
+        }
+
+        setDeletingItem(null);
+        setMigrationTarget('');
     };
 
     const renderSection = (title: string, list: string[], addNewValue: string, setAddNewValue: (v: string) => void, type: 'family' | 'category' | 'condition') => (
@@ -150,7 +213,7 @@ export const ProductMetadataManager: React.FC = () => {
                     value={addNewValue}
                     onChange={e => setAddNewValue(e.target.value)}
                     placeholder={`Nueva ${title.toLowerCase()}...`}
-                    className="flex-1 p-2 border rounded-md dark:bg-gray-700"
+                    className="flex-1 p-2 border rounded-md dark:bg-gray-700 uppercase"
                     onKeyDown={(e) => e.key === 'Enter' && handleAdd(type)}
                 />
                 <button
@@ -162,8 +225,8 @@ export const ProductMetadataManager: React.FC = () => {
             </div>
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {list.length > 0 ? (
-                    list.sort().map(item => {
-                        const isEditing = editingItem?.type === type && editingItem?.originalValue === item;
+                    [...new Set(list.map(i => i.toUpperCase()))].sort().map(item => {
+                        const isEditing = editingItem?.type === type && editingItem?.originalValue.toUpperCase() === item;
 
                         return (
                             <div key={item} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700">
@@ -173,8 +236,8 @@ export const ProductMetadataManager: React.FC = () => {
                                             autoFocus
                                             type="text"
                                             value={editingItem.newValue}
-                                            onChange={e => setEditingItem({ ...editingItem, newValue: e.target.value })}
-                                            className="flex-1 p-1 text-sm border rounded dark:bg-gray-700"
+                                            onChange={e => setEditingItem({ ...editingItem, newValue: e.target.value.toUpperCase() })}
+                                            className="flex-1 p-1 text-sm border rounded dark:bg-gray-700 uppercase"
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') handleEditSave();
                                                 if (e.key === 'Escape') setEditingItem(null);
@@ -189,7 +252,7 @@ export const ProductMetadataManager: React.FC = () => {
                                     </div>
                                 ) : (
                                     <>
-                                        <span className="text-sm">{item}</span>
+                                        <span className="text-sm font-medium">{item}</span>
                                         <div className="flex items-center space-x-1">
                                             <button
                                                 onClick={() => setEditingItem({ type, originalValue: item, newValue: item })}
@@ -228,6 +291,73 @@ export const ProductMetadataManager: React.FC = () => {
                 {renderSection('Categorías', categories, newCategory, setNewCategory, 'category')}
                 {renderSection('Condiciones', conditions, newCondition, setNewCondition, 'condition')}
             </div>
+
+            {deletingItem && (
+                <Modal 
+                    isOpen={true} 
+                    onClose={() => setDeletingItem(null)} 
+                    title="Confirmar eliminación"
+                >
+                    <div className="space-y-4">
+                        <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-md text-amber-800 dark:text-amber-200 text-sm">
+                            <p className="font-bold mb-1">AVISO: Elemento en uso</p>
+                            <p>El valor <span className="font-bold underline">"{deletingItem.value}"</span> está asignado actualmente a <span className="font-bold">{deletingItem.productsCount}</span> productos.</p>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Mover todos a un nuevo valor:</label>
+                                <select 
+                                    className="w-full p-2 border rounded-md dark:bg-gray-700"
+                                    value={migrationTarget}
+                                    onChange={e => setMigrationTarget(e.target.value)}
+                                >
+                                    <option value="">-- Seleccionar nuevo destino --</option>
+                                    {(deletingItem.type === 'family' ? families : (deletingItem.type === 'category' ? categories : conditions))
+                                        .filter(item => item.toUpperCase() !== deletingItem.value.toUpperCase())
+                                        .map(item => (
+                                            <option key={item} value={item}>{item.toUpperCase()}</option>
+                                        ))
+                                    }
+                                </select>
+                            </div>
+
+                            <div className="flex flex-col space-y-2 pt-2">
+                                <button
+                                    disabled={!migrationTarget}
+                                    onClick={() => executeDelete(deletingItem.type, deletingItem.value, migrationTarget)}
+                                    className={`w-full py-2 px-4 rounded-md text-white font-medium ${migrationTarget ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-400 cursor-not-allowed'}`}
+                                >
+                                    Migrar todos a "{migrationTarget.toUpperCase()}" y eliminar
+                                </button>
+                                
+                                <div className="relative">
+                                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                        <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                                    </div>
+                                    <div className="relative flex justify-center">
+                                        <span className="bg-white dark:bg-gray-800 px-2 text-xs text-gray-500 uppercase">o</span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => executeDelete(deletingItem.type, deletingItem.value)}
+                                    className="w-full py-2 px-4 border border-red-500 text-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 font-medium"
+                                >
+                                    Eliminar y dejar productos sin {deletingItem.type === 'family' ? 'familia' : (deletingItem.type === 'category' ? 'categoría' : 'condición')} (para editar uno a uno)
+                                </button>
+                                
+                                <button
+                                    onClick={() => setDeletingItem(null)}
+                                    className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 };
