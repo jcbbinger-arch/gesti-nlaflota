@@ -8,7 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { User, Profile, SUPER_USER_EMAILS } from '../types';
@@ -47,83 +47,121 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser, selectedProfile, setSelectedProfile]);
 
+  // Helper function to handle user creation/matching logic
+  const resolveOrSyncUser = async (firebaseUser: any) => {
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    const userDoc = await getDoc(userDocRef);
+    const userEmail = firebaseUser.email || '';
+    const isSuperUser = SUPER_USER_EMAILS.includes(userEmail);
+
+    if (userDoc.exists()) {
+      let userData = userDoc.data() as User;
+      let needsUpdate = false;
+      // Migration for users created before the change
+      if (userData.profiles.includes(Profile.STUDENT) && !userData.classroom_id && !isSuperUser) {
+          userData = {
+            ...userData,
+            profiles: [Profile.TEACHER],
+            activity_status: 'De Baja'
+          };
+          needsUpdate = true;
+      }
+      // Ensure workspaceId exists
+      if (!userData.workspaceId) {
+        userData.workspaceId = firebaseUser.uid;
+        needsUpdate = true;
+      }
+      // Ensure super users have admin role
+      if (isSuperUser && userData.role !== 'admin') {
+        userData.role = 'admin';
+        needsUpdate = true;
+      }
+      // Ensure super users are active
+      if (isSuperUser && userData.activity_status !== 'Activo') {
+        userData.activity_status = 'Activo';
+        needsUpdate = true;
+      }
+      // Ensure super users have all profiles enabled
+      if (isSuperUser) {
+        console.log('AuthContext - Super user detected, ensuring all profiles are enabled:', userData.email);
+        const allProfiles = Object.values(Profile);
+        if (!userData.access_profiles) {
+          userData.access_profiles = {};
+          needsUpdate = true;
+        }
+        allProfiles.forEach(p => {
+          if (userData.access_profiles && !userData.access_profiles[p]) {
+            userData.access_profiles[p] = true;
+            needsUpdate = true;
+          }
+        });
+      }
+      if (needsUpdate) {
+        await setDoc(userDocRef, userData);
+      }
+      return userData;
+    } else {
+      // Create user if it doesn't exist, BUT first check if admin pre-created it based on email
+      const usersQuery = query(collection(db, 'users'), where('email', '==', userEmail));
+      const querySnapshot = await getDocs(usersQuery);
+
+      if (!querySnapshot.empty) {
+        // Find if any of the pre-created documents has a temporary ID (like 'user-171...')
+        const oldUserDoc = querySnapshot.docs.find(d => d.id !== firebaseUser.uid);
+        
+        if (oldUserDoc) {
+          console.log(`Pre-registered user found for email ${userEmail}. Migrating to true UID...`);
+          const oldUserData = oldUserDoc.data() as User;
+          
+          const newUser: User = {
+            ...oldUserData,
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || oldUserData.name || userEmail.split('@')[0],
+            avatar: firebaseUser.photoURL || oldUserData.avatar,
+            // DO NOT change workspaceId if already set, keep what admin entered,
+            // otherwise set to their own uid (which may leave them disconnected if admin didn't set a workspaceId... 
+            // Wait, actually everyone gets a workspaceId = user_id when logging in alone, 
+            // but if admin created them, workspaceId defaults to the admin's workspace if admin was building it...
+            // Let's just keep the oldUserData.workspaceId or default to their uid.
+            workspaceId: oldUserData.workspaceId || firebaseUser.uid,
+          };
+          
+          await setDoc(userDocRef, newUser);
+          await deleteDoc(doc(db, 'users', oldUserDoc.id));
+          return newUser;
+        }
+      }
+
+      // No pre-created user found, standard creation
+      const newUser: User = {
+        id: firebaseUser.uid,
+        email: userEmail,
+        name: firebaseUser.displayName || userEmail.split('@')[0],
+        profiles: isSuperUser 
+          ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] 
+          : [Profile.TEACHER], // Default to Teacher so they appear in TeacherManager
+        role: isSuperUser ? 'admin' : 'user',
+        workspaceId: firebaseUser.uid, // Set workspaceId to UID by default
+        activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive
+        location_status: 'En el centro',
+        avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
+        access_profiles: isSuperUser ? Object.values(Profile).reduce((acc, p) => ({ ...acc, [p]: true }), {}) : {
+          [Profile.TEACHER]: false
+        }
+      };
+      await setDoc(userDocRef, newUser);
+      return newUser;
+    }
+  };
+
   useEffect(() => {
     // Firebase Auth Listener
     const unsubscribeFirebase = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('Firebase Auth state changed:', firebaseUser?.email);
       if (firebaseUser) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            let userData = userDoc.data() as User;
-            let needsUpdate = false;
-            // Migration for users created before the change
-            if (userData.profiles.includes(Profile.STUDENT) && !userData.classroom_id && !SUPER_USER_EMAILS.includes(userData.email)) {
-               userData = {
-                 ...userData,
-                 profiles: [Profile.TEACHER],
-                 activity_status: 'De Baja'
-               };
-               needsUpdate = true;
-            }
-            // Ensure workspaceId exists
-            if (!userData.workspaceId) {
-              userData.workspaceId = firebaseUser.uid;
-              needsUpdate = true;
-            }
-            // Ensure super users have admin role
-            const isSuperUser = SUPER_USER_EMAILS.includes(userData.email);
-            if (isSuperUser && userData.role !== 'admin') {
-              userData.role = 'admin';
-              needsUpdate = true;
-            }
-            // Ensure super users are active
-            if (isSuperUser && userData.activity_status !== 'Activo') {
-              userData.activity_status = 'Activo';
-              needsUpdate = true;
-            }
-            // Ensure super users have all profiles enabled
-            if (isSuperUser) {
-              console.log('AuthContext - Super user detected, ensuring all profiles are enabled:', userData.email);
-              const allProfiles = Object.values(Profile);
-              if (!userData.access_profiles) {
-                userData.access_profiles = {};
-                needsUpdate = true;
-              }
-              allProfiles.forEach(p => {
-                if (userData.access_profiles && !userData.access_profiles[p]) {
-                  userData.access_profiles[p] = true;
-                  needsUpdate = true;
-                }
-              });
-            }
-            if (needsUpdate) {
-              await setDoc(doc(db, 'users', firebaseUser.uid), userData);
-            }
-            setCurrentUser(userData);
-          } else {
-            // Create user if it doesn't exist
-            const userEmail = firebaseUser.email || '';
-            const isSuperUser = SUPER_USER_EMAILS.includes(userEmail);
-            const newUser: User = {
-              id: firebaseUser.uid,
-              email: userEmail,
-              name: firebaseUser.displayName || userEmail.split('@')[0],
-              profiles: isSuperUser 
-                ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] 
-                : [Profile.TEACHER], // Default to Teacher so they appear in TeacherManager
-              role: isSuperUser ? 'admin' : 'user',
-              workspaceId: firebaseUser.uid, // Set workspaceId to UID by default
-              activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive
-              location_status: 'En el centro',
-              avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
-              access_profiles: isSuperUser ? Object.values(Profile).reduce((acc, p) => ({ ...acc, [p]: true }), {}) : {
-                [Profile.TEACHER]: false
-              }
-            };
-            await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-            setCurrentUser(newUser);
-          }
+          const syncedUser = await resolveOrSyncUser(firebaseUser);
+          setCurrentUser(syncedUser);
         } catch (err) {
           console.error('Firebase sync error:', err);
         }
@@ -147,73 +185,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       provider.setCustomParameters({ prompt: 'select_account' });
       
       const result = await signInWithPopup(auth, provider);
-      
-      const userDocRef = doc(db, 'users', result.user.uid);
-      const userDoc = await getDoc(userDocRef);
-      
-      if (!userDoc.exists()) {
-        const userEmail = result.user.email || '';
-        const isSuperUser = SUPER_USER_EMAILS.includes(userEmail);
-        const newUser: User = {
-          id: result.user.uid,
-          email: userEmail,
-          name: result.user.displayName || userEmail.split('@')[0],
-          profiles: isSuperUser 
-            ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] 
-            : [Profile.TEACHER], // Default to Teacher so they appear in TeacherManager
-          role: isSuperUser ? 'admin' : 'user',
-          workspaceId: result.user.uid,
-          activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive
-          location_status: 'En el centro',
-          avatar: result.user.photoURL || `https://i.pravatar.cc/150?u=${result.user.uid}`,
-          access_profiles: isSuperUser ? Object.values(Profile).reduce((acc, p) => ({ ...acc, [p]: true }), {}) : {
-            [Profile.TEACHER]: false
-          }
-        };
-        await setDoc(userDocRef, newUser);
-        setCurrentUser(newUser);
-      } else {
-        let userData = userDoc.data() as User;
-        // Migration for users created before the change
-        if (userData.profiles.includes(Profile.STUDENT) && !userData.classroom_id && !SUPER_USER_EMAILS.includes(userData.email)) {
-           userData = {
-             ...userData,
-             profiles: [Profile.TEACHER],
-             activity_status: 'De Baja'
-           };
-           await setDoc(userDocRef, userData);
-        }
-        // Ensure super users have admin role and are active
-        const isSuperUser = SUPER_USER_EMAILS.includes(userData.email);
-        let needsUpdate = false;
-        if (isSuperUser && userData.role !== 'admin') {
-          userData.role = 'admin';
-          needsUpdate = true;
-        }
-        if (isSuperUser && userData.activity_status !== 'Activo') {
-          userData.activity_status = 'Activo';
-          needsUpdate = true;
-        }
-        // Ensure super users have all profiles enabled
-        if (isSuperUser) {
-          console.log('AuthContext - Super user detected in loginWithGoogle, ensuring all profiles are enabled:', userData.email);
-          const allProfiles = Object.values(Profile);
-          if (!userData.access_profiles) {
-            userData.access_profiles = {};
-            needsUpdate = true;
-          }
-          allProfiles.forEach(p => {
-            if (userData.access_profiles && !userData.access_profiles[p]) {
-              userData.access_profiles[p] = true;
-              needsUpdate = true;
-            }
-          });
-        }
-        if (needsUpdate) {
-          await setDoc(userDocRef, userData);
-        }
-        setCurrentUser(userData);
-      }
+      // The onAuthStateChanged listener will handle syncing
+      // but to be safe we can run resolveOrSyncUser here to immediately set it
+      // if someone needs the promise to await the completed login state immediately.
+      const syncedUser = await resolveOrSyncUser(result.user);
+      setCurrentUser(syncedUser);
       
       return null;
     } catch (error: any) {
