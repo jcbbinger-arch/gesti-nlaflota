@@ -9,7 +9,8 @@ interface AvatarProps {
 }
 
 export const Avatar: React.FC<AvatarProps> = ({ user, className = '' }) => {
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string) => {
+    if (!name) return '?';
     const names = name.split(' ');
     if (names.length > 1) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
@@ -30,8 +31,9 @@ export const Avatar: React.FC<AvatarProps> = ({ user, className = '' }) => {
       {user.avatar ? (
         <img
           src={user.avatar}
-          alt={user.name}
+          alt={user.name || 'User'}
           className="w-full h-full rounded-full object-cover"
+          referrerPolicy="no-referrer"
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center rounded-full bg-primary-500 text-white font-bold">
