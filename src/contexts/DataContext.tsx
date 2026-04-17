@@ -156,7 +156,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const unsubscribes = collections.map(col => {
             return onSnapshot(collection(db, col.name), (snapshot) => {
-                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                // Sanitize users
+                if (col.name === 'users') {
+                    data = data.map((d: any) => ({
+                        ...d,
+                        profiles: Array.isArray(d.profiles) ? d.profiles : [],
+                        access_profiles: d.access_profiles || {}
+                    }));
+                }
+
                 col.setter(data);
             }, (error) => {
                 console.error(`Error listening to ${col.name}:`, error);

@@ -57,6 +57,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (userDoc.exists()) {
       let userData = userDoc.data() as User;
       let needsUpdate = false;
+
+      // Sanitize fields
+      if (!Array.isArray(userData.profiles)) {
+         userData.profiles = isSuperUser ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] : [Profile.TEACHER];
+         needsUpdate = true;
+      }
+
       // Migration for users created before the change
       if (userData.profiles.includes(Profile.STUDENT) && !userData.classroom_id && !isSuperUser) {
           userData = {
