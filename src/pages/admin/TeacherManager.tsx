@@ -16,7 +16,6 @@ export const TeacherManager: React.FC = () => {
 
     const staff = useMemo(() => users.filter(u => 
         u.profiles.includes(Profile.TEACHER) && 
-        !u.profiles.includes(Profile.ALMACEN) && 
         !SUPER_USER_EMAILS.includes(u.email)
     ), [users]);
 
@@ -37,6 +36,7 @@ export const TeacherManager: React.FC = () => {
                         <th className="px-6 py-3">Email</th>
                         <th className="px-6 py-3">Acceso Perfiles</th>
                         <th className="px-6 py-3">Estado</th>
+                        <th className="px-6 py-3">Conexión</th>
                         <th className="px-6 py-3">Acciones</th>
                     </tr>
                 </thead>
@@ -66,6 +66,14 @@ export const TeacherManager: React.FC = () => {
                                     className={`px-2 py-1 rounded-full text-xs font-semibold ${user.activity_status === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
                                 >
                                     {user.activity_status}
+                                </button>
+                            </td>
+                            <td className="px-6 py-4">
+                                <button 
+                                    onClick={() => handleToggleLocation(user)}
+                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${user.location_status === 'En el centro' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}
+                                >
+                                    {user.location_status === 'En el centro' ? 'Online' : 'Offline'}
                                 </button>
                             </td>
                             <td className="px-6 py-4 text-sm font-medium space-x-4 no-print">
@@ -127,8 +135,12 @@ export const TeacherManager: React.FC = () => {
     
     const handleToggleStatus = (user: User) => {
         const newStatus = user.activity_status === 'Activo' ? 'De Baja' : 'Activo';
-        const newLocationStatus = newStatus === 'Activo' ? 'En el centro' : 'Fuera del centro';
-        setUsers(users.map(u => u.id === user.id ? { ...u, activity_status: newStatus, location_status: newLocationStatus } : u));
+        setUsers(users.map(u => u.id === user.id ? { ...u, activity_status: newStatus } : u));
+    };
+
+    const handleToggleLocation = (user: User) => {
+        const newLocationStatus = user.location_status === 'En el centro' ? 'Fuera del centro' : 'En el centro';
+        setUsers(users.map(u => u.id === user.id ? { ...u, location_status: newLocationStatus } : u));
     };
 
     const handleToggleProfileAccess = (user: User, profile: Profile) => {
