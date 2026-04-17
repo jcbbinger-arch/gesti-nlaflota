@@ -20,13 +20,37 @@ export const ProductMetadataManager: React.FC = () => {
     const [deletingItem, setDeletingItem] = useState<{ type: 'family' | 'category'| 'condition', value: string, productsCount: number } | null>(null);
     const [migrationTarget, setMigrationTarget] = useState('');
 
-    // Initial sync of predefined values to workspaceSettings if empty
+    // Initial sync of predefined values to workspaceSettings if empty and permanent uppercase migration
     useEffect(() => {
         if (!workspaceSettings) return;
 
         let needsUpdate = false;
         const newSettings = { ...workspaceSettings };
 
+        // Force uppercase on existing values for consistency
+        if (newSettings.families) {
+            const uppercased = newSettings.families.map(f => f.toUpperCase());
+            if (JSON.stringify(uppercased) !== JSON.stringify(newSettings.families)) {
+                newSettings.families = uppercased;
+                needsUpdate = true;
+            }
+        }
+        if (newSettings.categories) {
+            const uppercased = newSettings.categories.map(c => c.toUpperCase());
+            if (JSON.stringify(uppercased) !== JSON.stringify(newSettings.categories)) {
+                newSettings.categories = uppercased;
+                needsUpdate = true;
+            }
+        }
+        if (newSettings.product_conditions) {
+            const uppercased = newSettings.product_conditions.map(pc => pc.toUpperCase());
+            if (JSON.stringify(uppercased) !== JSON.stringify(newSettings.product_conditions)) {
+                newSettings.product_conditions = uppercased;
+                needsUpdate = true;
+            }
+        }
+
+        // Add defaults if empty
         if (!newSettings.families || newSettings.families.length === 0) {
             newSettings.families = [...PREDEFINED_FAMILIES];
             needsUpdate = true;
@@ -205,31 +229,70 @@ export const ProductMetadataManager: React.FC = () => {
         setMigrationTarget('');
     };
 
+    const handleLoadPredefined = async (type: 'family' | 'category' | 'condition') => {
+        if (!workspaceSettings) return;
+        
+        let predefined: string[] = [];
+        let key: keyof WorkspaceSettings;
+        
+        if (type === 'family') {
+            predefined = PREDEFINED_FAMILIES;
+            key = 'families';
+        } else if (type === 'category') {
+            predefined = PREDEFINED_CATEGORIES;
+            key = 'categories';
+        } else {
+            predefined = PRODUCT_STATES;
+            key = 'product_conditions';
+        }
+
+        const currentList = workspaceSettings[key] as string[] || [];
+        const mergedList = [...new Set([...currentList, ...predefined])].sort();
+
+        await setWorkspaceSettings({
+            ...workspaceSettings,
+            [key]: mergedList
+        });
+    };
+
     const renderSection = (title: string, list: string[], addNewValue: string, setAddNewValue: (v: string) => void, type: 'family' | 'category' | 'condition') => (
-        <Card title={title} className="h-full">
-            <div className="flex space-x-2 mb-4">
-                <input
-                    type="text"
-                    value={addNewValue}
-                    onChange={e => setAddNewValue(e.target.value)}
-                    placeholder={`Nueva ${title.toLowerCase()}...`}
-                    className="flex-1 p-2 border rounded-md dark:bg-gray-700 uppercase"
-                    onKeyDown={(e) => e.key === 'Enter' && handleAdd(type)}
-                />
-                <button
-                    onClick={() => handleAdd(type)}
-                    className="bg-primary-600 text-white p-2 rounded-md hover:bg-primary-700"
-                >
-                    <PlusIcon className="w-5 h-5" />
-                </button>
+        <Card className="h-[600px] flex flex-col shadow-sm border-gray-200">
+            <div className="p-4 border-b dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">{title}</h3>
+                    <button 
+                        onClick={() => handleLoadPredefined(type)}
+                        className="text-[10px] uppercase font-bold text-primary-600 hover:text-primary-700 bg-primary-50 dark:bg-primary-900/20 px-2 py-1 rounded"
+                        title="Cargar valores predefinidos"
+                    >
+                        Cargar Predef.
+                    </button>
+                </div>
+                <div className="flex space-x-2">
+                    <input
+                        type="text"
+                        value={addNewValue}
+                        onChange={e => setAddNewValue(e.target.value)}
+                        placeholder={`NUEVA ${title.toUpperCase()}...`}
+                        className="flex-1 p-2 border rounded-md dark:bg-gray-700 uppercase text-[11px] placeholder:text-gray-400 font-medium"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAdd(type)}
+                    />
+                    <button
+                        onClick={() => handleAdd(type)}
+                        className="bg-primary-600 text-white p-2 rounded-md hover:bg-primary-700 transition-colors"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                 {list.length > 0 ? (
                     [...new Set(list.map(i => i.toUpperCase()))].sort().map(item => {
                         const isEditing = editingItem?.type === type && editingItem?.originalValue.toUpperCase() === item;
 
                         return (
-                            <div key={item} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700">
+                            <div key={item} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors group">
                                 {isEditing ? (
                                     <div className="flex flex-1 space-x-2 items-center">
                                         <input
@@ -252,8 +315,8 @@ export const ProductMetadataManager: React.FC = () => {
                                     </div>
                                 ) : (
                                     <>
-                                        <span className="text-sm font-medium">{item}</span>
-                                        <div className="flex items-center space-x-1">
+                                        <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 tracking-wider truncate mr-2">{item}</span>
+                                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => setEditingItem({ type, originalValue: item, newValue: item })}
                                                 className="text-primary-600 hover:text-primary-800 p-1"
@@ -275,7 +338,9 @@ export const ProductMetadataManager: React.FC = () => {
                         );
                     })
                 ) : (
-                    <p className="text-gray-500 text-sm italic">No hay elementos creados.</p>
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400 italic">
+                        <p className="text-xs">No hay elementos creados.</p>
+                    </div>
                 )}
             </div>
         </Card>
