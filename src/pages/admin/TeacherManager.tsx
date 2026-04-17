@@ -70,7 +70,7 @@ export const TeacherManager: React.FC = () => {
                             </td>
                             <td className="px-6 py-4">
                                 <span 
-                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${user.location_status === 'En el centro' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}
+                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${user.location_status === 'En el centro' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}
                                     title={user.location_status === 'En el centro' ? 'El usuario está conectado a la aplicación' : 'El usuario está desconectado'}
                                 >
                                     {user.location_status === 'En el centro' ? 'Online' : 'Offline'}
