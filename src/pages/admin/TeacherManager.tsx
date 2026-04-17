@@ -69,12 +69,12 @@ export const TeacherManager: React.FC = () => {
                                 </button>
                             </td>
                             <td className="px-6 py-4">
-                                <button 
-                                    onClick={() => handleToggleLocation(user)}
+                                <span 
                                     className={`px-2 py-1 rounded-full text-xs font-semibold ${user.location_status === 'En el centro' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}
+                                    title={user.location_status === 'En el centro' ? 'El usuario está conectado a la aplicación' : 'El usuario está desconectado'}
                                 >
                                     {user.location_status === 'En el centro' ? 'Online' : 'Offline'}
-                                </button>
+                                </span>
                             </td>
                             <td className="px-6 py-4 text-sm font-medium space-x-4 no-print">
                                 <button onClick={() => handleOpenFormModal(user)} className="text-blue-600 dark:text-blue-500 hover:underline">Ver/Editar</button>
@@ -136,11 +136,6 @@ export const TeacherManager: React.FC = () => {
     const handleToggleStatus = (user: User) => {
         const newStatus = user.activity_status === 'Activo' ? 'De Baja' : 'Activo';
         setUsers(users.map(u => u.id === user.id ? { ...u, activity_status: newStatus } : u));
-    };
-
-    const handleToggleLocation = (user: User) => {
-        const newLocationStatus = user.location_status === 'En el centro' ? 'Fuera del centro' : 'En el centro';
-        setUsers(users.map(u => u.id === user.id ? { ...u, location_status: newLocationStatus } : u));
     };
 
     const handleToggleProfileAccess = (user: User, profile: Profile) => {
