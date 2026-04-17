@@ -109,6 +109,7 @@ export const Sidebar: React.FC = () => {
   const { companyInfo } = useCompany();
   const { creatorInfo } = useCreator();
   const { classrooms } = useData();
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
   
   let navItems: { name: string; href: string; icon: React.ReactNode; }[] = [];
 
@@ -158,50 +159,96 @@ export const Sidebar: React.FC = () => {
       navItems = [];
   }
 
-  const navLinkClasses = "flex items-center px-4 py-2.5 text-gray-300 hover:bg-primary-700 hover:text-white rounded-md transition-colors duration-200";
+  const navLinkClasses = "flex items-center px-4 py-2.5 text-gray-300 hover:bg-primary-700 hover:text-white rounded-md transition-all duration-200 group relative";
   const activeNavLinkClasses = "bg-primary-700 text-white";
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200 flex flex-col shrink-0">
-      <div className="h-24 flex items-center justify-center p-4 border-b border-gray-700/50">
-          <img src={companyInfo.logo} alt="Logo de la Empresa" className="h-12 w-auto" />
-      </div>
-      <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.name}
-            to={item.href}
-            // Use startsWith for nested routes, except for dashboard
-            className={({ isActive, isPending }) => {
-                const isDashboard = item.href.endsWith('dashboard');
-                const checkIsActive = isDashboard ? isActive : window.location.hash.startsWith(`#${item.href}`);
-                return checkIsActive ? `${navLinkClasses} ${activeNavLinkClasses}` : navLinkClasses;
-            }}
-          >
-            <span className="mr-3 w-6 h-6 shrink-0">{item.icon}</span>
-            <span className="truncate">{item.name}</span>
-          </NavLink>
-        ))}
-        {currentUser && currentUser.profiles.length > 1 && (
-            <NavLink
-                to="/select-profile"
-                className={navLinkClasses}
-            >
-                <span className="mr-3 w-6 h-6 shrink-0"><UsersIcon /></span>
-                <span className="truncate">Cambiar Perfil</span>
-            </NavLink>
-        )}
-      </nav>
-      <div className="px-4 py-4 border-t border-gray-700/50 text-center text-xs text-gray-500 flex flex-col items-center space-y-2">
-        <img src={creatorInfo.logo} alt="Logo del Creador" className="h-10 w-10 rounded-full object-cover" />
-        <p className="font-semibold text-gray-300 text-sm">{creatorInfo.app_name || 'Manager Pro'}</p>
-        <div>
-            <p>{creatorInfo.copyright}</p>
-            <a href={creatorInfo.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary-400">
-                {creatorInfo.name}
-            </a>
+    <>
+      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200 hidden md:flex flex-col shrink-0 transition-all duration-300 relative group/sidebar`}>
+        {/* Collapse Toggle */}
+        <button 
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="absolute -right-3 top-28 bg-primary-600 text-white p-1 rounded-full shadow-lg opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 z-50 border-2 border-white dark:border-gray-800"
+        >
+            <svg className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="9 5l7 7-7 7" />
+            </svg>
+        </button>
+
+        <div className={`h-24 flex items-center ${isCollapsed ? 'justify-center' : 'justify-center p-4'} border-b border-gray-700/50 transition-all duration-300 overflow-hidden`}>
+            <img src={companyInfo.logo} alt="Logo" className={`${isCollapsed ? 'h-8' : 'h-12'} w-auto transition-all duration-300`} />
         </div>
-      </div>
-    </aside>
+        
+        <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto no-scrollbar">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.name}
+              to={item.href}
+              className={({ isActive }) => {
+                  const isDashboard = item.href.endsWith('dashboard');
+                  const checkIsActive = isDashboard ? isActive : window.location.hash.startsWith(`#${item.href}`);
+                  return checkIsActive ? `${navLinkClasses} ${activeNavLinkClasses}` : navLinkClasses;
+              }}
+            >
+              <span className={`${isCollapsed ? 'mx-auto' : 'mr-3'} w-6 h-6 shrink-0`}>{item.icon}</span>
+              {!isCollapsed && <span className="truncate">{item.name}</span>}
+              
+              {/* Tooltip for collapsed state */}
+              {isCollapsed && (
+                <div className="absolute left-full ml-4 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 pointer-events-none shadow-xl border border-gray-700">
+                    {item.name}
+                </div>
+              )}
+            </NavLink>
+          ))}
+          {currentUser && currentUser.profiles.length > 1 && (
+              <NavLink
+                  to="/select-profile"
+                  className={navLinkClasses}
+              >
+                  <span className={`${isCollapsed ? 'mx-auto' : 'mr-3'} w-6 h-6 shrink-0`}><UsersIcon /></span>
+                  {!isCollapsed && <span className="truncate">Cambiar Perfil</span>}
+                  {isCollapsed && (
+                    <div className="absolute left-full ml-4 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 pointer-events-none shadow-xl border border-gray-700">
+                        Cambiar Perfil
+                    </div>
+                  )}
+              </NavLink>
+          )}
+        </nav>
+
+        {!isCollapsed && (
+            <div className="px-4 py-4 border-t border-gray-700/50 text-center text-xs text-gray-500 flex flex-col items-center space-y-2">
+                <img src={creatorInfo.logo} alt="Logo Creador" className="h-10 w-10 rounded-full object-cover" />
+                <p className="font-semibold text-gray-200 text-sm">{creatorInfo.app_name || 'Manager Pro'}</p>
+                <div className="opacity-60 hover:opacity-100 transition-opacity">
+                    <p>{creatorInfo.copyright}</p>
+                    <a href={creatorInfo.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary-400">
+                        {creatorInfo.name}
+                    </a>
+                </div>
+            </div>
+        )}
+      </aside>
+
+      {/* Mobile Bottom Navigation - Robust UX for quick access */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-gray-900 border-t border-gray-800 flex items-center justify-around px-2 z-[60] shadow-2xl">
+        <MobileNavLink to={`/${selectedProfile}/dashboard`} icon={<HouseIcon />} label="Inicio" />
+        {selectedProfile === Profile.TEACHER && <MobileNavLink to="/teacher/order-portal" icon={<ClipboardDocumentListIcon />} label="Pedidos" />}
+        {selectedProfile === Profile.ALMACEN && <MobileNavLink to="/almacen/process-orders" icon={<PrinterIcon />} label="Procesar" />}
+        <MobileNavLink to={`/${selectedProfile}/messaging`} icon={<MessageIcon />} label="Mensajes" />
+        <MobileNavLink to={`/${selectedProfile}/profile`} icon={<ProfileIcon />} label="Perfil" />
+      </nav>
+    </>
   );
 };
+
+const MobileNavLink: React.FC<{ to: string; icon: React.ReactNode; label: string }> = ({ to, icon, label }) => (
+    <NavLink 
+        to={to} 
+        className={({ isActive }) => `flex flex-col items-center justify-center space-y-1 transition-colors ${isActive ? 'text-primary-400' : 'text-gray-400'}`}
+    >
+        <span className="w-6 h-6">{icon}</span>
+        <span className="text-[10px] uppercase font-bold tracking-tighter">{label}</span>
+    </NavLink>
+);
