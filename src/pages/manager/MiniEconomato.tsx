@@ -3,44 +3,10 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { useAuth } from '../../contexts/AuthContext';
-import { Product, User, Profile, Order, StockItem, AppEvent, OrderItem } from '../../types';
-import { DownloadIcon, PlusIcon, PencilIcon, ScannerIcon } from '../../components/icons';
+import { Product, User, Profile, Order, StockItem, OrderItem } from '../../types';
+import { DownloadIcon, PlusIcon, PencilIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
 import { Link } from 'react-router-dom';
-
-const ScanMockModal: React.FC<{onScan: (productId: string) => void; onClose: () => void; products: Product[]}> = ({ onScan, onClose, products }) => {
-    return (
-        <Modal isOpen={true} onClose={onClose} title="Simular Escaneo">
-            <div className="space-y-4">
-                <div className="bg-gray-100 dark:bg-gray-800 p-8 rounded-lg border-2 border-dashed border-primary-500 flex flex-col items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-500/20 to-transparent animate-scan-line pointer-events-none" />
-                    <ScannerIcon className="w-16 h-16 text-primary-500 mb-4 animate-pulse" />
-                    <p className="text-sm text-center text-gray-500 font-medium">Detector listo. Escanea el producto...</p>
-                </div>
-                
-                <div className="pt-2">
-                    <p className="text-[10px] font-bold uppercase text-gray-400 mb-2">Simular detección de:</p>
-                    <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
-                        {products.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                            <button 
-                                key={p.id} 
-                                onClick={() => onScan(p.id)}
-                                className="text-left p-2 text-xs hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded border dark:border-gray-700 transition-colors flex justify-between items-center group"
-                            >
-                                <span className="font-medium">{p.name}</span>
-                                <span className="text-[10px] text-gray-400 group-hover:text-primary-500">ID: {p.id.slice(0, 4)}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                
-                <div className="flex justify-end">
-                    <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-700 underline">Cerrar simulador</button>
-                </div>
-            </div>
-        </Modal>
-    );
-};
 
 const AssignExpenseModal: React.FC<{product: Product; onClose: () => void; onAssign: (teacherId: string, quantity: number) => void; teachers: User[]}> = ({ product, onClose, onAssign, teachers }) => {
     const [teacherId, setTeacherId] = useState('');
@@ -133,7 +99,6 @@ const EditStockModal: React.FC<{ item: StockItem, productName: string, onClose: 
     );
 };
 
-
 export const MiniEconomato: React.FC = () => {
     const { mini_economato_stock, setMiniEconomatoStock, products, users, orders, setOrders, events, stock_receptions, setStockReceptions, suppliers } = useData();
     const { currentUser } = useAuth();
@@ -142,7 +107,6 @@ export const MiniEconomato: React.FC = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isReceptionModalOpen, setIsReceptionModalOpen] = useState(false);
-    const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [productToAssign, setProductToAssign] = useState<Product | null>(null);
     const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
 
@@ -263,7 +227,6 @@ export const MiniEconomato: React.FC = () => {
 
         setStockReceptions(prev => [...prev, newReception]);
 
-        // Update Stock
         setMiniEconomatoStock((prevStock: StockItem[]) => {
             const newStock = [...prevStock];
             receptionForm.products.forEach(p => {
@@ -323,9 +286,6 @@ export const MiniEconomato: React.FC = () => {
                 <div className="flex space-x-2 flex-wrap gap-y-2">
                     {canManage && (
                         <>
-                            <button onClick={() => setIsScanModalOpen(true)} className="no-print bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center transition-all shadow-md active:scale-95">
-                                <ScannerIcon className="w-5 h-5 mr-2" /> Escanear
-                            </button>
                             <button onClick={() => setIsReceptionModalOpen(true)} className="no-print bg-amber-600 text-white py-2 px-4 rounded-md hover:bg-amber-700 flex items-center">
                                 <PlusIcon className="w-5 h-5 mr-2" /> Recibir Pedido (Empresa)
                             </button>
@@ -414,34 +374,6 @@ export const MiniEconomato: React.FC = () => {
                                                 <div className="font-mono text-sm font-bold">
                                                     {stock.stock.toFixed(2)} <span className="text-xs text-gray-500 font-normal">/ Mín: {stock.min_stock}</span>
                                                 </div>
-                                                {product.unit === 'Uds' && product.unit_size && product.suppliers?.[0] && (
-                                                    <div className="text-[10px] text-primary-600 font-bold">
-                                                        {(() => {
-                                                            const bestPrice = [...product.suppliers].sort((a,b) => a.price - b.price)[0]?.price;
-                                                            if (!bestPrice) return '';
-                                                            const size = product.unit_size;
-                                                            const type = product.unit_size_type || 'g';
-                                                            let pricePerBase = 0;
-                                                            let baseLabel = '';
-
-                                                            if (type === 'g') {
-                                                                pricePerBase = (bestPrice / size) * 1000;
-                                                                baseLabel = 'kg';
-                                                            } else if (type === 'kg') {
-                                                                pricePerBase = bestPrice / size;
-                                                                baseLabel = 'kg';
-                                                            } else if (type === 'ml') {
-                                                                pricePerBase = (bestPrice / size) * 1000;
-                                                                baseLabel = 'L';
-                                                            } else if (type === 'L') {
-                                                                pricePerBase = bestPrice / size;
-                                                                baseLabel = 'L';
-                                                            }
-
-                                                            return pricePerBase > 0 ? `(${pricePerBase.toFixed(2)}€/${baseLabel})` : '';
-                                                        })()}
-                                                    </div>
-                                                )}
                                             </td>
                                             <td className="px-4 py-2">
                                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${stockLevel.bgClass} ${stockLevel.textClass}`}>
@@ -562,7 +494,6 @@ export const MiniEconomato: React.FC = () => {
                                         <button onClick={() => removeReceptionProduct(index)} className="text-red-500 p-2">×</button>
                                     </div>
                                 ))}
-                                {receptionForm.products.length === 0 && <p className="text-center text-xs text-gray-400 py-4">Añade los productos que han llegado del proveedor.</p>}
                             </div>
                         </div>
 
@@ -571,14 +502,14 @@ export const MiniEconomato: React.FC = () => {
                             <textarea 
                                 value={receptionForm.notes}
                                 onChange={e => setReceptionForm({...receptionForm, notes: e.target.value})}
-                                placeholder="Ej: Pedido incompleto, se guarda en estante A..."
+                                placeholder="Ej: Pedido incompleto..."
                                 className="w-full mt-1 p-2 border rounded dark:bg-gray-700 h-20"
                             />
                         </div>
 
                         <div className="flex justify-end space-x-2 pt-4">
                             <button onClick={() => setIsReceptionModalOpen(false)} className="bg-gray-200 px-4 py-2 rounded-md">Cancelar</button>
-                            <button onClick={handleSaveReception} className="bg-primary-600 text-white px-4 py-2 rounded-md">Confirmar Entrada y Actualizar Stock</button>
+                            <button onClick={handleSaveReception} className="bg-primary-600 text-white px-4 py-2 rounded-md">Confirmar Entrada</button>
                         </div>
                     </div>
                 </Modal>
@@ -608,20 +539,6 @@ export const MiniEconomato: React.FC = () => {
                     productName={productsMap.get(itemToEdit.id)?.name || ''}
                     onClose={() => setIsEditModalOpen(false)}
                     onSave={handleEditStock}
-                />
-            )}
-
-            {isScanModalOpen && (
-                <ScanMockModal 
-                    products={products}
-                    onClose={() => setIsScanModalOpen(false)}
-                    onScan={(pid) => {
-                        const product = products.find(p => p.id === pid);
-                        if(product) {
-                            setIsScanModalOpen(false);
-                            setFilter(product.name);
-                        }
-                    }}
                 />
             )}
         </div>

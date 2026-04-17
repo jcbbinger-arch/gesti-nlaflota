@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
-import { ProfileIcon, ShieldCheckIcon, LockClosedIcon, BookIcon, ClassroomIcon, ShoppingCartIcon } from '../../components/icons';
+import { ProfileIcon, ShieldCheckIcon, BookIcon, ClassroomIcon, ShoppingCartIcon, AssignmentIcon, CalendarIcon, WalletIcon } from '../../components/icons';
 import { Avatar } from '../../components/Avatar';
-import { Profile, getProfileDisplayName, Message } from '../../types';
+import { Profile, getProfileDisplayName, Message, ServiceRole } from '../../types';
 import { Link } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 export const MyProfile: React.FC = () => {
     const { currentUser, updateCurrentUser } = useAuth();
-    const { users, setUsers, setMessages, reservations, sale_items } = useData();
+    const { 
+        users, setUsers, setMessages, reservations, sale_items, 
+        assignments, groups, services, orders, events 
+    } = useData();
 
     const [personalInfo, setPersonalInfo] = useState({
         name: currentUser?.name || '',
@@ -24,6 +28,68 @@ export const MyProfile: React.FC = () => {
         newPassword: '',
         confirmPassword: '',
     });
+
+    const isTeacher = currentUser?.profiles.includes(Profile.TEACHER);
+
+    // Teacher Statistics Data
+    const teacherData = useMemo(() => {
+        if (!isTeacher || !currentUser) return null;
+
+        const myAssignments = assignments.filter(a => a.user_id === currentUser.id);
+        const myGroups = groups.filter(g => myAssignments.some(a => a.group_id === g.id));
+        
+        const myServices = services.filter(s => Object.values(s.roles).includes(currentUser.id));
+        
+        // Spending calculations
+        const myOrders = orders.filter(o => o.user_id === currentUser.id && o.status !== 'Cancelado');
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+        const oneYearAgo = new Date(now.getFullYear(), 0, 1); // Course/Year stats
+
+        const monthlySpend = myOrders
+            .filter(o => new Date(o.date) >= thirtyDaysAgo)
+            .reduce((sum, o) => sum + (o.cost || 0), 0);
+
+        const annualSpend = myOrders
+            .filter(o => new Date(o.date) >= oneYearAgo)
+            .reduce((sum, o) => sum + (o.cost || 0), 0);
+
+        // Chart data (last 6 months)
+        const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const chartData = Array.from({ length: 6 }).map((_, i) => {
+            const d = new Date();
+            d.setMonth(d.getMonth() - (5 - i));
+            const monthIdx = d.getMonth();
+            const year = d.getFullYear();
+            const spend = myOrders
+                .filter(o => {
+                    const od = new Date(o.date);
+                    return od.getMonth() === monthIdx && od.getFullYear() === year;
+                })
+                .reduce((sum, o) => sum + (o.cost || 0), 0);
+            return { name: months[monthIdx], gasto: Number(spend.toFixed(2)) };
+        });
+
+        // Event participation
+        const myEvents = events.filter(e => 
+            e.authorized_teachers?.includes(currentUser.id) || 
+            myOrders.some(o => o.event_id === e.id)
+        );
+
+        return {
+            groups: myGroups,
+            servicesCount: myServices.length,
+            roles: Array.from(new Set(myServices.flatMap(s => 
+                Object.entries(s.roles)
+                    .filter(([_, uid]) => uid === currentUser.id)
+                    .map(([role]) => role as ServiceRole)
+            ))),
+            monthlySpend,
+            annualSpend,
+            chartData,
+            events: myEvents
+        };
+    }, [isTeacher, currentUser, assignments, groups, services, orders, events]);
 
     if (!currentUser) return <p>Cargando perfil...</p>;
 
@@ -155,16 +221,116 @@ export const MyProfile: React.FC = () => {
                         </form>
                     </Card>
                 </div>
-                <div className="lg:col-span-1">
-                    {currentUser.profiles.includes(Profile.TEACHER) && (
-                        <Card title="Información de Profesor" icon={<BookIcon className="w-8 h-8" />}>
-                            <div className="space-y-3 text-sm">
-                                <div><span className="font-semibold">Tipo:</span> {currentUser.contract_type}</div>
-                                <div><span className="font-semibold">Estatus:</span> {currentUser.role_type}</div>
-                                <div><span className="font-semibold">Estado de Actividad:</span> {currentUser.activity_status}</div>
-                                <p className="text-xs text-gray-500 pt-2 border-t mt-2">Esta información es de solo lectura y la gestiona el Administrador.</p>
-                            </div>
-                        </Card>
+                <div className="lg:col-span-1 space-y-6">
+                    {currentUser.profiles.includes(Profile.TEACHER) && teacherData && (
+                        <>
+                            <Card title="Grupos y Perfiles" icon={<AssignmentIcon className="w-8 h-8 text-primary-600" />}>
+                                <div className="space-y-4">
+                                    <div>
+                                        <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Grupos Asignados</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {teacherData.groups.map(g => (
+                                                <span key={g.id} className="px-2 py-1 bg-primary-100 text-primary-800 rounded text-xs font-medium">
+                                                    {g.name}
+                                                </span>
+                                            ))}
+                                            {teacherData.groups.length === 0 && <span className="text-gray-400 text-xs text-italic">Ningún grupo asignado.</span>}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Perfiles de Trabajo</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {teacherData.roles.map(role => (
+                                                <span key={role} className="px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-medium">
+                                                    {role}
+                                                </span>
+                                            ))}
+                                            {teacherData.roles.length === 0 && <span className="text-gray-400 text-xs text-italic">Sin roles en servicios.</span>}
+                                        </div>
+                                    </div>
+                                    <div className="pt-2 border-t text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Servicios Realizados:</span>
+                                            <span className="font-bold">{teacherData.servicesCount}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+
+                            <Card title="Gasto Acumulado" icon={<WalletIcon className="w-8 h-8 text-green-600" />}>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold">Mensual (30d)</p>
+                                            <p className="text-xl font-bold text-gray-800 dark:text-gray-200">{teacherData.monthlySpend.toFixed(2)}€</p>
+                                        </div>
+                                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                            <p className="text-[10px] text-gray-500 uppercase font-bold">Este Curso</p>
+                                            <p className="text-xl font-bold text-primary-600">{teacherData.annualSpend.toFixed(2)}€</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="h-40 w-full pt-2">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={teacherData.chartData}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                                                <YAxis hide />
+                                                <Tooltip 
+                                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                    cursor={{ fill: 'transparent' }}
+                                                />
+                                                <Bar dataKey="gasto" radius={[4, 4, 0, 0]}>
+                                                    {teacherData.chartData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={index === 5 ? '#2563eb' : '#94a3b8'} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </Card>
+
+                            <Card title="Eventos y Actividades" icon={<CalendarIcon className="w-8 h-8 text-purple-600" />}>
+                                <div className="space-y-3">
+                                    {teacherData.events.length > 0 ? (
+                                        teacherData.events.slice(0, 3).map(e => (
+                                            <div key={e.id} className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded transition-colors border-l-4 border-purple-500">
+                                                <div className="text-xs">
+                                                    <p className="font-bold text-gray-700 dark:text-gray-300">{e.name}</p>
+                                                    <p className="text-gray-500">{new Date(e.start_date).toLocaleDateString()}</p>
+                                                </div>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${e.status === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                    {e.status}
+                                                </span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-xs text-gray-400 text-center py-2 italic">No se han registrado participaciones en eventos.</p>
+                                    )}
+                                </div>
+                            </Card>
+
+                            <Card title="Información Corporativa" icon={<BookIcon className="w-8 h-8 text-gray-500" />}>
+                                <div className="space-y-3 text-sm">
+                                    <div className="flex justify-between border-b pb-2 dark:border-gray-700">
+                                        <span className="font-semibold text-gray-500">Tipo de Contrato:</span> 
+                                        <span className="font-medium text-gray-800 dark:text-gray-200">{currentUser.contract_type || 'No especificado'}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2 dark:border-gray-700">
+                                        <span className="font-semibold text-gray-500">Estatus Rol:</span> 
+                                        <span className="font-medium text-gray-800 dark:text-gray-200">{currentUser.role_type || 'Regular'}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2 dark:border-gray-700">
+                                        <span className="font-semibold text-gray-500">Actividad:</span> 
+                                        <span className={`font-bold ${currentUser.activity_status === 'Activo' ? 'text-green-600' : 'text-red-600'}`}>
+                                            {currentUser.activity_status || 'Activo'}
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 pt-1 text-center italic">Datos gestionados por Administración.</p>
+                                </div>
+                            </Card>
+                        </>
                     )}
                     {currentUser.profiles.includes(Profile.STUDENT) && (
                         <Card title="Información de Alumno" icon={<ClassroomIcon className="w-8 h-8" />}>
