@@ -22,7 +22,6 @@ import {
 const creatorNav = [
   { name: 'Panel de control', href: '/creator/dashboard', icon: <ComputerDesktopIcon /> },
   { name: 'Gestión de Usuarios', href: '/creator/user-manager', icon: <UsersIcon /> },
-  { name: 'Mantenimiento', href: '/creator/maintenance', icon: <PowerIcon /> },
 ];
 
 const adminNav = [
@@ -126,7 +125,7 @@ export const Sidebar: React.FC = () => {
       navItems = isTutor ? teacherNav : teacherNav.filter(item => item.name !== 'Aula de Almacén');
       break;
     case Profile.CREATOR:
-      navItems = [...creatorNav];
+      navItems = [...creatorNav, { name: 'Mantenimiento', href: '/creator/maintenance', icon: <PowerIcon /> }];
       break;
     case Profile.STUDENT:
       if (currentUser?.student_simulated_profile === Profile.TEACHER) {
