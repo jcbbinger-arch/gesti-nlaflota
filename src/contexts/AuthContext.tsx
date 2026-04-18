@@ -8,7 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, query, collection, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, where, getDocs, deleteDoc, getDocFromServer } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { User, Profile, SUPER_USER_EMAILS } from '../types';
@@ -162,6 +162,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'settings', 'connection_test'));
+      } catch (error: any) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration or internet connection.");
+        }
+      }
+    };
+    testConnection();
+
     // Firebase Auth Listener
     const unsubscribeFirebase = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('Firebase Auth state changed:', firebaseUser?.email);

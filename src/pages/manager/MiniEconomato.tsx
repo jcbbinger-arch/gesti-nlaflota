@@ -1,12 +1,62 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { useAuth } from '../../contexts/AuthContext';
 import { Product, User, Profile, Order, StockItem, OrderItem } from '../../types';
-import { DownloadIcon, PlusIcon, PencilIcon } from '../../components/icons';
+import { DownloadIcon, PlusIcon, PencilIcon, ScannerIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+
+const ScannerModal: React.FC<{ onClose: () => void; onScan: (code: string) => void }> = ({ onClose, onScan }) => {
+    const [isScanning, setIsScanning] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsScanning(false);
+            // Simulate a successful scan after 2 seconds
+            // In a real app, this would be the output of a QR/Barcode reader
+            onScan('SIMULATED_CODE');
+        }, 2500);
+        return () => clearTimeout(timer);
+    }, [onScan]);
+
+    return (
+        <Modal isOpen={true} onClose={onClose} title="Escáner de Código de Barras">
+            <div className="relative bg-black rounded-lg aspect-square overflow-hidden flex flex-center items-center justify-center">
+                {/* Simulated Camera View */}
+                <div className="absolute inset-0 bg-gray-900 flex items-center justify-center text-gray-500">
+                    <ScannerIcon className="w-24 h-24 opacity-20" />
+                    <p className="absolute bottom-4 text-xs">Simulando cámara...</p>
+                </div>
+
+                {/* Scan Area Overlay */}
+                <div className="absolute inset-12 border-2 border-primary-500 rounded-lg opacity-50"></div>
+
+                {/* Scan Line Animation */}
+                {isScanning && (
+                    <motion.div 
+                        initial={{ top: '15%' }}
+                        animate={{ top: '85%' }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                        className="absolute left-10 right-10 h-0.5 bg-primary-400 shadow-[0_0_15px_rgba(59,130,246,0.8)] z-10"
+                    />
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none"></div>
+            </div>
+            <div className="mt-4 text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Enfoca el código de barras del producto dentro del recuadro.
+                </p>
+                <button onClick={onClose} className="mt-4 w-full py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm font-medium">
+                    Cancelar
+                </button>
+            </div>
+        </Modal>
+    );
+};
 
 const AssignExpenseModal: React.FC<{product: Product; onClose: () => void; onAssign: (teacherId: string, quantity: number) => void; teachers: User[]}> = ({ product, onClose, onAssign, teachers }) => {
     const [teacherId, setTeacherId] = useState('');
@@ -126,6 +176,21 @@ export const MiniEconomato: React.FC = () => {
     const stockMap = useMemo(() => new Map(mini_economato_stock.map((s: StockItem) => [s.id, s])), [mini_economato_stock]);
 
     const [filter, setFilter] = useState('');
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+    const handleScan = (code: string) => {
+        console.log("Product scanned:", code);
+        setIsScannerOpen(false);
+        // Simulate finding a product by barcode (code)
+        // For demo: we'll just filter for a random common product if it exists
+        const randomProduct = economatoProducts[Math.floor(Math.random() * economatoProducts.length)];
+        if (randomProduct) {
+            setFilter(randomProduct.product.name);
+            alert(`Producto detectado: ${randomProduct.product.name}`);
+        } else {
+            alert("Producto no reconocido o no disponible en stock.");
+        }
+    };
 
     const economatoProducts = useMemo(() => {
         const mapped = Array.from(stockMap.values()).map((stockItem: StockItem) => ({
@@ -329,8 +394,32 @@ export const MiniEconomato: React.FC = () => {
             
             {view === 'inventory' ? (
                 <Card title="Stock Interno">
-                    <div className="flex space-x-4 mb-4 no-print">
-                        <input type="text" placeholder="Buscar producto por nombre..." value={filter} onChange={e => setFilter(e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700"/>
+                    <div className="flex space-x-2 mb-4 no-print">
+                        <div className="relative flex-1">
+                            <input 
+                                type="text" 
+                                placeholder="Buscar producto por nombre..." 
+                                value={filter} 
+                                onChange={e => setFilter(e.target.value)} 
+                                className="w-full p-2 border rounded-md dark:bg-gray-700"
+                            />
+                            {filter && (
+                                <button 
+                                    onClick={() => setFilter('')} 
+                                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                        <button 
+                            onClick={() => setIsScannerOpen(true)}
+                            className="bg-gray-100 dark:bg-gray-700 p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 flex items-center space-x-1"
+                            title="Escanear Código de Barras"
+                        >
+                            <ScannerIcon className="w-5 h-5" />
+                            <span className="hidden sm:inline">Escanear</span>
+                        </button>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
@@ -514,6 +603,8 @@ export const MiniEconomato: React.FC = () => {
                     </div>
                 </Modal>
             )}
+
+            {isScannerOpen && <ScannerModal onClose={() => setIsScannerOpen(false)} onScan={handleScan} />}
 
             {isAssignModalOpen && productToAssign && (
                 <AssignExpenseModal 

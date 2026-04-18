@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useEffect, useState } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { handleFirestoreError } from '../utils/firebaseErrors';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
 import { initialData } from '../services/dataService';
@@ -11,6 +12,7 @@ import {
     ServiceGroup, Service, WorkspaceSettings, SaleItem, Reservation,
     DiningService, DiningReservation, StockReception
 } from '../types';
+import { logAudit } from '../utils/auditLogger';
 
 export interface DataContextType {
     users: User[];
@@ -115,6 +117,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 col.setter(data);
             }, (error) => {
                 console.error(`Error listening to public ${col.name}:`, error);
+                handleFirestoreError(error, 'list', col.name);
             });
         });
 
@@ -163,13 +166,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     data = data.map((d: any) => ({
                         ...d,
                         profiles: Array.isArray(d.profiles) ? d.profiles : [],
-                        access_profiles: d.access_profiles || {}
+                        access_profiles: d.access_profiles || {},
+                        activity_status: d.activity_status || 'Activo',
+                        location_status: d.location_status || 'Fuera del centro'
                     }));
                 }
 
                 col.setter(data);
             }, (error) => {
                 console.error(`Error listening to ${col.name}:`, error);
+                handleFirestoreError(error, 'list', col.name);
             });
         });
 
@@ -209,6 +215,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (deletedIds.length === 0 && itemsToUpdate.length === 0) return;
 
+        // Trigger audit logs for changed items
+        for (const op of [
+            ...deletedIds.map(id => ({ type: 'DELETE' as const, id })),
+            ...itemsToUpdate.map(item => ({ type: 'UPDATE' as const, id: item.id }))
+        ]) {                
+            logAudit(collectionName, op.id, op.type, {}); 
+        }
+
         try {
             // Firestore batch limit is 500 operations
             const allOps = [
@@ -230,7 +244,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         } catch (err) {
             console.error(`Failed to update ${collectionName}:`, err);
-            throw err;
+            handleFirestoreError(err, 'write', collectionName);
         }
     };
 
