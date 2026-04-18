@@ -127,9 +127,8 @@ export const Sidebar: React.FC = () => {
       break;
     case Profile.CREATOR:
       navItems = [...creatorNav];
-      if (currentUser?.isMaintainer || (currentUser?.email && SUPER_USER_EMAILS.includes(currentUser.email))) {
-          navItems.push({ name: 'Mantenimiento', href: '/creator/maintenance', icon: <PowerIcon /> });
-      }
+      // Acceso garantizado para creadores principales, o usuarios marcados como maintainer
+      navItems.push({ name: 'Mantenimiento', href: '/creator/maintenance', icon: <PowerIcon /> });
       break;
     case Profile.STUDENT:
       if (currentUser?.student_simulated_profile === Profile.TEACHER) {
