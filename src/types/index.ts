@@ -84,6 +84,7 @@ export interface User {
   allergens?: string[];
   student_simulated_profile?: Profile.TEACHER | Profile.ALMACEN;
   must_change_password?: boolean;
+  isMaintainer?: boolean;
 }
 
 export interface Company {

@@ -151,6 +151,11 @@ const UserFormModal: React.FC<{ user: User | null, onClose: () => void, onSave: 
                     </div>
                 </div>
 
+                <label className="flex items-center space-x-2">
+                    <input type="checkbox" checked={formState.isMaintainer || false} onChange={() => setFormState({ ...formState, isMaintainer: !formState.isMaintainer })} />
+                    <span>Acceso a Mantenimiento</span>
+                </label>
+
                 <div className="flex justify-end pt-4 space-x-2">
                     <button type="button" onClick={onClose} className="bg-gray-200 px-4 py-2 rounded-md">Cancelar</button>
                     <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-md">Guardar</button>

@@ -18,6 +18,7 @@ import { Messaging } from './pages/shared/Messaging';
 import { CreatorLayout } from './pages/layouts/CreatorLayout';
 import { CreatorDashboard } from './pages/creator/CreatorDashboard';
 import { UserManager } from './pages/creator/UserManager';
+import { MaintenancePage } from './pages/shared/MaintenancePage';
 
 import { AdminLayout } from './pages/layouts/AdminLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -116,6 +117,7 @@ const AppContent: React.FC = () => {
           <Route path="/creator" element={<CreatorLayout />}>
             <Route path="dashboard" element={<CreatorDashboard />} />
             <Route path="user-manager" element={<UserManager />} />
+            <Route path="maintenance" element={<MaintenancePage />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
         </Route>

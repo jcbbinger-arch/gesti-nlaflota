@@ -54,6 +54,62 @@ async function startServer() {
       }
   });
 
+  app.get('/api/backup', async (req, res) => {
+      try {
+          const authHeader = req.headers.authorization;
+          if (!authHeader?.startsWith('Bearer ')) {
+              return res.status(401).json({ error: 'No autorizado' });
+          }
+          const idToken = authHeader.split('Bearer ')[1];
+          const decodedToken = await admin.auth().verifyIdToken(idToken);
+          
+          // Verify user permission
+          const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+          const userData = userDoc.data();
+          const isCreator = userData?.profiles?.includes('creator');
+          const isMaintainer = userData?.isMaintainer === true;
+          
+          if (!isCreator && !isMaintainer) {
+              return res.status(403).json({ error: 'Forbidden' });
+          }
+          
+          // Logic: Date range (current + 2 previous courses) -> 3 years
+          const threeYearsAgo = new Date();
+          threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+          
+          const collections = await db.listCollections();
+          const backup: Record<string, any[]> = {};
+          
+          for (const col of collections) {
+              const snapshot = await col.get();
+              backup[col.id] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              
+              // Only filter specific collections by date
+              const academicCollections = ['orders', 'incidents', 'sales', 'reservations', 'dining_services', 'dining_reservations', 'events', 'classroom_orders'];
+              if (academicCollections.includes(col.id)) {
+                  backup[col.id] = backup[col.id].filter(doc => {
+                      const dateField = doc.date || doc.start_date || doc.created_at || doc.sale_date;
+                      if (!dateField) return true; // keep if no date
+                      return new Date(dateField) >= threeYearsAgo;
+                  });
+              }
+          }
+
+          // Log the backup operation
+          await db.collection('audit_logs').add({
+              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+              user_id: decodedToken.uid,
+              user_email: decodedToken.email,
+              action: 'GENERATE_BACKUP'
+          });
+
+          res.json(backup);
+      } catch (error) {
+          console.error('Error generating backup:', error);
+          res.status(500).json({ error: 'Error generating backup' });
+      }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
