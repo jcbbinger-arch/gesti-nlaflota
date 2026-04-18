@@ -126,9 +126,7 @@ export const Sidebar: React.FC = () => {
       navItems = isTutor ? teacherNav : teacherNav.filter(item => item.name !== 'Aula de Almacén');
       break;
     case Profile.CREATOR:
-      navItems = [...creatorNav];
-      // Acceso garantizado para creadores principales, o usuarios marcados como maintainer
-      navItems.push({ name: 'Mantenimiento', href: '/creator/maintenance', icon: <PowerIcon /> });
+      navItems = [...creatorNav, { name: 'Mantenimiento', href: '/creator/maintenance', icon: <PowerIcon /> }];
       break;
     case Profile.STUDENT:
       if (currentUser?.student_simulated_profile === Profile.TEACHER) {
