@@ -38,7 +38,6 @@ const adminNav = [
   { name: 'Aulas de Práctica', href: '/admin/classrooms', icon: <BookIcon /> },
   { name: 'Gestión de Comedor', href: '/admin/dining-services', icon: <ClipboardDocumentListIcon /> },
   { name: 'Vista Comedor', href: '/admin/dining-view', icon: <UserGroupIcon /> },
-  { name: 'Soporte', href: '/admin/support', icon: <PowerIcon /> },
   { name: 'Mensajería', href: '/admin/messaging', icon: <MessageIcon /> },
   { name: 'Mi Perfil', href: '/admin/profile', icon: <ProfileIcon /> },
 ];
