@@ -15,15 +15,18 @@ export const TeacherManager: React.FC = () => {
     const [deleteStep, setDeleteStep] = useState(1);
 
     const staff = useMemo(() => users.filter(u => 
+        u.email && u.name && // Filter out empty/corrupt users
         u.profiles.includes(Profile.TEACHER) && 
         !SUPER_USER_EMAILS.includes(u.email)
     ), [users]);
 
     const takeawayCustomers = useMemo(() => users.filter(u => 
+        u.email && u.name &&
         u.profiles.includes(Profile.CUSTOMER)
     ), [users]);
 
     const students = useMemo(() => users.filter(u => 
+        u.email && u.name &&
         u.profiles.includes(Profile.STUDENT)
     ), [users]);
 
@@ -48,11 +51,11 @@ export const TeacherManager: React.FC = () => {
                             <td className="px-6 py-4">
                                 <div className="flex space-x-1">
                                     {[Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.STUDENT, Profile.SALES_MANAGER].map(p => {
-                                        const isEnabled = user.access_profiles?.[p] ?? false;
+                                        // Auto-calculate availability based on profiles array
+                                        const isEnabled = user.profiles.includes(p);
                                         return (
-                                            <button 
+                                            <div 
                                                 key={p} 
-                                                onClick={() => handleToggleProfileAccess(user, p)}
                                                 className={`w-4 h-4 rounded-full ${isEnabled ? 'bg-green-500' : 'bg-red-500'}`}
                                                 title={`${getProfileDisplayName(p)}: ${isEnabled ? 'Activo' : 'Inactivo'}`}
                                             />
@@ -139,9 +142,15 @@ export const TeacherManager: React.FC = () => {
     };
 
     const handleToggleProfileAccess = (user: User, profile: Profile) => {
-        const currentAccess = user.access_profiles?.[profile] ?? false;
-        const newAccess = { ...user.access_profiles, [profile]: !currentAccess };
-        setUsers(users.map(u => u.id === user.id ? { ...u, access_profiles: newAccess } : u));
+        const hasProfile = user.profiles.includes(profile);
+        const newProfiles = hasProfile 
+            ? user.profiles.filter(p => p !== profile) 
+            : [...user.profiles, profile];
+        
+        // Ensure at least one profile remains
+        if (newProfiles.length === 0) return;
+
+        setUsers(users.map(u => u.id === user.id ? { ...u, profiles: newProfiles } : u));
     };
 
     const handleDeleteUser = () => {

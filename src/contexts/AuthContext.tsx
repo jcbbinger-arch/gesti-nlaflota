@@ -171,7 +171,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(syncedUser);
           
           // --- PRESENCE SYSTEM START ---
-          // Update location_status to online immediately on component mount/login
           const setPresence = (status: 'En el centro' | 'Fuera del centro') => {
             const userRef = doc(db, 'users', firebaseUser.uid);
             setDoc(userRef, { location_status: status }, { merge: true }).catch(console.error);
@@ -179,27 +178,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           setPresence('En el centro');
 
-          // Listen for tab focus/visibility to track accurate real-time presence
-          const handleVisibilityChange = () => {
-             if (document.visibilityState === 'hidden') {
-                setPresence('Fuera del centro');
-             } else {
-                setPresence('En el centro');
-             }
-          };
-
-          // Also set offline if they completely close the tab/browser
+          // Set offline ONLY if they completely close the tab/browser
           const handleBeforeUnload = () => {
              setPresence('Fuera del centro');
           };
 
-          document.addEventListener('visibilitychange', handleVisibilityChange);
           window.addEventListener('beforeunload', handleBeforeUnload);
           
-          // Return inner cleanup specific to this logged in user state
           (window as any).__presenceCleanup = () => {
              setPresence('Fuera del centro');
-             document.removeEventListener('visibilitychange', handleVisibilityChange);
              window.removeEventListener('beforeunload', handleBeforeUnload);
           };
           // --- PRESENCE SYSTEM END ---
@@ -301,6 +288,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    if (currentUser) {
+      const userRef = doc(db, 'users', currentUser.id);
+      await setDoc(userRef, { location_status: 'Fuera del centro' }, { merge: true }).catch(console.error);
+    }
     await signOut(auth);
     setSelectedProfile(null);
     setOriginalUser(null);
