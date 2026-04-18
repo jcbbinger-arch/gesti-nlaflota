@@ -133,7 +133,6 @@ const AppContent: React.FC = () => {
             <Route path="expenses" element={<ExpenseManager />} />
             <Route path="expenses/:teacher_id" element={<ExpenseDetailByTeacher />} />
             <Route path="company" element={<CompanyData />} />
-            <Route path="support" element={<SupportMaintenance />} />
             <Route path="classrooms" element={<ClassroomManager />} />
             <Route path="dining-services" element={<DiningServiceManager />} />
             <Route path="dining-view" element={<DiningServiceView />} />

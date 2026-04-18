@@ -7,8 +7,8 @@ export const SupportMaintenance: React.FC = () => {
     const { currentUser } = useAuth();
     const [loading, setLoading] = useState(false);
 
-    // Permitir acceso si es Creador (o superusuario) o Administrador
-    const canAccess = currentUser && (currentUser.profiles.includes('creator') || currentUser.profiles.includes('admin') || currentUser.isMaintainer);
+    // Permitir acceso si es Creador (o superusuario) o tiene el flag isMaintainer
+    const canAccess = currentUser && (currentUser.profiles.includes('creator') || currentUser.isMaintainer);
 
     if (!canAccess) {
         return <Navigate to="/blocked-access" replace />;
