@@ -18,7 +18,7 @@ import { Messaging } from './pages/shared/Messaging';
 import { CreatorLayout } from './pages/layouts/CreatorLayout';
 import { CreatorDashboard } from './pages/creator/CreatorDashboard';
 import { UserManager } from './pages/creator/UserManager';
-import { MaintenancePage } from './pages/shared/MaintenancePage';
+import { SupportMaintenance } from './pages/shared/SupportMaintenance';
 
 import { AdminLayout } from './pages/layouts/AdminLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -30,7 +30,7 @@ import { AssignmentManager } from './pages/admin/AssignmentManager';
 import { ExpenseManager } from './pages/admin/ExpenseManager';
 import { ExpenseDetailByTeacher } from './pages/admin/ExpenseDetailByTeacher';
 import { CompanyData } from './pages/admin/CompanyData';
-import { Support } from './pages/admin/Support';
+import { SupportMaintenance } from './pages/shared/SupportMaintenance';
 import { ClassroomManager } from './pages/admin/ClassroomManager';
 import { ServicePlanner } from './pages/admin/ServicePlanner';
 
@@ -117,7 +117,7 @@ const AppContent: React.FC = () => {
           <Route path="/creator" element={<CreatorLayout />}>
             <Route path="dashboard" element={<CreatorDashboard />} />
             <Route path="user-manager" element={<UserManager />} />
-            <Route path="maintenance" element={<MaintenancePage />} />
+            <Route path="maintenance" element={<SupportMaintenance />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
         </Route>
@@ -134,7 +134,7 @@ const AppContent: React.FC = () => {
             <Route path="expenses" element={<ExpenseManager />} />
             <Route path="expenses/:teacher_id" element={<ExpenseDetailByTeacher />} />
             <Route path="company" element={<CompanyData />} />
-            <Route path="support" element={<Support />} />
+            <Route path="support" element={<SupportMaintenance />} />
             <Route path="classrooms" element={<ClassroomManager />} />
             <Route path="dining-services" element={<DiningServiceManager />} />
             <Route path="dining-view" element={<DiningServiceView />} />

@@ -3,11 +3,14 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 
-export const MaintenancePage: React.FC = () => {
+export const SupportMaintenance: React.FC = () => {
     const { currentUser } = useAuth();
     const [loading, setLoading] = useState(false);
 
-    if (!currentUser || (!currentUser.profiles.includes('creator') && !currentUser.isMaintainer)) {
+    // Permitir acceso si es Creador (o superusuario) o Administrador
+    const canAccess = currentUser && (currentUser.profiles.includes('creator') || currentUser.profiles.includes('admin') || currentUser.isMaintainer);
+
+    if (!canAccess) {
         return <Navigate to="/blocked-access" replace />;
     }
 
@@ -38,7 +41,7 @@ export const MaintenancePage: React.FC = () => {
 
     return (
         <div className="p-6">
-            <h1 className="text-3xl font-bold mb-6">Soporte y Mantenimiento</h1>
+            <h1 className="text-3xl font-bold mb-6">Soporte y Mantenimiento Avanzado</h1>
             <Card>
                 <div className="p-4">
                     <h2 className="text-xl font-semibold mb-4">Copia de Seguridad</h2>
