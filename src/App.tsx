@@ -30,7 +30,6 @@ import { AssignmentManager } from './pages/admin/AssignmentManager';
 import { ExpenseManager } from './pages/admin/ExpenseManager';
 import { ExpenseDetailByTeacher } from './pages/admin/ExpenseDetailByTeacher';
 import { CompanyData } from './pages/admin/CompanyData';
-import { SupportMaintenance } from './pages/shared/SupportMaintenance';
 import { ClassroomManager } from './pages/admin/ClassroomManager';
 import { ServicePlanner } from './pages/admin/ServicePlanner';
 
