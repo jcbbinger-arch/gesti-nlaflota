@@ -116,7 +116,10 @@ export const Sidebar: React.FC = () => {
 
   switch (selectedProfile) {
     case Profile.ADMIN:
-      navItems = adminNav;
+      navItems = [...adminNav];
+      if (currentUser?.isMaintainer) {
+          navItems.push({ name: 'Soporte y Mantenimiento', href: '/admin/support', icon: <PowerIcon /> });
+      }
       break;
     case Profile.ALMACEN:
       navItems = almacenNav;

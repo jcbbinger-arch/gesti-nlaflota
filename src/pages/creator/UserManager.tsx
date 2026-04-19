@@ -150,11 +150,18 @@ const UserFormModal: React.FC<{ user: User | null, onClose: () => void, onSave: 
                         ))}
                     </div>
                 </div>
-
-                <label className="flex items-center space-x-2">
-                    <input type="checkbox" checked={formState.isMaintainer || false} onChange={() => setFormState({ ...formState, isMaintainer: !formState.isMaintainer })} />
-                    <span>Acceso a Mantenimiento</span>
-                </label>
+                
+                {formState.profiles.includes(Profile.ADMIN) && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md">
+                        <label className="flex items-center space-x-2">
+                            <input type="checkbox" checked={formState.isMaintainer || false} onChange={() => setFormState({ ...formState, isMaintainer: !formState.isMaintainer })} />
+                            <span className="font-semibold text-blue-800 dark:text-blue-300">Dar permisos para realizar Copias de Seguridad (Mantenimiento)</span>
+                        </label>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 ml-6 mt-1">
+                            Aparecerá una nueva pestaña en el perfil de este administrador para acceder a las opciones de soporte.
+                        </p>
+                    </div>
+                )}
 
                 <div className="flex justify-end pt-4 space-x-2">
                     <button type="button" onClick={onClose} className="bg-gray-200 px-4 py-2 rounded-md">Cancelar</button>
