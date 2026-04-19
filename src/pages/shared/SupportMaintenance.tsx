@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
+import { Profile } from '../../types';
+import { auth } from '../../firebase';
 
 export const SupportMaintenance: React.FC = () => {
     const { currentUser } = useAuth();
     const [loading, setLoading] = useState(false);
 
     // Permitir acceso si es Creador (o superusuario) o tiene el flag isMaintainer
-    const canAccess = currentUser && (currentUser.profiles.includes('creator') || currentUser.isMaintainer);
+    const canAccess = currentUser && (currentUser.profiles.includes(Profile.CREATOR) || currentUser.isMaintainer);
 
     if (!canAccess) {
         return <Navigate to="/blocked-access" replace />;
@@ -17,7 +19,7 @@ export const SupportMaintenance: React.FC = () => {
     const handleBackup = async () => {
         setLoading(true);
         try {
-            const token = await currentUser.getIdToken();
+            const token = await auth.currentUser?.getIdToken() || '';
             const response = await fetch('/api/backup', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
