@@ -5,15 +5,32 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import * as admin from 'firebase-admin';
 
-dotenv.config();
+import fs from 'fs';
 
-admin.initializeApp({
-  credential: admin.credential.applicationDefault()
-});
-const db = admin.firestore();
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+let projectIdStr = process.env.FIREBASE_PROJECT_ID;
+try {
+  const configPath = path.resolve(__dirname, 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    const fileContent = fs.readFileSync(configPath, 'utf8');
+    const config = JSON.parse(fileContent);
+    if (config.projectId) {
+      projectIdStr = config.projectId;
+    }
+  }
+} catch (e) {
+  console.log('Could not read firebase-applet-config.json:', e);
+}
+
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+  projectId: projectIdStr
+});
+const db = admin.firestore();
 
 async function startServer() {
   const app = express();
