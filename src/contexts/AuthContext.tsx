@@ -299,14 +299,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    if (currentUser) {
-      const userRef = doc(db, 'users', currentUser.id);
-      await setDoc(userRef, { location_status: 'Fuera del centro' }, { merge: true }).catch(console.error);
+    try {
+      if (currentUser) {
+        const userRef = doc(db, 'users', currentUser.id);
+        await setDoc(userRef, { location_status: 'Fuera del centro' }, { merge: true }).catch(console.error);
+      }
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    } finally {
+      setCurrentUser(null);
+      setSelectedProfile(null);
+      setOriginalUser(null);
+      navigate('/login', { replace: true });
     }
-    await signOut(auth);
-    setSelectedProfile(null);
-    setOriginalUser(null);
-    navigate('/login');
   };
 
   const selectProfile = (profile: Profile) => {
