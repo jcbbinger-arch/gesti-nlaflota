@@ -26,7 +26,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedProfiles,
     return <Navigate to="/login" replace />;
   }
   
-  if (!selectedProfile || !allowedProfiles.includes(selectedProfile) || (currentUser.access_profiles && currentUser.access_profiles[selectedProfile] === false)) {
+  if (!selectedProfile || !allowedProfiles.includes(selectedProfile)) {
     console.log('ProtectedRoute - Invalid profile or access denied, redirecting to selector');
     return <Navigate to="/select-profile" replace />;
   }

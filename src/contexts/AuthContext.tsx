@@ -152,9 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive
         location_status: 'En el centro',
         avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
-        access_profiles: isSuperUser ? Object.values(Profile).reduce((acc, p) => ({ ...acc, [p]: true }), {}) : {
-          [Profile.TEACHER]: false
-        }
+        access_profiles: Object.values(Profile).reduce((acc, p) => ({ ...acc, [p]: true }), {})
       };
       await setDoc(userDocRef, newUser);
       return newUser;

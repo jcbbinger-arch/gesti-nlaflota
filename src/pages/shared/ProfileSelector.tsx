@@ -70,7 +70,8 @@ export const ProfileSelector: React.FC = () => {
       <div className="mt-8 flex flex-wrap justify-center gap-4">
         {[Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.STUDENT, Profile.SALES_MANAGER].map((profile) => {
           const hasProfile = currentUser.profiles.includes(profile);
-          const isEnabled = currentUser.access_profiles?.[profile] ?? false;
+          // access_profiles is deprecated, rely on profiles and activity_status
+          const isEnabled = true; 
           
           if (!hasProfile) return null;
 
