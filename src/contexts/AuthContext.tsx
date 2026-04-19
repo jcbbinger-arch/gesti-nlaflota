@@ -65,13 +65,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Migration for users created before the change
-      if (userData.profiles.includes(Profile.STUDENT) && !userData.classroom_id && !isSuperUser) {
-          userData = {
-            ...userData,
-            profiles: [Profile.TEACHER],
-            activity_status: 'De Baja'
-          };
-          needsUpdate = true;
+      if (userData.profiles && userData.profiles.includes(Profile.STUDENT) && !userData.classroom_id && !isSuperUser) {
+          // Instead of forcing them to 'De Baja' and erasing their existing profiles,
+          // Just ensure they are listed. If they already have profiles, don't overwrite them violently.
+          if (userData.profiles.length === 1) { // Only if they were strictly broken students
+            userData.profiles = [Profile.TEACHER];
+            needsUpdate = true;
+          }
       }
       // Ensure workspaceId exists
       if (!userData.workspaceId) {
