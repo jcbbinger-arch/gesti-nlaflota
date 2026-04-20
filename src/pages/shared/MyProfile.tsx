@@ -175,63 +175,8 @@ export const MyProfile: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Mi Perfil</h1>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Stats/Groups - Elevated to Main/Left */}
                 <div className="lg:col-span-2 space-y-6">
-                    <Card title="Información Personal" icon={<ProfileIcon className="w-8 h-8" />}>
-                        <form onSubmit={handlePersonalInfoSubmit} className="space-y-4">
-                            <div className="flex items-center space-x-4">
-                               <Avatar user={{ ...currentUser, avatar: avatarPreview || personalInfo.avatar }} className="w-20 h-20" />
-                               <input type="file" id="avatar-upload" className="hidden" onChange={handleAvatarChange} accept="image/*"/>
-                               <label htmlFor="avatar-upload" className="bg-gray-200 dark:bg-gray-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer">Cambiar Foto</label>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm">Nombre y Apellidos</label>
-                                    <input type="text" value={personalInfo.name} onChange={e => setPersonalInfo({...personalInfo, name: e.target.value})} className="w-full mt-1 p-2 border rounded"/>
-                                </div>
-                                <div>
-                                    <label className="block text-sm">Correo Electrónico</label>
-                                    <input type="email" value={currentUser.email} readOnly className="w-full mt-1 p-2 border rounded bg-gray-100 dark:bg-gray-800"/>
-                                </div>
-                                 <div>
-                                    <label className="block text-sm">Teléfono Principal</label>
-                                    <input type="tel" value={personalInfo.phone} onChange={e => setPersonalInfo({...personalInfo, phone: e.target.value})} className="w-full mt-1 p-2 border rounded"/>
-                                </div>
-                                 <div>
-                                    <label className="block text-sm">Teléfono Secundario</label>
-                                    <input type="tel" value={personalInfo.secondary_phone} onChange={e => setPersonalInfo({...personalInfo, secondary_phone: e.target.value})} className="w-full mt-1 p-2 border rounded"/>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm">Dirección</label>
-                                    <textarea value={personalInfo.address} onChange={e => setPersonalInfo({...personalInfo, address: e.target.value})} rows={2} className="w-full mt-1 p-2 border rounded"/>
-                                </div>
-                            </div>
-                             <div className="text-right">
-                                <button type="submit" className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700">Guardar Cambios</button>
-                            </div>
-                        </form>
-                    </Card>
-
-                    <Card title="Seguridad" icon={<ShieldCheckIcon className="w-8 h-8"/>}>
-                        <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm">Contraseña Actual</label>
-                                <input type="password" value={passwordInfo.currentPassword} onChange={e => setPasswordInfo({...passwordInfo, currentPassword: e.target.value})} className="w-full mt-1 p-2 border rounded" required={!!currentUser.password} />
-                            </div>
-                            <div>
-                                <label className="block text-sm">Nueva Contraseña</label>
-                                <input type="password" value={passwordInfo.newPassword} onChange={e => setPasswordInfo({...passwordInfo, newPassword: e.target.value})} className="w-full mt-1 p-2 border rounded" />
-                            </div>
-                             <div>
-                                <label className="block text-sm">Confirmar Nueva Contraseña</label>
-                                <input type="password" value={passwordInfo.confirmPassword} onChange={e => setPasswordInfo({...passwordInfo, confirmPassword: e.target.value})} className="w-full mt-1 p-2 border rounded" />
-                            </div>
-                             <div className="text-right">
-                                <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Cambiar Contraseña</button>
-                            </div>
-                        </form>
-                    </Card>
-                </div>
-                <div className="lg:col-span-1 space-y-6">
                     {currentUser.profiles.includes(Profile.TEACHER) && teacherData && (
                         <>
                             <Card title="Grupos y Perfiles" icon={<AssignmentIcon className="w-8 h-8 text-primary-600" />}>
@@ -412,6 +357,69 @@ export const MyProfile: React.FC = () => {
                             </div>
                         </Card>
                     )}
+                </div>
+                
+                {/* Personal Info + Security Tabs - Right side */}
+                <div className="lg:col-span-1 space-y-6">
+                    <Card title="Configuración de Cuenta">
+                         <div className="flex border-b mb-4">
+                             <button onClick={() => setActiveTab('info')} className={`py-2 px-4 ${activeTab === 'info' ? 'border-b-2 border-primary-600 font-bold' : ''}`}>Información</button>
+                             <button onClick={() => setActiveTab('security')} className={`py-2 px-4 ${activeTab === 'security' ? 'border-b-2 border-primary-600 font-bold' : ''}`}>Seguridad</button>
+                         </div>
+                         
+                         {activeTab === 'info' ? (
+                             <form onSubmit={handlePersonalInfoSubmit} className="space-y-4">
+                                <div className="flex items-center space-x-4">
+                                   <Avatar user={{ ...currentUser, avatar: avatarPreview || personalInfo.avatar }} className="w-20 h-20" />
+                                   <input type="file" id="avatar-upload" className="hidden" onChange={handleAvatarChange} accept="image/*"/>
+                                   <label htmlFor="avatar-upload" className="bg-gray-200 dark:bg-gray-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer">Cambiar Foto</label>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label className="block text-sm">Nombre y Apellidos</label>
+                                        <input type="text" value={personalInfo.name} onChange={e => setPersonalInfo({...personalInfo, name: e.target.value})} className="w-full mt-1 p-2 border rounded"/>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm">Correo Electrónico</label>
+                                        <input type="email" value={currentUser.email} readOnly className="w-full mt-1 p-2 border rounded bg-gray-100 dark:bg-gray-800"/>
+                                    </div>
+                                     <div>
+                                        <label className="block text-sm">Teléfono Principal</label>
+                                        <input type="tel" value={personalInfo.phone} onChange={e => setPersonalInfo({...personalInfo, phone: e.target.value})} className="w-full mt-1 p-2 border rounded"/>
+                                    </div>
+                                     <div>
+                                        <label className="block text-sm">Teléfono Secundario</label>
+                                        <input type="tel" value={personalInfo.secondary_phone} onChange={e => setPersonalInfo({...personalInfo, secondary_phone: e.target.value})} className="w-full mt-1 p-2 border rounded"/>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm">Dirección</label>
+                                        <textarea value={personalInfo.address} onChange={e => setPersonalInfo({...personalInfo, address: e.target.value})} rows={2} className="w-full mt-1 p-2 border rounded"/>
+                                    </div>
+                                </div>
+                                 <div className="text-right">
+                                    <button type="submit" className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700">Guardar Cambios</button>
+                                </div>
+                             </form>
+                         ) : (
+                             <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm">Contraseña Actual</label>
+                                    <input type="password" value={passwordInfo.currentPassword} onChange={e => setPasswordInfo({...passwordInfo, currentPassword: e.target.value})} className="w-full mt-1 p-2 border rounded" required={!!currentUser.password} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm">Nueva Contraseña</label>
+                                    <input type="password" value={passwordInfo.newPassword} onChange={e => setPasswordInfo({...passwordInfo, newPassword: e.target.value})} className="w-full mt-1 p-2 border rounded" />
+                                </div>
+                                 <div>
+                                    <label className="block text-sm">Confirmar Nueva Contraseña</label>
+                                    <input type="password" value={passwordInfo.confirmPassword} onChange={e => setPasswordInfo({...passwordInfo, confirmPassword: e.target.value})} className="w-full mt-1 p-2 border rounded" />
+                                </div>
+                                 <div className="text-right">
+                                    <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Cambiar Contraseña</button>
+                                </div>
+                             </form>
+                         )}
+                    </Card>
                 </div>
             </div>
         </div>
