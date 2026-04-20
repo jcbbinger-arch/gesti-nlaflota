@@ -64,18 +64,31 @@ export const ExpenseManager: React.FC = () => {
         const dataByTeacher = teachers.map(teacher => {
             const teacherOrders = completedOrders.filter(o => o.user_id === teacher.id);
             const teacherSales = sales.filter(s => s.teacher_id === teacher.id);
-            const directSpend = teacherOrders.reduce((sum, o) => sum + (o.cost || 0), 0);
-            const totalSpend = directSpend + sharedCostPerTeacher;
+            
+            const weeklySpend = teacherOrders
+                .filter(o => o.order_type === 'weekly' || !o.order_type)
+                .reduce((sum, o) => sum + (o.cost || 0), 0);
+            const serviceSpend = teacherOrders
+                .filter(o => o.order_type === 'service')
+                .reduce((sum, o) => sum + (o.cost || 0), 0);
+                
+            const sharedSpend = sharedCostPerTeacher;
+            const totalSpend = weeklySpend + serviceSpend + sharedSpend;
             const totalSales = teacherSales.reduce((sum, s) => sum + s.amount, 0);
+            
+            // Balance: Teacher responsibility (Weekly + Shared) vs Sales
+            const teacherResponsibility = weeklySpend + sharedSpend;
+            
             return {
                 id: teacher.id,
                 name: teacher.name,
                 orderCount: teacherOrders.length,
-                directSpend,
-                sharedSpend: sharedCostPerTeacher,
+                weeklySpend,
+                serviceSpend,
+                sharedSpend,
                 totalSpend,
                 totalSales,
-                balance: totalSales - totalSpend,
+                balance: totalSales - teacherResponsibility,
             };
         });
 
@@ -187,11 +200,11 @@ export const ExpenseManager: React.FC = () => {
                                <tr>
                                    <th className="p-2 text-left">Profesor</th>
                                    <th className="p-2 text-center">Nº Pedidos</th>
-                                   <th className="p-2 text-right">Gasto Directo</th>
-                                   <th className="p-2 text-right">Gasto Compartido</th>
-                                   <th className="p-2 text-right">Gasto Total</th>
+                                   <th className="p-2 text-right text-amber-700">Gasto Semanal</th>
+                                   <th className="p-2 text-right text-primary-700">Gasto Servicio</th>
+                                   <th className="p-2 text-right">Gasto Comp.</th>
                                    <th className="p-2 text-right">Ventas</th>
-                                   <th className="p-2 text-right">Balance</th>
+                                   <th className="p-2 text-right">Balance Personal</th>
                                </tr>
                            </thead>
                            <tbody>
@@ -199,11 +212,11 @@ export const ExpenseManager: React.FC = () => {
                                    <tr key={t.id} className="border-b dark:border-gray-700">
                                        <td className="p-2"><Link to={`/admin/expenses/${t.id}`} className="text-primary-600 hover:underline">{t.name}</Link></td>
                                        <td className="p-2 text-center">{t.orderCount}</td>
-                                       <td className="p-2 text-right">{formatCurrency(t.directSpend)}</td>
+                                       <td className="p-2 text-right font-medium text-amber-700">{formatCurrency(t.weeklySpend)}</td>
+                                       <td className="p-2 text-right font-medium text-primary-700">{formatCurrency(t.serviceSpend)}</td>
                                        <td className="p-2 text-right text-blue-600">{formatCurrency(t.sharedSpend)}</td>
-                                       <td className="p-2 text-right font-bold">{formatCurrency(t.totalSpend)}</td>
-                                       <td className="p-2 text-right">{formatCurrency(t.totalSales)}</td>
-                                       <td className={`p-2 text-right font-semibold ${t.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.balance)}</td>
+                                       <td className="p-2 text-right text-green-600">{formatCurrency(t.totalSales)}</td>
+                                       <td className={`p-2 text-right font-bold ${t.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.balance)}</td>
                                    </tr>
                                ))}
                            </tbody>

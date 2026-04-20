@@ -15,6 +15,9 @@ export const OrderForm: React.FC = () => {
     const { events, products, orders, setOrders, mini_economato_stock, setMiniEconomatoStock } = useData();
     const { currentUser } = useAuth();
     
+    const [orderType, setOrderType] = useState<'weekly' | 'service'>(
+        (searchParams.get('order_type') as 'weekly' | 'service') || 'weekly'
+    );
     const [orderItems, setOrderItems] = useState<Map<string, number>>(new Map());
     const [pendingQuantities, setPendingQuantities] = useState<Record<string, number>>({});
     const [notes, setNotes] = useState('');
@@ -86,6 +89,9 @@ export const OrderForm: React.FC = () => {
             setPendingQuantities({});
             setNotes(existingOrder.notes || '');
             set_new_requests(existingOrder.new_product_requests || []);
+            if (existingOrder.order_type) {
+                setOrderType(existingOrder.order_type);
+            }
         }
     }, [existingOrder]);
     
@@ -170,6 +176,7 @@ export const OrderForm: React.FC = () => {
             date: new Date().toISOString(),
             status,
             event_id: event.id,
+            order_type: orderType,
             items: newOrderItems,
             new_product_requests: new_requests,
             cost: calculateTotalCost,
@@ -206,7 +213,16 @@ export const OrderForm: React.FC = () => {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Pedido para: {event.name}</h1>
+            <div className="flex items-center gap-3 mb-6">
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
+                    Pedido para: {event.name}
+                </h1>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                    orderType === 'service' ? 'bg-primary-100 text-primary-700 border border-primary-200' : 'bg-amber-100 text-amber-700 border border-amber-200'
+                }`}>
+                    {orderType === 'service' ? 'Práctica de Servicio' : 'Reposición Semanal'}
+                </span>
+            </div>
             
             {isOverBudget && (
                 <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">

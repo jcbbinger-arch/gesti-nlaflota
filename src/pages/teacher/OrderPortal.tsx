@@ -22,68 +22,129 @@ export const OrderPortal: React.FC = () => {
 
     const staffMealOrders = orders.filter(o => o.is_staff_meal && o.user_id === currentUser?.id);
 
-    const getMyOrderForEvent = (event: AppEvent) => {
+    const getMyOrderForEvent = (event: AppEvent, type?: 'weekly' | 'service') => {
         const userId = isEconomatoMode ? 'mini-economato' : currentUser?.id;
-        return orders.find(o => o.user_id === userId && o.event_id === event.id);
+        if (!type && !isEconomatoMode) {
+            // Return any order for this event
+            return orders.find(o => o.user_id === userId && o.event_id === event.id);
+        }
+        return orders.find(o => 
+            o.user_id === userId && 
+            o.event_id === event.id && 
+            (isEconomatoMode ? true : o.order_type === type)
+        );
     };
 
     const handleExport = () => {
-        const dataToExport = activeEvents.map(event => {
-            const myOrder = getMyOrderForEvent(event);
-            return {
-                evento: event.name,
-                finaliza: new Date(event.end_date).toLocaleString(),
-                estado_mi_pedido: myOrder ? myOrder.status : 'No realizado'
-            }
+        const dataToExport = activeEvents.flatMap(event => {
+            const types: ('weekly' | 'service')[] = ['service', 'weekly'];
+            return types.map(type => {
+                const myOrder = getMyOrderForEvent(event, type);
+                return {
+                    evento: event.name,
+                    tipo: type === 'service' ? 'Servicio Comedor' : 'Pedido Semanal',
+                    finaliza: new Date(event.end_date).toLocaleString(),
+                    estado: myOrder ? myOrder.status : 'No realizado'
+                };
+            });
         });
-        exportToCsv('eventos_activos.csv', dataToExport);
+        exportToCsv('eventos_pedidos.csv', dataToExport);
     }
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
                     {isEconomatoMode ? 'Portal de Pedidos: Mini-Economato' : 'Portal de Pedidos'}
                 </h1>
-                 <button onClick={handleExport} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
+                 <button onClick={handleExport} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center shadow-sm transition-colors">
                     <DownloadIcon className="w-5 h-5 mr-2" />
                     Exportar a CSV
                 </button>
             </div>
             {isEconomatoMode && (
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 shadow-sm">
                     <p className="text-blue-700 font-medium">Modo Reposición Mini-Economato</p>
                     <p className="text-sm text-blue-600">Los pedidos realizados aquí se cargarán al stock del Mini-Economato.</p>
                 </div>
             )}
-            <Card title="Eventos Activos">
+
+            <Card title="Eventos de Pedido Abiertos">
+                <div className="p-4 bg-gray-50 border-b text-sm text-gray-600">
+                    <p>Selecciona el tipo de pedido que deseas realizar. Los pedidos de <strong>Servicio</strong> son para las prácticas de comedor, mientras que los <strong>Semanales</strong> son para reposición de aula.</p>
+                </div>
                 {activeEvents.length > 0 ? (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-center">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <table className="w-full">
+                            <thead className="bg-gray-100 text-gray-600 text-xs uppercase font-semibold">
                                 <tr>
-                                    <th className="px-4 py-2 text-left">Evento</th>
-                                    <th className="px-4 py-2">Finaliza</th>
-                                    <th className="px-4 py-2">{isEconomatoMode ? 'Estado Pedido Economato' : 'Estado de Mi Pedido'}</th>
-                                    <th className="px-4 py-2">Acciones</th>
+                                    <th className="px-6 py-3 text-left">Evento / Fecha de Cierre</th>
+                                    <th className="px-6 py-3 text-center">Pedido de SERVICIO</th>
+                                    <th className="px-6 py-3 text-center">Pedido SEMANAL</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-gray-200">
                                 {activeEvents.map(event => {
-                                    const myOrder = getMyOrderForEvent(event);
-                                    const linkSuffix = isEconomatoMode ? '?type=economato' : '';
+                                    const weeklyOrder = getMyOrderForEvent(event, 'weekly');
+                                    const serviceOrder = getMyOrderForEvent(event, 'service');
+                                    const linkSuffix = isEconomatoMode ? '&type=economato' : '';
+                                    
                                     return (
-                                        <tr key={event.id} className="border-b dark:border-gray-700">
-                                            <td className="px-4 py-3 font-medium text-left">{event.name}</td>
-                                            <td className="px-4 py-3">{new Date(event.end_date).toLocaleString()}</td>
-                                            <td className="px-4 py-3">{myOrder ? myOrder.status : 'No realizado'}</td>
-                                            <td className="px-4 py-3 no-print">
-                                                {myOrder ? (
-                                                    <Link to={`/teacher/order-portal/edit/${myOrder.id}${linkSuffix}`} className="text-primary-600 hover:underline">
-                                                        {myOrder.status === 'Procesado' ? 'Ver' : 'Editar'}
-                                                    </Link>
+                                        <tr key={event.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-gray-800">{event.name}</div>
+                                                <div className="text-xs text-gray-500">Cierre: {new Date(event.end_date).toLocaleString()}</div>
+                                            </td>
+                                            
+                                            {/* Pedido de Servicio */}
+                                            <td className="px-6 py-4 text-center">
+                                                {serviceOrder ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full mb-1 ${
+                                                            serviceOrder.status === 'Procesado' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                                        }`}>
+                                                            {serviceOrder.status}
+                                                        </span>
+                                                        <Link 
+                                                            to={`/teacher/order-portal/edit/${serviceOrder.id}?order_type=service${linkSuffix}`} 
+                                                            className="text-primary-600 hover:text-primary-800 text-sm font-bold"
+                                                        >
+                                                            {serviceOrder.status === 'Procesado' ? 'Ver' : 'Modificar'}
+                                                        </Link>
+                                                    </div>
                                                 ) : (
-                                                    <Link to={`/teacher/order-portal/new/${event.id}${linkSuffix}`} className="text-green-600 hover:underline font-bold">Crear Pedido</Link>
+                                                    <Link 
+                                                        to={`/teacher/order-portal/new/${event.id}?order_type=service${linkSuffix}`} 
+                                                        className="inline-block bg-primary-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-primary-700 shadow-sm"
+                                                    >
+                                                        Crear Servicio
+                                                    </Link>
+                                                )}
+                                            </td>
+
+                                            {/* Pedido Semanal */}
+                                            <td className="px-6 py-4 text-center">
+                                                {weeklyOrder ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full mb-1 ${
+                                                            weeklyOrder.status === 'Procesado' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                                        }`}>
+                                                            {weeklyOrder.status}
+                                                        </span>
+                                                        <Link 
+                                                            to={`/teacher/order-portal/edit/${weeklyOrder.id}?order_type=weekly${linkSuffix}`} 
+                                                            className="text-primary-600 hover:text-primary-800 text-sm font-bold"
+                                                        >
+                                                            {weeklyOrder.status === 'Procesado' ? 'Ver' : 'Modificar'}
+                                                        </Link>
+                                                    </div>
+                                                ) : (
+                                                    <Link 
+                                                        to={`/teacher/order-portal/new/${event.id}?order_type=weekly${linkSuffix}`} 
+                                                        className="inline-block border border-primary-600 text-primary-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-primary-50 transition-colors"
+                                                    >
+                                                        Crear Semanal
+                                                    </Link>
                                                 )}
                                             </td>
                                         </tr>
@@ -93,7 +154,9 @@ export const OrderPortal: React.FC = () => {
                         </table>
                     </div>
                 ) : (
-                    <p className="p-4 text-center text-gray-500">No hay eventos de pedido activos actualmente.</p>
+                    <div className="p-10 text-center text-gray-500 italic">
+                        No hay eventos de pedido activos actualmente.
+                    </div>
                 )}
             </Card>
 

@@ -310,6 +310,23 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
         }
     }
 
+    const ordersByTeacher = useMemo(() => {
+        const groups: Record<string, Order[]> = {};
+        eventOrders.filter(o => selectedTeacherId === 'all' || o.user_id === selectedTeacherId).forEach(o => {
+            if (!groups[o.user_id]) groups[o.user_id] = [];
+            groups[o.user_id].push(o);
+        });
+        return groups;
+    }, [eventOrders, selectedTeacherId]);
+
+    const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
+    const toggleTeacherExpand = (teacherId: string) => {
+        const newSet = new Set(expandedTeachers);
+        if (newSet.has(teacherId)) newSet.delete(teacherId);
+        else newSet.add(teacherId);
+        setExpandedTeachers(newSet);
+    };
+
     if (!event) return <Card title="Error">Evento no encontrado.</Card>;
 
     return (
@@ -319,10 +336,10 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
             <div className="flex justify-between items-start mt-2 mb-6">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Procesar Pedido: {event.name}</h1>
-                    <p className="text-gray-500">Agrupa, revisa y gestiona los pedidos semanales.</p>
+                    <p className="text-gray-500">Agrupa, revisa y gestiona los pedidos realizados por el profesorado.</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-sm font-medium text-gray-500">Gasto Total Semanal (Estimado)</p>
+                    <p className="text-sm font-medium text-gray-500">Gasto Total Evento (Estimado)</p>
                     <p className="text-3xl font-bold text-primary-600">
                         {totalWeeklyGasto.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                     </p>
@@ -330,179 +347,168 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
             </div>
 
             <div className="flex flex-wrap gap-2 mb-6 no-print">
-                <button onClick={() => setViewMode('Global')} className={`px-4 py-2 rounded-md flex items-center ${viewMode === 'Global' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border'}`}>
-                    <HistoryIcon className="w-4 h-4 mr-2" /> Global (Por Producto)
+                <button onClick={() => setViewMode('Global')} className={`px-4 py-2 rounded-md flex items-center shadow-sm transition-all ${viewMode === 'Global' ? 'bg-primary-600 text-white ring-2 ring-primary-300' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border hover:bg-gray-50'}`}>
+                    <HistoryIcon className="w-4 h-4 mr-2" /> Global (Requerimientos Totales)
                 </button>
-                <button onClick={() => setViewMode('Teacher')} className={`px-4 py-2 rounded-md flex items-center ${viewMode === 'Teacher' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border'}`}>
-                    <UserCircleIcon className="w-4 h-4 mr-2" /> Por Profesor
+                <button onClick={() => setViewMode('Teacher')} className={`px-4 py-2 rounded-md flex items-center shadow-sm transition-all ${viewMode === 'Teacher' ? 'bg-primary-600 text-white ring-2 ring-primary-300' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border hover:bg-gray-50'}`}>
+                    <UserCircleIcon className="w-4 h-4 mr-2" /> Por Profesor (Consolidado)
                 </button>
-                <button onClick={() => setViewMode('Supplier')} className={`px-4 py-2 rounded-md flex items-center ${viewMode === 'Supplier' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border'}`}>
-                    <TruckIcon className="w-4 h-4 mr-2" /> Por Proveedor
+                <button onClick={() => setViewMode('Supplier')} className={`px-4 py-2 rounded-md flex items-center shadow-sm transition-all ${viewMode === 'Supplier' ? 'bg-primary-600 text-white ring-2 ring-primary-300' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border hover:bg-gray-50'}`}>
+                    <TruckIcon className="w-4 h-4 mr-2" /> Por Proveedor (Hojas de Compra)
                 </button>
             </div>
 
             {viewMode === 'Teacher' && (
-                <div className="mb-6 p-4 bg-white dark:bg-gray-800 border rounded-lg shadow-sm no-print">
-                    <label className="block text-sm font-medium mb-1">Seleccionar Profesor:</label>
-                    <select 
-                        value={selectedTeacherId} 
-                        onChange={e => setSelectedTeacherId(e.target.value)}
-                        className="w-full p-2 border rounded-md dark:bg-gray-700"
-                    >
-                        <option value="all">Ver todos los profesores</option>
-                        {teachers.filter(t => eventOrders.some(o => o.user_id === t.id)).map(t => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                    </select>
-                </div>
-            )}
-
-            {viewMode === 'Global' && (
-                <Card title="Revisión Agregada por Productos">
-                    <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                            <tr>
-                                <th className="px-2 py-2 text-left">Producto</th>
-                                <th className="px-2 py-2">Cantidad Total</th>
-                                <th className="px-2 py-2 w-1/3">Proveedor Asignado</th>
-                                <th className="px-2 py-2">Coste Total (Aprox)</th>
-                                <th className="px-2 py-2 text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {aggregatedProducts.map(({ product, orders: orderDetails }) => {
-                                const totalQuantity = orderDetails.reduce((sum, detail) => sum + (editedQuantities[`${detail.order.id}-${product.id}`] ?? detail.item.quantity), 0);
-                                const selectedSupId = selectedSuppliers[product.id];
-                                const price = product.suppliers.find(s => s.supplier_id === selectedSupId)?.price || 0;
-                                const totalCost = totalQuantity * price;
-                                const isExpanded = expandedProducts.has(product.id);
-                                return (
-                                    <React.Fragment key={product.id}>
-                                    <tr className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                                        <td className="p-2 font-semibold">
-                                            <div className="flex items-center">
-                                                <AppleIcon className="w-4 h-4 mr-2 text-primary-500" />
-                                                {product.name}
-                                            </div>
-                                        </td>
-                                        <td className="p-2 text-center font-mono">{totalQuantity} {product.unit}</td>
-                                        <td className="p-2">
-                                            <select value={selectedSupId || ''} disabled={isProcessed} onChange={(e) => setSelectedSuppliers({...selectedSuppliers, [product.id]: e.target.value})} className="w-full p-1 border rounded dark:bg-gray-800">
-                                                {product.suppliers.map(ps => suppliersMap.get(ps.supplier_id)).filter(s => s?.status === 'Activo').map(s => s && <option key={s.id} value={s.id}>{s.name} ({product.suppliers.find(ps => ps.supplier_id === s.id)?.price.toFixed(2)}€)</option>)}
-                                            </select>
-                                        </td>
-                                        <td className="p-2 text-center text-primary-600 font-bold">{totalCost.toFixed(2)}€</td>
-                                        <td className="p-2 text-right">
-                                            <button onClick={() => toggleExpand(product.id)} className="text-primary-600 text-xs font-medium hover:underline">
-                                                {isExpanded ? 'Ocultar' : 'Ver Desglose'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {isExpanded && (
-                                        <tr className="bg-gray-50 dark:bg-gray-900 shadow-inner">
-                                            <td colSpan={5} className="p-4">
-                                                <div className="border-l-4 border-primary-500 pl-4 space-y-2">
-                                                    <h4 className="font-bold flex items-center"><UserCircleIcon className="w-4 h-4 mr-1" /> Distribución por Profesor</h4>
-                                                    {orderDetails.map(({ order, item }) => (
-                                                        <div key={order.id} className="flex justify-between items-center text-xs p-1 bg-white dark:bg-gray-800 rounded border dark:border-gray-700">
-                                                            <span className="w-1/3">{usersMap.get(order.user_id)}:</span>
-                                                            <div className="flex items-center">
-                                                                <input 
-                                                                    type="number" 
-                                                                    step="0.01" 
-                                                                    disabled={isProcessed} 
-                                                                    value={editedQuantities[`${order.id}-${item.product_id}`] ?? item.quantity} 
-                                                                    onChange={e => handleQuantityChange(order.id, item.product_id, parseFloat(e.target.value) || 0)} 
-                                                                    className="w-20 p-1 border rounded dark:bg-gray-900 text-center"
-                                                                />
-                                                                <span className="ml-1 text-gray-500">{product.unit}</span>
-                                                            </div>
-                                                            <em className="text-gray-400 truncate ml-4 w-1/3 text-right italic" title={order.notes}>
-                                                                {order.notes ? `"${order.notes}"` : '(Sin notas)'}
-                                                            </em>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
-                                    </React.Fragment>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                    </div>
-                </Card>
-            )}
-
-            {viewMode === 'Teacher' && (
                 <div className="space-y-6">
-                    {eventOrders
-                      .filter(o => selectedTeacherId === 'all' || o.user_id === selectedTeacherId)
-                      .map(order => (
-                        <Card key={order.id} title={
-                            <div className="flex justify-between items-center w-full">
-                                <span>Pedido de: {usersMap.get(order.user_id)}</span>
-                                {order.is_staff_meal && (
-                                    <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-full border border-amber-300">
-                                        COMIDA DE FAMILIA
-                                    </span>
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 text-sm text-blue-700">
+                        <p className="font-bold">Vista de Economato Consolidada</p>
+                        <p>Los pedidos de "Servicio" y "Semanales" de cada profesor se muestran agrupados para facilitar la preparación física de la mercancía.</p>
+                    </div>
+
+                    {Object.entries(ordersByTeacher).map(([teacherId, teacherOrders]) => {
+                        const teacherName = usersMap.get(teacherId) || 'Desconocido';
+                        const isExpanded = expandedTeachers.has(teacherId);
+                        
+                        // Consolidate items from all orders of this teacher
+                        const consolidatedItems = new Map<string, { product_id: string; quantity: number; types: Set<string> }>();
+                        teacherOrders.forEach(o => {
+                            o.items.forEach(item => {
+                                if (!consolidatedItems.has(item.product_id)) {
+                                    consolidatedItems.set(item.product_id, { product_id: item.product_id, quantity: 0, types: new Set() });
+                                }
+                                const consolidated = consolidatedItems.get(item.product_id)!;
+                                consolidated.quantity += (editedQuantities[`${o.id}-${item.product_id}`] ?? item.quantity);
+                                consolidated.types.add(o.order_type || 'weekly');
+                            });
+                        });
+
+                        return (
+                            <Card key={teacherId} title={
+                                <div className="flex justify-between items-center w-full">
+                                    <div className="flex items-center">
+                                        <UserCircleIcon className="w-5 h-5 mr-2 text-primary-500" />
+                                        <span className="text-xl">{teacherName}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {teacherOrders.some(o => o.order_type === 'service') && (
+                                            <span className="bg-primary-100 text-primary-800 text-[10px] px-2 py-1 rounded-full border border-primary-300">SERVICIO</span>
+                                        )}
+                                        {teacherOrders.some(o => o.order_type === 'weekly' || !o.order_type) && (
+                                            <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-full border border-amber-300">SEMANAL</span>
+                                        )}
+                                    </div>
+                                </div>
+                            }>
+                                {!isExpanded ? (
+                                    <div className="space-y-4">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-gray-50 border-b">
+                                                    <tr>
+                                                        <th className="px-3 py-2 text-left">Producto (Consolidado)</th>
+                                                        <th className="px-3 py-2 text-center">Cantidad Total</th>
+                                                        <th className="px-3 py-2 text-center">Referencia</th>
+                                                        <th className="px-3 py-2 text-right">Destinado a</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y">
+                                                    {Array.from(consolidatedItems.values()).map(cItem => {
+                                                        const p = productsMap.get(cItem.product_id);
+                                                        if (cItem.quantity <= 0) return null;
+                                                        return (
+                                                            <tr key={cItem.product_id} className="hover:bg-gray-50">
+                                                                <td className="px-3 py-2 font-medium">{p?.name || 'N/A'}</td>
+                                                                <td className="px-3 py-2 text-center font-mono font-bold text-primary-700">{cItem.quantity} {p?.unit}</td>
+                                                                <td className="px-3 py-2 text-center text-gray-400 text-xs">{p?.reference}</td>
+                                                                <td className="px-3 py-2 text-right">
+                                                                    <div className="flex justify-end gap-1">
+                                                                        {Array.from(cItem.types).map(t => (
+                                                                            <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded border capitalize ${
+                                                                                t === 'service' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-amber-50 text-amber-600 border-amber-200'
+                                                                            }`}>
+                                                                                {t === 'weekly' ? 'Semanal' : 'Servicio'}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-2 border-t mt-4">
+                                            <p className="text-xs text-gray-500 italic">Este el el pedido unificado para {teacherName}.</p>
+                                            <button 
+                                                onClick={() => toggleTeacherExpand(teacherId)}
+                                                className="text-primary-600 text-sm font-bold hover:underline"
+                                            >
+                                                Desglosar en Pedidos Individuales &rarr;
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="flex justify-between items-center pb-2 border-b">
+                                            <h3 className="font-bold text-gray-700">Desglose de Pedidos para {teacherName}</h3>
+                                            <button 
+                                                onClick={() => toggleTeacherExpand(teacherId)}
+                                                className="text-gray-500 text-xs hover:underline"
+                                            >
+                                                &larr; Volver a vista consolidada
+                                            </button>
+                                        </div>
+                                        {teacherOrders.map(order => (
+                                            <div key={order.id} className={`p-4 rounded-lg border-l-4 ${order.order_type === 'service' ? 'border-primary-500 bg-primary-50/30' : 'border-amber-500 bg-amber-50/30'}`}>
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <span className="font-bold uppercase text-xs">
+                                                        Pedido {order.order_type === 'service' ? 'de Servicio' : 'Semanal'}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500">{new Date(order.date).toLocaleString()}</span>
+                                                </div>
+                                                <table className="w-full text-xs">
+                                                    <thead>
+                                                        <tr className="border-b">
+                                                            <th className="text-left py-1">Producto</th>
+                                                            <th className="text-center py-1">Cantidad</th>
+                                                            <th className="text-right py-1">Precio/U</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {order.items.map(item => {
+                                                            const p = productsMap.get(item.product_id);
+                                                            const editedQty = editedQuantities[`${order.id}-${item.product_id}`] ?? item.quantity;
+                                                            return (
+                                                                <tr key={item.product_id} className="border-b border-gray-100">
+                                                                    <td className="py-2">{p?.name}</td>
+                                                                    <td className="py-2 text-center">
+                                                                        <input 
+                                                                            type="number" 
+                                                                            step="0.01" 
+                                                                            disabled={isProcessed}
+                                                                            value={editedQty} 
+                                                                            onChange={e => handleQuantityChange(order.id, item.product_id, parseFloat(e.target.value) || 0)}
+                                                                            className="w-16 p-1 border rounded dark:bg-gray-700 text-center"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="py-2 text-right">{(p?.suppliers[0]?.price || 0).toFixed(2)}€</td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                                {order.notes && (
+                                                    <div className="mt-2 text-xs italic text-gray-600 bg-white/50 p-2 rounded">
+                                                        <strong>Notas específicas:</strong> {order.notes}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
-                            </div>
-                        }>
-                            <div className="text-gray-500 text-xs mb-4">
-                                Fecha: {new Date(order.date).toLocaleString()} | Estado: {order.status}
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-gray-50 dark:bg-gray-700">
-                                        <tr>
-                                            <th className="px-2 py-2 text-left">Producto</th>
-                                            <th className="px-2 py-2">Cantidad</th>
-                                            <th className="px-2 py-2">Precio/U</th>
-                                            <th className="px-2 py-2">Importe</th>
-                                            <th className="px-2 py-2 text-right">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {order.items.map(item => {
-                                            const p = productsMap.get(item.product_id);
-                                            const editedQty = editedQuantities[`${order.id}-${item.product_id}`] ?? item.quantity;
-                                            const itemPrice = p?.suppliers.find(s => s.supplier_id === selectedSuppliers[p.id])?.price || item.price;
-                                            return (
-                                                <tr key={item.product_id} className="border-b dark:border-gray-700">
-                                                    <td className="p-2 font-medium">{p?.name || 'N/A'}</td>
-                                                    <td className="p-2">
-                                                        <input 
-                                                            type="number" 
-                                                            step="0.01" 
-                                                            disabled={isProcessed}
-                                                            value={editedQty} 
-                                                            onChange={e => handleQuantityChange(order.id, item.product_id, parseFloat(e.target.value) || 0)}
-                                                            className="w-24 p-1 border rounded dark:bg-gray-700"
-                                                        />
-                                                    </td>
-                                                    <td className="p-2">{itemPrice.toFixed(2)}€</td>
-                                                    <td className="p-2 font-bold">{(editedQty * itemPrice).toFixed(2)}€</td>
-                                                    <td className="p-2 text-right">
-                                                        {!isProcessed && (
-                                                            <button onClick={() => handleQuantityChange(order.id, item.product_id, 0)} className="text-red-500 hover:text-red-700">
-                                                                <TrashIcon className="w-4 h-4" />
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded italic text-sm text-gray-500">
-                                <strong>Notas del profesor:</strong> {order.notes || 'Ninguna'}
-                            </div>
-                        </Card>
-                    ))}
+                            </Card>
+                        );
+                    })}
                 </div>
             )}
 

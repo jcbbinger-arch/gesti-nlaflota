@@ -174,6 +174,7 @@ export interface Order {
   date: string; // ISO string
   status: OrderStatus;
   event_id: string;
+  order_type?: 'weekly' | 'service';
   items: OrderItem[];
   new_product_requests?: NewProductRequest[];
   cost?: number;
