@@ -298,6 +298,7 @@ export interface Message {
     body: string;
     date: string; // ISO string
     read_by: { [user_id: string]: boolean };
+    read_at?: { [user_id: string]: string }; // Map user_id to ISO read date
 }
 
 export interface Classroom {

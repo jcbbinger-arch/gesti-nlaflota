@@ -125,12 +125,13 @@ export const Messaging: React.FC = () => {
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     , [messages, currentUser]);
 
-    const handleSendMessage = (newMessage: Omit<Message, 'id' | 'date' | 'sender_id' | 'read_by'>) => {
+    const handleSendMessage = (newMessage: Omit<Message, 'id' | 'date' | 'sender_id' | 'read_by' | 'read_at'>) => {
         const message: Message = {
             id: `msg-${Date.now()}`,
             sender_id: currentUser!.id,
             date: new Date().toISOString(),
             read_by: {},
+            read_at: {},
             ...newMessage
         };
         setMessages([...messages, message]);
@@ -140,10 +141,34 @@ export const Messaging: React.FC = () => {
     const handleMessageClick = (message: Message) => {
         setSelectedMessage(message);
         if (view === 'inbox' && currentUser && !message.read_by[currentUser.id]) {
-            const updatedMessage = { ...message, read_by: { ...message.read_by, [currentUser.id]: true } };
+            const now = new Date().toISOString();
+            const updatedMessage = { 
+                ...message, 
+                read_by: { ...message.read_by, [currentUser.id]: true },
+                read_at: { ...message.read_at, [currentUser.id]: now }
+            };
             setMessages(messages.map(m => m.id === message.id ? updatedMessage : m));
         }
     };
+
+    // Filter messages for current user, excluding those read > 15 days ago
+    const isMessageExpired = (message: Message, userId: string) => {
+        if (!message.read_at || !message.read_at[userId]) return false;
+        const readDate = new Date(message.read_at[userId]);
+        const expiryDate = new Date(readDate);
+        expiryDate.setDate(expiryDate.getDate() + 15);
+        return new Date() > expiryDate;
+    };
+
+    // Auto-delete expired messages from storage
+    useEffect(() => {
+        if (currentUser) {
+            const expiredMessages = messages.filter(m => isMessageExpired(m, currentUser.id));
+            if (expiredMessages.length > 0) {
+                setMessages(messages.filter(m => !isMessageExpired(m, currentUser.id)));
+            }
+        }
+    }, [messages, currentUser, setMessages]);
 
     const handleDownloadAll = () => {
         const messagesToDownload = view === 'inbox' ? myInbox : mySentBox;
