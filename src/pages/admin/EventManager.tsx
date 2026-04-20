@@ -72,7 +72,7 @@ export const EventManager: React.FC = () => {
                         start_date: orderOpenDate.toISOString(),
                         end_date: orderCloseDate.toISOString(),
                         budget_per_teacher: companyInfo.default_budget || 300,
-                        status: 'Inactivo',
+                        status: 'Activo',
                         authorized_teachers: [],
                     };
                     generatedEvents.push(newEvent);

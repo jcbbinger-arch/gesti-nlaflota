@@ -341,7 +341,7 @@ export interface ClassroomOrder {
     items: ClassroomOrderItem[];
 }
 
-export type ServiceRole = 'Cocina' | 'Postres' | 'Servicios (Sala)' | 'Cafetería';
+export type ServiceRole = 'Cocina' | 'Postres' | 'Servicios (Sala)' | 'Cafetería' | 'Pan del servicio' | 'Mignardises';
 
 export interface ServiceGroup {
     id: string;

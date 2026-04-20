@@ -6,17 +6,29 @@ import { ConfirmModal } from '../../components/ConfirmModal';
 import { PlusIcon, TrashIcon, PencilIcon, UsersIcon, EventIcon } from '../../components/icons';
 import { ServiceGroup, Service, User, Profile, ServiceRole } from '../../types';
 
-const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', 'Cafetería'];
+const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', 'Cafetería', 'Pan del servicio', 'Mignardises'];
 
 // --- SERVICE GROUP MANAGEMENT ---
 const ServiceGroupManager: React.FC = () => {
-    const { service_groups, setServiceGroups, users, services, setServices } = useData();
+    const { service_groups, setServiceGroups, users, services, setServices, assignments, groups, modules } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState<ServiceGroup | null>(null);
     const [confirmDeleteGroupId, setConfirmDeleteGroupId] = useState<string | null>(null);
 
     const teachers = useMemo(() => users.filter((u: User) => u.profiles.includes(Profile.TEACHER)), [users]);
     const usersMap = useMemo(() => new Map(users.map((u: User) => [u.id, u.name])), [users]);
+    const groupsMap = useMemo(() => new Map(groups.map(g => [g.id, g])), [groups]);
+    const modulesMap = useMemo(() => new Map(modules.map(m => [m.id, m])), [modules]);
+    const assignmentsMap = useMemo(() => new Map(assignments.map(a => [a.id, a])), [assignments]);
+
+    const getAssignmentDisplayName = (assignmentId: string) => {
+        const assignment = assignmentsMap.get(assignmentId);
+        if (!assignment) return 'N/A';
+        const group = groupsMap.get(assignment.group_id);
+        if (!group) return 'N/A';
+        const module = modulesMap.get(group.module_id);
+        return `${group.name} (${module?.name || 'N/A'})`;
+    };
 
     const handleSave = (groupData: Partial<ServiceGroup>) => {
         if (selectedGroup) {
@@ -34,6 +46,20 @@ const ServiceGroupManager: React.FC = () => {
         setConfirmDeleteGroupId(null);
     };
 
+    const renderRoleList = (roleAssignments: string[] | undefined) => {
+        if (!roleAssignments || roleAssignments.length === 0) return 'N/A';
+        
+        return roleAssignments.map(id => {
+            // Check if it's an assignment ID or a legacy teacher ID
+            const assignment = assignmentsMap.get(id);
+            if (assignment) {
+                const teacherName = usersMap.get(assignment.user_id) || 'Desconocido';
+                return `${teacherName} [${getAssignmentDisplayName(id)}]`;
+            }
+            return usersMap.get(id) || 'Desconocido';
+        }).join(', ');
+    };
+
     return (
         <div>
             <div className="flex justify-end mb-4">
@@ -41,22 +67,25 @@ const ServiceGroupManager: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {service_groups.map((group: ServiceGroup) => (
-                    <div key={group.id} className="p-4 border rounded-lg dark:border-gray-600">
+                    <div key={group.id} className="p-4 border rounded-lg dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm">
                         <div className="flex justify-between items-start">
-                            <h3 className="font-bold">{group.name}</h3>
+                            <h3 className="font-bold text-lg">{group.name}</h3>
                             <div className="space-x-2">
-                                <button onClick={() => { setSelectedGroup(group); setIsModalOpen(true); }}><PencilIcon className="w-4 h-4 text-gray-500"/></button>
-                                <button onClick={() => setConfirmDeleteGroupId(group.id)}><TrashIcon className="w-4 h-4 text-red-500"/></button>
+                                <button onClick={() => { setSelectedGroup(group); setIsModalOpen(true); }} title="Editar"><PencilIcon className="w-4 h-4 text-gray-500 hover:text-blue-500"/></button>
+                                <button onClick={() => setConfirmDeleteGroupId(group.id)} title="Eliminar"><TrashIcon className="w-4 h-4 text-red-500 hover:text-red-700"/></button>
                             </div>
                         </div>
-                        <p className="text-sm font-semibold mt-2">Miembros:</p>
-                        <ul className="text-sm list-disc list-inside">
-                            {group.teacher_ids.map((id: string) => <li key={id}>{usersMap.get(id) || 'Desconocido'}</li>)}
+                        <p className="text-sm font-semibold mt-3 text-gray-500 border-b pb-1 uppercase tracking-wider">Miembros:</p>
+                        <ul className="text-sm list-disc list-inside mt-1 mb-3">
+                            {group.teacher_ids.map((id: string) => <li key={id} className="text-gray-700 dark:text-gray-300">{usersMap.get(id) || 'Desconocido'}</li>)}
                         </ul>
-                         <p className="text-sm font-semibold mt-2">Roles:</p>
-                        <ul className="text-xs">
+                         <p className="text-sm font-semibold mt-3 text-gray-500 border-b pb-1 uppercase tracking-wider">Configuración de Roles:</p>
+                        <ul className="text-xs space-y-1.5 mt-2">
                             {SERVICE_ROLES.map((role: ServiceRole) => (
-                                <li key={role}><strong>{role}:</strong> {group.roles?.[role]?.map((id: string) => usersMap.get(id)).join(', ') || 'N/A'}</li>
+                                <li key={role} className="flex flex-col">
+                                    <span className="font-bold text-gray-600 dark:text-gray-400">{role}:</span>
+                                    <span className="text-gray-800 dark:text-gray-200 ml-2">{renderRoleList(group.roles?.[role])}</span>
+                                </li>
                             ))}
                         </ul>
                     </div>
@@ -77,11 +106,25 @@ const ServiceGroupManager: React.FC = () => {
 };
 
 const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: User[]; onClose: () => void; onSave: (data: Partial<ServiceGroup>) => void; }> = ({ group, teachers, onClose, onSave }) => {
+    const { assignments, groups, modules } = useData();
     const [name, setName] = useState(group?.name || '');
     const [teacher_ids, setTeacherIds] = useState<string[]>(group?.teacher_ids || []);
     const [roles, setRoles] = useState<Partial<Record<ServiceRole, string[]>>>(group?.roles || {});
     
     const teachersInGroup = useMemo(() => teachers.filter(t => teacher_ids.includes(t.id)), [teachers, teacher_ids]);
+
+    const getTeacherAssignments = (userId: string) => {
+        return assignments.filter(a => a.user_id === userId);
+    };
+
+    const getAssignmentLabel = (assignmentId: string) => {
+        const assignment = assignments.find(a => a.id === assignmentId);
+        if (!assignment) return 'N/A';
+        const group = groups.find(g => g.id === assignment.group_id);
+        if (!group) return 'N/A';
+        const module = modules.find(m => m.id === group.module_id);
+        return `${group.name} - ${module?.name || 'N/A'}`;
+    };
 
     const handleTeacherSelectionChange = (id: string) => {
         setTeacherIds(prev => {
@@ -91,7 +134,11 @@ const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: Us
             if (!newTeacherIds.includes(id)) {
                 const newRoles = { ...roles };
                 for (const role in newRoles) {
-                    newRoles[role as ServiceRole] = newRoles[role as ServiceRole]?.filter(teacherId => teacherId !== id);
+                    // Filter out both teacher ID and any assignment IDs related to this teacher
+                    newRoles[role as ServiceRole] = newRoles[role as ServiceRole]?.filter(val => {
+                        const assignment = assignments.find(a => a.id === val);
+                        return val !== id && (!assignment || assignment.user_id !== id);
+                    });
                 }
                 setRoles(newRoles);
             }
@@ -100,11 +147,16 @@ const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: Us
         });
     };
     
-    const handleRoleSelectionChange = (role: ServiceRole, id: string) => {
+    const handleRoleSelectionChange = (role: ServiceRole, value: string, isChecked: boolean) => {
         const currentSelection = roles[role] || [];
-        const newSelection = currentSelection.includes(id)
-            ? currentSelection.filter(tId => tId !== id)
-            : [...currentSelection, id];
+        
+        let newSelection: string[];
+        if (isChecked) {
+            newSelection = [...currentSelection, value];
+        } else {
+            newSelection = currentSelection.filter(v => v !== value);
+        }
+        
         setRoles(prev => ({...prev, [role]: newSelection}));
     };
 
@@ -113,46 +165,111 @@ const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: Us
         onSave({ name, teacher_ids, roles });
     };
 
+    const isTeacherInRole = (role: ServiceRole, teacherId: string) => {
+        const currentSelection = roles[role] || [];
+        return currentSelection.some(val => {
+            if (val === teacherId) return true;
+            const assignment = assignments.find(a => a.id === val);
+            return assignment && assignment.user_id === teacherId;
+        });
+    };
+
+    const getAssignmentForTeacherInRole = (role: ServiceRole, teacherId: string) => {
+        const currentSelection = roles[role] || [];
+        return currentSelection.find(val => {
+            const assignment = assignments.find(a => a.id === val);
+            return assignment && assignment.user_id === teacherId;
+        }) || "";
+    };
+
     return (
         <Modal isOpen={true} onClose={onClose} title={group ? 'Editar Grupo' : 'Nuevo Grupo de Servicio'} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre del Grupo" required className="w-full p-2 border rounded dark:bg-gray-700"/>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nombre del Grupo" required className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"/>
                 
                 <div>
-                    <label className="font-semibold">1. Selecciona los Miembros del Grupo:</label>
-                    <div className="grid grid-cols-2 gap-2 mt-2 max-h-40 overflow-y-auto p-2 border rounded dark:border-gray-600">
+                    <label className="font-semibold block mb-1">1. Selecciona los Miembros del Grupo:</label>
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
                         {teachers.map(t => (
-                            <label key={t.id} className="flex items-center space-x-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md">
+                            <label key={t.id} className="flex items-center space-x-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer transition-colors">
                                 <input type="checkbox" checked={teacher_ids.includes(t.id)} onChange={() => handleTeacherSelectionChange(t.id)} className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                                <span>{t.name}</span>
+                                <span className="text-sm">{t.name}</span>
                             </label>
                         ))}
                     </div>
                 </div>
 
-                <div>
-                    <label className="font-semibold">2. Asigna Roles a los Miembros Seleccionados:</label>
+                <div className="space-y-4 pt-2">
+                    <label className="font-semibold block">2. Asigna Roles y Contextos (Grupos/Módulos):</label>
                     {teachersInGroup.length > 0 ? (
-                        <div className="space-y-3 mt-2">
+                        <div className="max-h-[50vh] overflow-y-auto pr-2 space-y-4">
                             {SERVICE_ROLES.map(role => (
-                                <div key={role}>
-                                    <p className="font-medium text-sm">{role}</p>
-                                    <div className="grid grid-cols-2 gap-2 p-2 border rounded dark:border-gray-600">
-                                        {teachersInGroup.map(t => (
-                                             <label key={t.id} className="flex items-center space-x-2 text-sm p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md">
-                                                <input type="checkbox" checked={roles[role]?.includes(t.id) || false} onChange={() => handleRoleSelectionChange(role, t.id)} className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"/>
-                                                <span>{t.name}</span>
-                                            </label>
-                                        ))}
+                                <div key={role} className="p-3 border rounded-lg dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm">
+                                    <p className="font-bold text-sm mb-3 text-primary-600 dark:text-primary-400 uppercase tracking-tight border-b pb-1">{role}</p>
+                                    <div className="space-y-2">
+                                        {teachersInGroup.map(t => {
+                                            const teacherAssignments = getTeacherAssignments(t.id);
+                                            const isSelected = isTeacherInRole(role, t.id);
+                                            const selectedAssignmentId = getAssignmentForTeacherInRole(role, t.id);
+
+                                            return (
+                                                <div key={t.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                                    <label className="flex items-center space-x-2 text-sm cursor-pointer min-w-[150px]">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={isSelected} 
+                                                            onChange={(e) => {
+                                                                const checked = e.target.checked;
+                                                                // When checking, if they have assignments, we should probably pick the first one by default
+                                                                const val = teacherAssignments.length > 0 ? teacherAssignments[0].id : t.id;
+                                                                handleRoleSelectionChange(role, checked ? val : (selectedAssignmentId || t.id), checked);
+                                                            }} 
+                                                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                                                        />
+                                                        <span className={isSelected ? "font-bold" : ""}>{t.name}</span>
+                                                    </label>
+                                                    
+                                                    {isSelected && teacherAssignments.length > 0 && (
+                                                        <select 
+                                                            value={selectedAssignmentId} 
+                                                            onChange={(e) => {
+                                                                const oldVal = selectedAssignmentId || t.id;
+                                                                const newVal = e.target.value;
+                                                                
+                                                                setRoles(prev => {
+                                                                    const currentRoleSelection = prev[role] || [];
+                                                                    const newRoleSelection = currentRoleSelection.map(v => v === oldVal ? newVal : v);
+                                                                    return { ...prev, [role]: newRoleSelection };
+                                                                });
+                                                            }}
+                                                            className="text-xs p-1 border rounded bg-white dark:bg-gray-700 w-full sm:w-auto"
+                                                        >
+                                                            {teacherAssignments.map(a => (
+                                                                <option key={a.id} value={a.id}>{getAssignmentLabel(a.id)}</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+                                                    
+                                                    {isSelected && teacherAssignments.length === 0 && (
+                                                        <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded italic">Sin grupos asignados</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    ) : <p className="text-sm text-gray-500 mt-2">Selecciona al menos un miembro para asignar roles.</p>}
+                    ) : (
+                        <div className="p-8 text-center border-2 border-dashed rounded-lg text-gray-400">
+                             Selecciona miembros arriba para asignarles roles en este grupo.
+                        </div>
+                    )}
                 </div>
 
-                <div className="flex justify-end pt-4">
-                    <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded">Guardar</button>
+                <div className="flex justify-end pt-4 border-t">
+                    <button type="button" onClick={onClose} className="mr-2 px-4 py-2 text-gray-600 hover:text-gray-800">Cancelar</button>
+                    <button type="submit" className="bg-primary-600 text-white px-6 py-2 rounded-md font-bold shadow-md hover:bg-primary-700 transition-all">Guardar Configuración</button>
                 </div>
             </form>
         </Modal>

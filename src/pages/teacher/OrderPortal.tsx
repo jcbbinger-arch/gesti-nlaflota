@@ -15,10 +15,16 @@ export const OrderPortal: React.FC = () => {
     const isAlmacen = currentUser?.profiles.includes(Profile.ALMACEN);
     
     const now = new Date();
-    const upcomingEvents = events
-        .filter(e => e.status !== 'Inactivo' && new Date(e.end_date) >= now)
+    
+    // Eventos que están en su rango de fechas y están activos
+    const activeEvents = events
+        .filter(e => e.status === 'Activo' && new Date(e.start_date) <= now && new Date(e.end_date) >= now)
+        .sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime());
+    
+    // Eventos programados para el futuro (activos pero aún no han empezado)
+    const futureEvents = events
+        .filter(e => e.status === 'Activo' && new Date(e.start_date) > now)
         .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
-    const activeEvents = upcomingEvents.slice(0, 3);
 
     const staffMealOrders = orders.filter(o => o.is_staff_meal && o.user_id === currentUser?.id);
 
@@ -93,7 +99,7 @@ export const OrderPortal: React.FC = () => {
                                         <tr key={event.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="font-bold text-gray-800">{event.name}</div>
-                                                <div className="text-xs text-gray-500">Cierre: {new Date(event.end_date).toLocaleString()}</div>
+                                                <div className="text-xs text-gray-500 italic">Abierto hasta: {new Date(event.end_date).toLocaleString()}</div>
                                             </td>
                                             
                                             {/* Pedido de Servicio */}
@@ -121,7 +127,7 @@ export const OrderPortal: React.FC = () => {
                                                     </Link>
                                                 )}
                                             </td>
-
+                                            
                                             {/* Pedido Semanal */}
                                             <td className="px-6 py-4 text-center">
                                                 {weeklyOrder ? (
@@ -155,10 +161,31 @@ export const OrderPortal: React.FC = () => {
                     </div>
                 ) : (
                     <div className="p-10 text-center text-gray-500 italic">
-                        No hay eventos de pedido activos actualmente.
+                        No hay eventos de pedido abiertos actualmente.
                     </div>
                 )}
             </Card>
+
+            {futureEvents.length > 0 && (
+                <Card title="Próximos Eventos (Pronto se abrirán)">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {futureEvents.map(event => (
+                            <div key={event.id} className="p-4 border rounded-lg bg-gray-50 opacity-75">
+                                <h3 className="font-bold text-gray-700">{event.name}</h3>
+                                <div className="text-xs space-y-1 mt-2 text-gray-500">
+                                    <p><span className="font-medium">Se abre el:</span> {new Date(event.start_date).toLocaleString()}</p>
+                                    <p><span className="font-medium">Se cierra el:</span> {new Date(event.end_date).toLocaleString()}</p>
+                                </div>
+                                <div className="mt-3">
+                                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-bold uppercase tracking-wider">
+                                        Programado
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
 
             {staffMealOrders.length > 0 && (
                 <Card title="Pedidos de Comida de Familia (Automáticos)" className="mt-6 border-l-4 border-amber-500">
