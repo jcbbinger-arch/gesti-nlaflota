@@ -170,12 +170,22 @@ export const ExpenseManager: React.FC = () => {
 
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <Card title="Gasto por Ciclo Formativo">
-                    <ul className="space-y-2">
+                <Card title="Gasto por Ciclo y Grupo">
+                    <ul className="space-y-4">
                         {training_cycles.map((cycle: any) => (
-                            <li key={cycle.id} className="flex justify-between items-center text-sm">
-                                <span>{cycle.name}</span>
-                                <span className="font-semibold">{formatCurrency(analysisData.costByCycle[cycle.id] || 0)}</span>
+                            <li key={cycle.id}>
+                                <div className="flex justify-between items-center text-sm font-bold text-gray-700 bg-gray-100 p-2 rounded">
+                                    <span>{cycle.name}</span>
+                                    <span>{formatCurrency(analysisData.costByCycle[cycle.id] || 0)}</span>
+                                </div>
+                                <ul className="mt-2 ml-4 space-y-1">
+                                    {groups.filter(g => g.cycle_id === cycle.id).map((group: any) => (
+                                        <li key={group.id} className="flex justify-between items-center text-xs text-gray-600">
+                                            <span>{group.name}</span>
+                                            <span>{formatCurrency(analysisData.costByGroup[group.id] || 0)}</span>
+                                        </li>
+                                    ))}
+                                </ul>
                             </li>
                         ))}
                     </ul>
