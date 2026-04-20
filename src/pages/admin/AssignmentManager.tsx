@@ -30,14 +30,7 @@ export const AssignmentManager: React.FC = () => {
     }, [assignments]);
 
     const handleAssignmentChange = (group_id: string, module_id: string, user_id: string) => {
-        const assignmentKey = `${group_id}|${module_id}`;
         const existingAssignment = assignments.find(a => a.group_id === group_id && a.module_id === module_id);
-        
-        // Update Group's module_ids
-        const group = groups.find(g => g.id === group_id);
-        if (group && !group.module_ids.includes(module_id)) {
-            setGroups(groups.map(g => g.id === group_id ? { ...g, module_ids: [...g.module_ids, module_id] } : g));
-        }
         
         if (user_id === "") { // Unassigning
             if (existingAssignment) {
@@ -54,6 +47,24 @@ export const AssignmentManager: React.FC = () => {
                     user_id 
                 }]);
             }
+        }
+    };
+    
+    const toggleGroupModule = (group_id: string, module_id: string) => {
+        setGroups(groups.map(g => {
+            if (g.id === group_id) {
+                const module_ids = g.module_ids || [];
+                const updatedModules = module_ids.includes(module_id)
+                    ? module_ids.filter(id => id !== module_id)
+                    : [...module_ids, module_id];
+                return { ...g, module_ids: updatedModules };
+            }
+            return g;
+        }));
+        // Remove assignment if module is removed
+        const group = groups.find(g => g.id === group_id);
+        if (group && (group.module_ids || []).includes(module_id)) {
+            setAssignments(assignments.filter(a => !(a.group_id === group_id && a.module_id === module_id)));
         }
     };
     
@@ -156,37 +167,43 @@ export const AssignmentManager: React.FC = () => {
                                     </div>
                                 }>
                                     <div className="space-y-1">
-                                        { ((group.module_ids || []).length > 0
-                                            ? (group.module_ids || []).map(mid => modules.find(m => m.id === mid)).filter(Boolean) as Module[]
-                                            : modules.filter(m => m.cycle_id === cycle.id)
-                                        ).map((module, mIdx) => (
-                                            <div key={module.id} className={`flex items-center justify-between p-3 rounded-lg ${mIdx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800'}`}>
-                                                <div className="flex-1 flex items-center justify-between">
-                                                    <span className="font-medium text-gray-700 dark:text-gray-300">{module.name}</span>
-                                                    <div className="flex items-center space-x-4">
-                                                        <div className="no-print flex space-x-1 border-r pr-2 mr-2 border-gray-200 dark:border-gray-700">
-                                                            <button onClick={() => openModalForEdit(module, 'module')} className="p-1 text-gray-400 hover:text-blue-600"><PencilIcon className="w-4 h-4"/></button>
-                                                            <button onClick={() => handleDelete(module, 'module')} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4"/></button>
+                                        {modules.filter(m => m.cycle_id === cycle.id).map((module, mIdx) => {
+                                            const isSelected = (group.module_ids || []).includes(module.id);
+                                            return (
+                                                <div key={module.id} className={`flex items-center justify-between p-3 rounded-lg ${mIdx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800'} ${!isSelected ? 'opacity-60' : ''}`}>
+                                                    <div className="flex-1 flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isSelected}
+                                                                onChange={() => toggleGroupModule(group.id, module.id)}
+                                                                className="no-print"
+                                                            />
+                                                            <span className="font-medium text-gray-700 dark:text-gray-300">{module.name}</span>
                                                         </div>
-                                                        <div className="flex items-center space-x-2">
-                                                            <select
-                                                                value={assignmentsMap.get(`${group.id}|${module.id}`) || ''}
-                                                                onChange={(e) => handleAssignmentChange(group.id, module.id, e.target.value)}
-                                                                className="text-sm p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 no-print min-w-[180px]"
-                                                            >
-                                                                <option value="">-- Sin Profesor --</option>
-                                                                {teachers.map(teacher => (
-                                                                    <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                                                                ))}
-                                                            </select>
-                                                            <span className="print-only font-bold text-primary-600">
-                                                                {teachers.find(t => t.id === assignmentsMap.get(`${group.id}|${module.id}`))?.name || '-- Sin Profesor --'}
-                                                            </span>
+                                                        <div className="flex items-center space-x-4">
+                                                            {isSelected && (
+                                                                <div className="flex items-center space-x-2">
+                                                                    <select
+                                                                        value={assignmentsMap.get(`${group.id}|${module.id}`) || ''}
+                                                                        onChange={(e) => handleAssignmentChange(group.id, module.id, e.target.value)}
+                                                                        className="text-sm p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 no-print min-w-[180px]"
+                                                                    >
+                                                                        <option value="">-- Sin Profesor --</option>
+                                                                        {teachers.map(teacher => (
+                                                                            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <span className="print-only font-bold text-primary-600">
+                                                                        {teachers.find(t => t.id === assignmentsMap.get(`${group.id}|${module.id}`))?.name || '-- Sin Profesor --'}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                         {modules.filter(m => m.cycle_id === cycle.id).length === 0 && (
                                             <p className="text-center py-4 text-gray-400 italic text-sm">No hay módulos creados para este ciclo.</p>
                                         )}
