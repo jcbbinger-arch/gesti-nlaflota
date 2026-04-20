@@ -54,13 +54,10 @@ export const demoData: AppData = {
     events: demoEvents,
     orders: demoOrders,
     incidents: demoIncidents,
-    training_cycles: trainingCycles,
-    modules,
-    groups,
-    assignments: [
-        { id: 'asg-1', user_id: 'teacher-1', group_id: 'grp-c1-1', module_id: 'mod-c1-2' },
-        { id: 'asg-2', user_id: 'teacher-2', group_id: 'grp-c1-4', module_id: 'mod-c1-5' },
-    ],
+    training_cycles: [],
+    modules: [],
+    groups: [],
+    assignments: [],
     recipes: [
         { 
             id: 'rec-1', 
