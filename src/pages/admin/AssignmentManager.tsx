@@ -101,9 +101,17 @@ export const AssignmentManager: React.FC = () => {
         handleCloseModal();
     };
 
-    const handleDelete = (item: TrainingCycle | Module | Group, type: 'cycle' | 'module' | 'group') => {
-        if (!window.confirm(`¿Seguro que quieres eliminar "${item.name}"? Esto eliminará todos los elementos que contiene.`)) return;
+    // ... (rest of functions) ...
+    const [deleteTarget, setDeleteTarget] = useState<{ item: TrainingCycle | Module | Group, type: 'cycle' | 'module' | 'group' } | null>(null);
 
+    const handleDeleteConfirmation = () => {
+        if (deleteTarget) {
+            handleDelete(deleteTarget.item, deleteTarget.type);
+            setDeleteTarget(null);
+        }
+    };
+
+    const handleDelete = (item: TrainingCycle | Module | Group, type: 'cycle' | 'module' | 'group') => {
         if (type === 'cycle') {
             const moduleIdsToDelete = modules.filter(m => m.cycle_id === item.id).map(m => m.id);
             const groupIdsToDelete = groups.filter(g => g.cycle_id === item.id).map(g => g.id);
@@ -124,6 +132,20 @@ export const AssignmentManager: React.FC = () => {
     
     return (
         <div>
+            {/* ... (as existing) ... */}
+
+            {/* Confirmation Modal */}
+            {deleteTarget && (
+                <Modal isOpen={true} onClose={() => setDeleteTarget(null)} title="Confirmar eliminación">
+                    <p>¿Seguro que quieres eliminar "{deleteTarget.item.name}"? Esta acción no se puede deshacer.</p>
+                    <div className="flex justify-end gap-2 mt-4">
+                        <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 border rounded">Cancelar</button>
+                        <button onClick={handleDeleteConfirmation} className="px-4 py-2 bg-red-600 text-white rounded">Eliminar</button>
+                    </div>
+                </Modal>
+            )}
+
+            {/* ... (rest of UI, update the modules rendering to include the trash icon) ... */}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Asignaciones: Profesor - Grupo</h1>
                 <div className="no-print flex items-center space-x-2">
@@ -150,7 +172,7 @@ export const AssignmentManager: React.FC = () => {
                                 </button>
                                 <div className="no-print border-l pl-4 flex space-x-1">
                                     <button onClick={() => openModalForEdit(cycle, 'cycle')} className="p-1 text-gray-500 hover:text-blue-600"><PencilIcon className="w-5 h-5"/></button>
-                                    <button onClick={() => handleDelete(cycle, 'cycle')} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-5 h-5"/></button>
+                                    <button onClick={() => setDeleteTarget({item: cycle, type: 'cycle'})} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-5 h-5"/></button>
                                 </div>
                             </div>
                         </div>
@@ -162,7 +184,7 @@ export const AssignmentManager: React.FC = () => {
                                         <span className="text-xl font-bold">{group.name}</span>
                                         <div className="no-print">
                                             <button onClick={() => openModalForEdit(group, 'group')} className="p-1 text-gray-500 hover:text-blue-600"><PencilIcon className="w-4 h-4"/></button>
-                                            <button onClick={() => handleDelete(group, 'group')} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-4 h-4"/></button>
+                                            <button onClick={() => setDeleteTarget({item: group, type: 'group'})} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-4 h-4"/></button>
                                         </div>
                                     </div>
                                 }>
@@ -181,7 +203,8 @@ export const AssignmentManager: React.FC = () => {
                                                             />
                                                             <span className="font-medium text-gray-700 dark:text-gray-300">{module.name}</span>
                                                         </div>
-                                                        <div className="flex items-center space-x-4">
+                                                        <div className="flex items-center space-x-2">
+                                                            <button onClick={() => setDeleteTarget({item: module, type: 'module'})} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-4 h-4"/></button>
                                                             {isSelected && (
                                                                 <div className="flex items-center space-x-2">
                                                                     <select
