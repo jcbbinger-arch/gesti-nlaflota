@@ -213,7 +213,7 @@ export interface Module {
 
 export interface Group {
     id: string;
-    module_id: string;
+    cycle_id: string;
     name: string;
 }
 
@@ -221,6 +221,7 @@ export interface Assignment {
     id: string;
     user_id: string;
     group_id: string;
+    module_id: string;
 }
 
 export interface RecipeIngredient {

@@ -168,10 +168,10 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "module_id": { "type": "string" },
+        "cycle_id": { "type": "string" },
         "name": { "type": "string" }
       },
-      "required": ["id", "module_id", "name"]
+      "required": ["id", "cycle_id", "name"]
     },
     "Assignment": {
       "title": "Assignment",
@@ -179,9 +179,10 @@
       "properties": {
         "id": { "type": "string" },
         "user_id": { "type": "string" },
-        "group_id": { "type": "string" }
+        "group_id": { "type": "string" },
+        "module_id": { "type": "string" }
       },
-      "required": ["id", "user_id", "group_id"]
+      "required": ["id", "user_id", "group_id", "module_id"]
     },
     "Recipe": {
       "title": "Recipe",

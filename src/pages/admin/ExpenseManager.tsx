@@ -99,16 +99,18 @@ export const ExpenseManager: React.FC = () => {
         completedOrders.forEach(order => { costByTeacher[order.user_id] = (costByTeacher[order.user_id] || 0) + (order.cost || 0); });
         
         const costByGroup: { [key: string]: number } = {};
+        const costByModule: { [key: string]: number } = {};
+        
         Object.keys(costByTeacher).forEach(teacherId => {
             const teacherAssignments = assignments.filter(a => a.user_id === teacherId);
             if (teacherAssignments.length > 0) {
                 const costPerAssignment = costByTeacher[teacherId] / teacherAssignments.length;
-                teacherAssignments.forEach(a => { costByGroup[a.group_id] = (costByGroup[a.group_id] || 0) + costPerAssignment; });
+                teacherAssignments.forEach(a => { 
+                    costByGroup[a.group_id] = (costByGroup[a.group_id] || 0) + costPerAssignment; 
+                    costByModule[a.module_id] = (costByModule[a.module_id] || 0) + costPerAssignment;
+                });
             }
         });
-
-        const costByModule: { [key: string]: number } = {};
-        groups.forEach(group => { if(costByGroup[group.id]) costByModule[group.module_id] = (costByModule[group.module_id] || 0) + costByGroup[group.id]; });
 
         const costByCycle: { [key: string]: number } = {};
         modules.forEach(module => { if(costByModule[module.id]) costByCycle[module.cycle_id] = (costByCycle[module.cycle_id] || 0) + costByModule[module.id]; });

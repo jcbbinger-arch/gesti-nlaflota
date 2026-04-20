@@ -12,7 +12,7 @@ export const MyProfile: React.FC = () => {
     const { currentUser, updateCurrentUser } = useAuth();
     const { 
         users, setUsers, setMessages, reservations, sale_items, 
-        assignments, groups, services, orders, events 
+        assignments, groups, modules, services, orders, events 
     } = useData();
 
     const [personalInfo, setPersonalInfo] = useState({
@@ -36,7 +36,15 @@ export const MyProfile: React.FC = () => {
         if (!isTeacher || !currentUser) return null;
 
         const myAssignments = assignments.filter(a => a.user_id === currentUser.id);
-        const myGroups = groups.filter(g => myAssignments.some(a => a.group_id === g.id));
+        const detailedAssignments = myAssignments.map(a => {
+            const group = groups.find(g => g.id === a.group_id);
+            const module = modules.find(m => m.id === a.module_id);
+            return {
+                id: a.id,
+                groupName: group?.name || 'Desconocido',
+                moduleName: module?.name || 'Desconocido'
+            };
+        });
         
         const myServices = services.filter(s => Object.values(s.roles).includes(currentUser.id));
         
@@ -77,7 +85,7 @@ export const MyProfile: React.FC = () => {
         );
 
         return {
-            groups: myGroups,
+            groups: detailedAssignments,
             servicesCount: myServices.length,
             roles: Array.from(new Set(myServices.flatMap(s => 
                 Object.entries(s.roles)
@@ -227,14 +235,15 @@ export const MyProfile: React.FC = () => {
                             <Card title="Grupos y Perfiles" icon={<AssignmentIcon className="w-8 h-8 text-primary-600" />}>
                                 <div className="space-y-4">
                                     <div>
-                                        <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Grupos Asignados</h4>
-                                        <div className="flex flex-wrap gap-2">
+                                        <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">Módulos y Grupos</h4>
+                                        <div className="flex flex-col gap-2">
                                             {teacherData.groups.map(g => (
-                                                <span key={g.id} className="px-2 py-1 bg-primary-100 text-primary-800 rounded text-xs font-medium">
-                                                    {g.name}
-                                                </span>
+                                                <div key={g.id} className="px-2 py-1.5 bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800 rounded text-xs">
+                                                    <span className="font-bold text-primary-800 dark:text-primary-200 block">{g.moduleName}</span>
+                                                    <span className="text-primary-600 dark:text-primary-400 italic">{g.groupName}</span>
+                                                </div>
                                             ))}
-                                            {teacherData.groups.length === 0 && <span className="text-gray-400 text-xs text-italic">Ningún grupo asignado.</span>}
+                                            {teacherData.groups.length === 0 && <span className="text-gray-400 text-xs italic">Ningún módulo asignado.</span>}
                                         </div>
                                     </div>
                                     <div>

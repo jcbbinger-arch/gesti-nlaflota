@@ -58,8 +58,8 @@ export const demoData: AppData = {
     modules,
     groups,
     assignments: [
-        { id: 'asg-1', user_id: 'teacher-1', group_id: 'grp-c1-1-1' },
-        { id: 'asg-2', user_id: 'teacher-2', group_id: 'grp-c1-2-1' },
+        { id: 'asg-1', user_id: 'teacher-1', group_id: 'grp-c1-1', module_id: 'mod-c1-2' },
+        { id: 'asg-2', user_id: 'teacher-2', group_id: 'grp-c1-4', module_id: 'mod-c1-5' },
     ],
     recipes: [
         { 

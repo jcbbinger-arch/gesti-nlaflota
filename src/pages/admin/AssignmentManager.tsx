@@ -22,21 +22,31 @@ export const AssignmentManager: React.FC = () => {
 
     const teachers = useMemo(() => users.filter(u => u.profiles.includes(Profile.TEACHER) && !SUPER_USER_EMAILS.includes(u.email)), [users]);
 
+    // Map: group_id | module_id -> user_id
     const assignmentsMap = useMemo(() => {
-        const map = new Map<string, string>(); // group_id -> user_id
-        assignments.forEach(a => map.set(a.group_id, a.user_id));
+        const map = new Map<string, string>();
+        assignments.forEach(a => map.set(`${a.group_id}|${a.module_id}`, a.user_id));
         return map;
     }, [assignments]);
 
-    const handleAssignmentChange = (group_id: string, user_id: string) => {
-        const existingAssignment = assignments.find(a => a.group_id === group_id);
+    const handleAssignmentChange = (group_id: string, module_id: string, user_id: string) => {
+        const assignmentKey = `${group_id}|${module_id}`;
+        const existingAssignment = assignments.find(a => a.group_id === group_id && a.module_id === module_id);
+        
         if (user_id === "") { // Unassigning
-            if (existingAssignment) setAssignments(assignments.filter(a => a.group_id !== group_id));
+            if (existingAssignment) {
+                setAssignments(assignments.filter(a => !(a.group_id === group_id && a.module_id === module_id)));
+            }
         } else { // Assigning or changing
             if (existingAssignment) {
-                setAssignments(assignments.map(a => a.group_id === group_id ? { ...a, user_id } : a));
+                setAssignments(assignments.map(a => (a.group_id === group_id && a.module_id === module_id) ? { ...a, user_id } : a));
             } else {
-                setAssignments([...assignments, { id: `asg-${Date.now()}`, group_id, user_id }]);
+                setAssignments([...assignments, { 
+                    id: `asg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
+                    group_id, 
+                    module_id, 
+                    user_id 
+                }]);
             }
         }
     };
@@ -44,7 +54,7 @@ export const AssignmentManager: React.FC = () => {
     const openModalForNew = (type: 'cycle' | 'module' | 'group', parentId?: string) => {
         if (type === 'cycle') setNewCycle({});
         if (type === 'module') setNewModule({ cycle_id: parentId });
-        if (type === 'group') setNewGroup({ module_id: parentId });
+        if (type === 'group') setNewGroup({ cycle_id: parentId });
         setIsModalOpen(true);
     };
     
@@ -69,7 +79,7 @@ export const AssignmentManager: React.FC = () => {
         } else { // Creating
             if(newCycle) setTrainingCycles([...training_cycles, {id: `cycle-${Date.now()}`, name}]);
             if(newModule) setModules([...modules, {id: `mod-${Date.now()}`, name, cycle_id: newModule.cycle_id!}]);
-            if(newGroup) setGroups([...groups, {id: `grp-${Date.now()}`, name, module_id: newGroup.module_id!}]);
+            if(newGroup) setGroups([...groups, {id: `grp-${Date.now()}`, name, cycle_id: newGroup.cycle_id!}]);
         }
         handleCloseModal();
     };
@@ -79,16 +89,14 @@ export const AssignmentManager: React.FC = () => {
 
         if (type === 'cycle') {
             const moduleIdsToDelete = modules.filter(m => m.cycle_id === item.id).map(m => m.id);
-            const groupIdsToDelete = groups.filter(g => moduleIdsToDelete.includes(g.module_id)).map(g => g.id);
+            const groupIdsToDelete = groups.filter(g => g.cycle_id === item.id).map(g => g.id);
             setModules(modules.filter(m => m.cycle_id !== item.id));
-            setGroups(groups.filter(g => !moduleIdsToDelete.includes(g.module_id)));
-            setAssignments(assignments.filter(a => !groupIdsToDelete.includes(a.group_id)));
+            setGroups(groups.filter(g => g.cycle_id !== item.id));
+            setAssignments(assignments.filter(a => !groupIdsToDelete.includes(a.group_id) && !moduleIdsToDelete.includes(a.module_id)));
             setTrainingCycles(training_cycles.filter(c => c.id !== item.id));
         }
         if (type === 'module') {
-            const groupIdsToDelete = groups.filter(g => g.module_id === item.id).map(g => g.id);
-            setGroups(groups.filter(g => g.module_id !== item.id));
-            setAssignments(assignments.filter(a => !groupIdsToDelete.includes(a.group_id)));
+            setAssignments(assignments.filter(a => a.module_id !== item.id));
             setModules(modules.filter(m => m.id !== item.id));
         }
         if (type === 'group') {
@@ -111,62 +119,87 @@ export const AssignmentManager: React.FC = () => {
                 </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-12">
                 {training_cycles.map(cycle => (
-                    <Card key={cycle.id} title={
-                        <div className="flex justify-between items-center w-full">
-                           <span className="text-2xl">{cycle.name}</span>
-                            <div className="no-print">
-                                <button onClick={() => openModalForEdit(cycle, 'cycle')} className="p-1 text-gray-500 hover:text-blue-600"><PencilIcon className="w-5 h-5"/></button>
-                                <button onClick={() => handleDelete(cycle, 'cycle')} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-5 h-5"/></button>
+                    <div key={cycle.id}>
+                        <div className="flex items-center justify-between border-b-2 border-primary-500 pb-2 mb-6">
+                            <h2 className="text-2xl font-bold text-primary-700 dark:text-primary-400">{cycle.name}</h2>
+                            <div className="flex space-x-4">
+                                <button onClick={() => openModalForNew('module', cycle.id)} className="text-sm bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 py-1 px-3 rounded-md hover:bg-blue-200 transition-colors">
+                                    + Módulo
+                                </button>
+                                <button onClick={() => openModalForNew('group', cycle.id)} className="text-sm bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 py-1 px-3 rounded-md hover:bg-green-200 transition-colors">
+                                    + Grupo
+                                </button>
+                                <div className="no-print border-l pl-4 flex space-x-1">
+                                    <button onClick={() => openModalForEdit(cycle, 'cycle')} className="p-1 text-gray-500 hover:text-blue-600"><PencilIcon className="w-5 h-5"/></button>
+                                    <button onClick={() => handleDelete(cycle, 'cycle')} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-5 h-5"/></button>
+                                </div>
                             </div>
                         </div>
-                    }>
-                        <div className="space-y-4 pl-4 border-l-2 border-gray-200 dark:border-gray-600">
-                            {modules.filter(m => m.cycle_id === cycle.id).map(module => (
-                                <div key={module.id}>
-                                    <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-md">
-                                        <h4 className="font-semibold text-lg">{module.name}</h4>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            {groups.filter(g => g.cycle_id === cycle.id).map(group => (
+                                <Card key={group.id} title={
+                                    <div className="flex justify-between items-center w-full">
+                                        <span className="text-xl font-bold">{group.name}</span>
                                         <div className="no-print">
-                                            <button onClick={() => openModalForEdit(module, 'module')} className="p-1 text-gray-500 hover:text-blue-600"><PencilIcon className="w-5 h-5"/></button>
-                                            <button onClick={() => handleDelete(module, 'module')} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-5 h-5"/></button>
-                                            <button onClick={() => openModalForNew('group', module.id)} className="p-1 text-gray-500 hover:text-green-600"><PlusIcon className="w-5 h-5"/></button>
+                                            <button onClick={() => openModalForEdit(group, 'group')} className="p-1 text-gray-500 hover:text-blue-600"><PencilIcon className="w-4 h-4"/></button>
+                                            <button onClick={() => handleDelete(group, 'group')} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-4 h-4"/></button>
                                         </div>
                                     </div>
-                                    <table className="w-full">
-                                        <tbody>
-                                        {groups.filter(g => g.module_id === module.id).map((group, index) => (
-                                            <tr key={group.id} className={`${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'}`}>
-                                                <td className="p-2 w-full">{group.name}</td>
-                                                <td className="p-2">
-                                                    <select
-                                                        value={assignmentsMap.get(group.id) || ''}
-                                                        onChange={(e) => handleAssignmentChange(group.id, e.target.value)}
-                                                        className="p-1 border rounded-md dark:bg-gray-800 dark:border-gray-600 no-print"
-                                                    >
-                                                        <option value="">-- Sin Asignar --</option>
-                                                        {teachers.map(teacher => (
-                                                            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                                                        ))}
-                                                    </select>
-                                                    <span className="print-only">{teachers.find(t => t.id === assignmentsMap.get(group.id))?.name || '-- Sin Asignar --'}</span>
-                                                </td>
-                                                <td className="p-2 flex no-print">
-                                                     <button onClick={() => openModalForEdit(group, 'group')} className="p-1 text-gray-500 hover:text-blue-600"><PencilIcon className="w-4 h-4"/></button>
-                                                     <button onClick={() => handleDelete(group, 'group')} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-4 h-4"/></button>
-                                                </td>
-                                            </tr>
+                                }>
+                                    <div className="space-y-1">
+                                        {modules.filter(m => m.cycle_id === cycle.id).map((module, mIdx) => (
+                                            <div key={module.id} className={`flex items-center justify-between p-3 rounded-lg ${mIdx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800'}`}>
+                                                <div className="flex-1 flex items-center justify-between">
+                                                    <span className="font-medium text-gray-700 dark:text-gray-300">{module.name}</span>
+                                                    <div className="flex items-center space-x-4">
+                                                        <div className="no-print flex space-x-1 border-r pr-2 mr-2 border-gray-200 dark:border-gray-700">
+                                                            <button onClick={() => openModalForEdit(module, 'module')} className="p-1 text-gray-400 hover:text-blue-600"><PencilIcon className="w-4 h-4"/></button>
+                                                            <button onClick={() => handleDelete(module, 'module')} className="p-1 text-gray-400 hover:text-red-600"><TrashIcon className="w-4 h-4"/></button>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <select
+                                                                value={assignmentsMap.get(`${group.id}|${module.id}`) || ''}
+                                                                onChange={(e) => handleAssignmentChange(group.id, module.id, e.target.value)}
+                                                                className="text-sm p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 no-print min-w-[180px]"
+                                                            >
+                                                                <option value="">-- Sin Profesor --</option>
+                                                                {teachers.map(teacher => (
+                                                                    <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                                                                ))}
+                                                            </select>
+                                                            <span className="print-only font-bold text-primary-600">
+                                                                {teachers.find(t => t.id === assignmentsMap.get(`${group.id}|${module.id}`))?.name || '-- Sin Profesor --'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        {modules.filter(m => m.cycle_id === cycle.id).length === 0 && (
+                                            <p className="text-center py-4 text-gray-400 italic text-sm">No hay módulos creados para este ciclo.</p>
+                                        )}
+                                    </div>
+                                </Card>
                             ))}
-                             <button onClick={() => openModalForNew('module', cycle.id)} className="mt-4 text-sm bg-gray-200 dark:bg-gray-700 py-1 px-3 rounded-md hover:bg-gray-300 no-print">
-                                + Añadir Módulo
-                            </button>
+                            {groups.filter(g => g.cycle_id === cycle.id).length === 0 && (
+                                <div className="col-span-full p-8 border-2 border-dashed rounded-xl text-center text-gray-400">
+                                    No hay grupos creados para este ciclo. Pulsa "+ Grupo" arriba para añadir uno.
+                                </div>
+                            )}
                         </div>
-                    </Card>
+                    </div>
                 ))}
+                {training_cycles.length === 0 && (
+                    <div className="text-center py-20 bg-gray-50 dark:bg-gray-800/20 rounded-3xl">
+                        <p className="text-xl text-gray-500">No hay ciclos formativos configurados.</p>
+                        <button onClick={() => openModalForNew('cycle')} className="mt-4 text-primary-600 font-bold hover:underline">
+                            Crear el primer ciclo formativo
+                        </button>
+                    </div>
+                )}
             </div>
 
             {isModalOpen && (

@@ -256,8 +256,9 @@ const UserFormModal: React.FC<{
             .filter(a => a.user_id === user.id)
             .map(a => {
                 const group = groupMap.get(a.group_id);
-                const module = group ? moduleMap.get(group.module_id) : undefined;
+                const module = moduleMap.get(a.module_id);
                 return {
+                    id: a.id,
                     group_id: a.group_id,
                     group_name: group?.name || 'Desconocido',
                     module_name: module?.name || 'Desconocido'
@@ -327,7 +328,7 @@ const UserFormModal: React.FC<{
                     <div className="pt-2">
                         <h4 className="font-semibold text-sm">Módulos Asignados</h4>
                         <ul className="list-disc list-inside text-xs mt-1 bg-gray-100 dark:bg-gray-700 p-2 rounded-md max-h-24 overflow-y-auto">
-                            {userAssignments.map(a => <li key={a.group_id}>{a.module_name} - {a.group_name}</li>)}
+                            {userAssignments.map(a => <li key={a.id}>{a.module_name} - {a.group_name}</li>)}
                         </ul>
                     </div>
                 )}

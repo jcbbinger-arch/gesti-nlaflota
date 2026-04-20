@@ -8,8 +8,20 @@ import { printPage } from '../../utils/export';
 import { Profile, SUPER_USER_EMAILS } from '../../types';
 
 export const TeacherDashboard: React.FC = () => {
-    const { events, orders, users, mini_economato_stock } = useData();
+    const { events, orders, users, mini_economato_stock, assignments, groups, modules } = useData();
     const { currentUser, selectedProfile } = useAuth();
+
+    const myAssignments = assignments
+        .filter(a => a.user_id === currentUser?.id)
+        .map(a => {
+            const group = groups.find(g => g.id === a.group_id);
+            const module = modules.find(m => m.id === a.module_id);
+            return {
+                id: a.id,
+                groupName: group?.name || 'Desconocido',
+                moduleName: module?.name || 'Desconocido'
+            };
+        });
 
     const isStudent = selectedProfile === Profile.STUDENT;
     const basePath = isStudent ? '/student' : '/teacher';
@@ -112,6 +124,19 @@ export const TeacherDashboard: React.FC = () => {
                             )}
                         </div>
                     </Card>
+
+                    {myAssignments.length > 0 && (
+                        <Card title="Mis Módulos y Grupos" icon={<HistoryIcon className="w-8 h-8 text-primary-600"/>}>
+                            <div className="space-y-3">
+                                {myAssignments.map(asg => (
+                                    <div key={asg.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-primary-500">
+                                        <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{asg.moduleName}</p>
+                                        <p className="text-xs text-primary-600 dark:text-primary-400 font-medium">{asg.groupName}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>

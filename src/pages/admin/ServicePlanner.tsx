@@ -25,9 +25,8 @@ const ServiceGroupManager: React.FC = () => {
         const assignment = assignmentsMap.get(assignmentId);
         if (!assignment) return 'N/A';
         const group = groupsMap.get(assignment.group_id);
-        if (!group) return 'N/A';
-        const module = modulesMap.get(group.module_id);
-        return `${group.name} (${module?.name || 'N/A'})`;
+        const module = modulesMap.get(assignment.module_id);
+        return `${group?.name || 'N/A'} (${module?.name || 'N/A'})`;
     };
 
     const handleSave = (groupData: Partial<ServiceGroup>) => {
@@ -121,9 +120,8 @@ const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: Us
         const assignment = assignments.find(a => a.id === assignmentId);
         if (!assignment) return 'N/A';
         const group = groups.find(g => g.id === assignment.group_id);
-        if (!group) return 'N/A';
-        const module = modules.find(m => m.id === group.module_id);
-        return `${group.name} - ${module?.name || 'N/A'}`;
+        const module = modules.find(m => m.id === assignment.module_id);
+        return `${group?.name || 'N/A'} - ${module?.name || 'N/A'}`;
     };
 
     const handleTeacherSelectionChange = (id: string) => {
