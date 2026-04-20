@@ -23,6 +23,7 @@ export const ComposeMessageModal: React.FC<{
     const [subject, setSubject] = useState(initialSubject);
     const [body, setBody] = useState(initialBody);
     const [searchTerm, setSearchTerm] = useState('');
+    const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
 
     const isStudent = currentUser?.profiles.includes(Profile.STUDENT);
 
@@ -67,7 +68,7 @@ export const ComposeMessageModal: React.FC<{
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSend({ recipient_ids: recipients, subject, body });
+        onSend({ recipient_ids: recipients, subject, body, attachment });
     };
 
     return (
@@ -97,6 +98,17 @@ export const ComposeMessageModal: React.FC<{
                 </div>
                 <input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="Asunto" required className="w-full p-2 border rounded dark:bg-gray-700"/>
                 <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Mensaje..." rows={5} required className="w-full p-2 border rounded dark:bg-gray-700"/>
+                <div>
+                    <label className="block text-sm font-medium">Adjunto:</label>
+                    <input type="file" onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => setAttachment({ name: file.name, content: reader.result as string });
+                            reader.readAsDataURL(file);
+                        }
+                    }} className="text-sm p-1" />
+                </div>
                 <div className="flex justify-end pt-4"><button type="submit" className="bg-primary-600 text-white px-6 py-2 rounded-md">Enviar</button></div>
             </form>
         </Modal>
@@ -281,6 +293,12 @@ const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, Use
             </div>
             <div className="mt-4 pt-4 border-t dark:border-gray-600 whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-3 rounded-md max-h-60 overflow-y-auto">
                 {message.body}
+                {message.attachment && (
+                    <div className="mt-4 pt-2 border-t">
+                        <p className="text-sm font-semibold">Adjunto: </p>
+                        <a href={message.attachment.content} download={message.attachment.name} className="text-blue-500 underline">{message.attachment.name}</a>
+                    </div>
+                )}
             </div>
             <div className="flex justify-end space-x-2 mt-6">
                 <button onClick={exportMessageToPdf} className="bg-green-600 text-white px-4 py-2 rounded-md">Exportar PDF</button>

@@ -299,6 +299,7 @@ export interface Message {
     date: string; // ISO string
     read_by: { [user_id: string]: boolean };
     read_at?: { [user_id: string]: string }; // Map user_id to ISO read date
+    attachment?: { name: string; content: string }; // name and base64 content
 }
 
 export interface Classroom {
