@@ -77,10 +77,10 @@ export const StudentLayout: React.FC = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <ImpersonationBanner />
-        <main className={`flex-1 overflow-x-hidden overflow-y-auto ${isImpersonating ? 'pt-10' : ''}`}>
-          <PrintHeader companyInfo={companyInfo} managerUser={managerUser} />
-          <Header />
+        <Header />
+        <main className={`flex-1 overflow-x-hidden overflow-y-auto ${isImpersonating ? 'pt-10' : ''} bg-gray-50 dark:bg-gray-900`}>
           <div className="container mx-auto px-6 py-8">
+            <PrintHeader companyInfo={companyInfo} managerUser={managerUser} />
             <div className="flex items-center space-x-4 mb-6">
                 <span className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-sm font-semibold px-3 py-1.5 rounded-lg shadow-sm flex items-center">
                     <ShieldCheckIcon className="w-4 h-4 mr-2" />

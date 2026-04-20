@@ -39,13 +39,13 @@ export const TeacherLayout: React.FC = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <ImpersonationBanner />
-        <main className={`flex-1 overflow-x-hidden overflow-y-auto ${isImpersonating ? 'pt-10' : ''}`}>
-          <PrintHeader companyInfo={companyInfo} managerUser={managerUser} currentUser={currentUser || undefined} />
-          <Header />
+        <Header />
+        <main className={`flex-1 overflow-x-hidden overflow-y-auto ${isImpersonating ? 'pt-10' : ''} bg-gray-50 dark:bg-gray-900`}>
           <div className="container mx-auto px-6 py-8">
+            <PrintHeader companyInfo={companyInfo} managerUser={managerUser} currentUser={currentUser || undefined} />
             <Outlet />
+            <PrintFooter />
           </div>
-          <PrintFooter />
         </main>
       </div>
     </div>

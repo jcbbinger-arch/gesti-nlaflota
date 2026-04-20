@@ -24,7 +24,7 @@ service cloud.firestore {
       return isSignedIn() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin' ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('profiles', []).hasAny(['admin'])
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('profiles', []).hasAny(['admin', 'Administrador', 'Creador'])
         )) ||
         request.auth.token.email in ["jcbprofesor@gmail.com", "managerproapp@gmail.com"]
       ); 
@@ -33,7 +33,7 @@ service cloud.firestore {
       return isAdmin() || (
         isSignedIn() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('profiles', []).hasAny(['admin', 'almacen'])
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('profiles', []).hasAny(['admin', 'almacen', 'Administrador', 'Almacén', 'Creador'])
       );
     }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.\\@]+$'); }
@@ -165,5 +165,12 @@ service cloud.firestore {
     match /dining_reservations/{id} { allow read, write: if isSignedIn(); }
     match /service_groups/{id} { allow read: if isSignedIn(); allow write: if isManager(); }
     match /services/{id} { allow read: if isSignedIn(); allow write: if isManager(); }
+    
+    match /company_info/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /creator_info/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /sales/{id} { allow read: if isSignedIn(); allow write: if isManager() || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('profiles', []).hasAny(['teacher', 'sales_manager'])); }
+    match /classroom_products/{id} { allow read: if isSignedIn(); allow write: if isManager() || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('profiles', []).hasAny(['teacher'])); }
+    match /classroom_suppliers/{id} { allow read: if isSignedIn(); allow write: if isManager() || (isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('profiles', []).hasAny(['teacher'])); }
+    match /incidents/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
   }
 }

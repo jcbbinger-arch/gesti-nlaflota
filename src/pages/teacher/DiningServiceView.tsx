@@ -224,9 +224,14 @@ export const DiningServiceView: React.FC = () => {
                                                 <td className="px-4 py-3">{res.phone_1}</td>
                                                 <td className="px-4 py-3">
                                                     {res.diners_allergens.length > 0 ? (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                                                            Sí ({res.diners_allergens.length} pax)
-                                                        </span>
+                                                        <div className="space-y-1">
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                                Sí ({res.diners_allergens.length} pax)
+                                                            </span>
+                                                            <div className="text-[11px] text-red-600 dark:text-red-400 leading-tight">
+                                                                {res.diners_allergens.map(d => `${d.diner_name || 'Comensal'}: ${d.allergens.join(', ')}`).join(' | ')}
+                                                            </div>
+                                                        </div>
                                                     ) : (
                                                         <span className="text-gray-400">-</span>
                                                     )}

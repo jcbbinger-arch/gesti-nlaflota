@@ -19,14 +19,14 @@ export const ComposeMessageModal: React.FC<{
     const [recipients, setRecipients] = useState<string[]>([]);
     const [subject, setSubject] = useState(initialSubject);
     const [body, setBody] = useState(initialBody);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const isStudent = currentUser?.profiles.includes(Profile.STUDENT);
 
     const recipientOptions = useMemo(() => {
         const potentialRecipients = users.filter(u => 
             u.id !== currentUser?.id && 
-            !SUPER_USER_EMAILS.includes(u.email) &&
-            !u.profiles.includes(Profile.ALMACEN)
+            !SUPER_USER_EMAILS.includes(u.email)
         );
 
         if (isStudent && currentUser?.classroom_id) {
@@ -40,7 +40,16 @@ export const ComposeMessageModal: React.FC<{
         }
         return potentialRecipients;
     }, [users, currentUser, isStudent, classrooms]);
-    
+
+    const filteredRecipients = useMemo(() => {
+        if (!searchTerm) return recipientOptions;
+        const lowerTerm = searchTerm.toLowerCase();
+        return recipientOptions.filter(u => 
+            u.name.toLowerCase().includes(lowerTerm) || 
+            u.email.toLowerCase().includes(lowerTerm)
+        );
+    }, [recipientOptions, searchTerm]);
+
     const handleSelectGroup = (profile: Profile) => {
         const groupIds = users.filter(u => u.profiles.includes(profile) && u.id !== currentUser?.id && !SUPER_USER_EMAILS.includes(u.email)).map(u => u.id);
         const newRecipients = Array.from(new Set([...recipients, ...groupIds]));
@@ -57,9 +66,10 @@ export const ComposeMessageModal: React.FC<{
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label>Para:</label>
+                    <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar nombre o email..." className="w-full p-2 border rounded dark:bg-gray-700 mb-2 text-sm" />
                     {/* FIX: Explicitly type `option` to resolve type inference issue. */}
-                    <select multiple value={recipients} onChange={e => setRecipients(Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value))} className="w-full h-24 p-2 border rounded dark:bg-gray-700">
-                        {recipientOptions.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+                    <select multiple value={recipients} onChange={e => setRecipients(Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value))} className="w-full h-32 p-2 border rounded dark:bg-gray-700">
+                        {filteredRecipients.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
                     </select>
                     {!isStudent && (
                         <div className="flex space-x-2 mt-1">

@@ -105,7 +105,7 @@ export const TeacherManager: React.FC = () => {
         if (selectedUser) { // Editing
             try {
                 // Update local state which triggers DataContext upsert
-                setUsers(users.map(u => u.id === selectedUser.id ? { ...u, ...userData } : u));
+                setUsers(users.map(u => u.id === selectedUser.id ? { ...u, ...userData, email: userData.email?.trim().toLowerCase() || u.email } : u));
                 console.log('User updated locally and syncing to DB...');
             } catch (error: any) {
                 console.error('Error updating user:', error);
@@ -117,7 +117,7 @@ export const TeacherManager: React.FC = () => {
                 const newUser: User = {
                     id: `user-${Date.now()}`,
                     name: userData.name || '',
-                    email: userData.email || '',
+                    email: userData.email?.trim().toLowerCase() || '',
                     profiles: userData.profiles || [Profile.TEACHER],
                     activity_status: 'Activo',
                     location_status: 'En el centro',

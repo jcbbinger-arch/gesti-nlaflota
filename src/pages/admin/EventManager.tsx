@@ -280,6 +280,31 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
         status: 'Activo'
     });
 
+    const [eventDateStr, setEventDateStr] = useState<string>('');
+
+    const calculateDates = () => {
+        if(eventDateStr) {
+            const evDate = new Date(eventDateStr);
+            if(!isNaN(evDate.getTime())) {
+                const closeDate = new Date(evDate);
+                const day = closeDate.getDay();
+                const diffToMonday = closeDate.getDate() - day + (day === 0 ? -6 : 1);
+                closeDate.setDate(diffToMonday - 7);
+                closeDate.setHours(23, 59, 59, 999);
+                
+                const openDate = new Date(closeDate);
+                openDate.setDate(openDate.getDate() - 14);
+                openDate.setHours(0, 0, 0, 0);
+
+                setFormState(prev => ({
+                    ...prev,
+                    start_date: openDate.toISOString(),
+                    end_date: closeDate.toISOString()
+                }));
+            }
+        }
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         setFormState({ ...formState, [name]: type === 'number' ? parseFloat(value) || 0 : value });
@@ -317,6 +342,17 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
                         </select>
                     </div>
                 </div>
+
+                {formState.type === 'Extraordinario' && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md border border-blue-100 dark:border-blue-800">
+                         <label className="block text-sm font-medium mb-1 text-blue-800 dark:text-blue-300">Calcular fechas desde el día del evento</label>
+                         <div className="flex space-x-2">
+                             <input type="date" value={eventDateStr} onChange={e => setEventDateStr(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700" />
+                             <button type="button" onClick={calculateDates} className="bg-blue-600 text-white px-4 py-2 rounded">Calcular</button>
+                         </div>
+                         <p className="text-xs mt-1 text-blue-600">Calcula automático: Cierre el lunes de la semana anterior al evento, Apertura 2 semanas antes de apertura.</p>
+                    </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label>Fecha Inicio</label>

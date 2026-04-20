@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const resolveOrSyncUser = async (firebaseUser: any) => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     const userDoc = await getDoc(userDocRef);
-    const userEmail = firebaseUser.email || '';
+    const userEmail = (firebaseUser.email || '').trim().toLowerCase();
     const isSuperUser = SUPER_USER_EMAILS.includes(userEmail);
 
     if (userDoc.exists()) {

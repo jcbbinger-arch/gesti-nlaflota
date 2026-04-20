@@ -22,27 +22,31 @@ export const ProductMetadataManager: React.FC = () => {
 
     // Initial sync of predefined values to workspaceSettings if empty and permanent uppercase migration
     useEffect(() => {
-        if (!workspaceSettings) return;
-
         let needsUpdate = false;
-        const newSettings = { ...workspaceSettings };
+        // Check if workspace settings is null, and create an empty shell if so
+        const newSettings = workspaceSettings ? { ...workspaceSettings } : {
+             workspaceId: currentUser?.workspaceId || 'default',
+             families: [],
+             categories: [],
+             product_conditions: []
+        };
 
         // Force uppercase on existing values for consistency
-        if (newSettings.families) {
+        if (newSettings.families && newSettings.families.length > 0) {
             const uppercased = newSettings.families.map(f => f.toUpperCase());
             if (JSON.stringify(uppercased) !== JSON.stringify(newSettings.families)) {
                 newSettings.families = uppercased;
                 needsUpdate = true;
             }
         }
-        if (newSettings.categories) {
+        if (newSettings.categories && newSettings.categories.length > 0) {
             const uppercased = newSettings.categories.map(c => c.toUpperCase());
             if (JSON.stringify(uppercased) !== JSON.stringify(newSettings.categories)) {
                 newSettings.categories = uppercased;
                 needsUpdate = true;
             }
         }
-        if (newSettings.product_conditions) {
+        if (newSettings.product_conditions && newSettings.product_conditions.length > 0) {
             const uppercased = newSettings.product_conditions.map(pc => pc.toUpperCase());
             if (JSON.stringify(uppercased) !== JSON.stringify(newSettings.product_conditions)) {
                 newSettings.product_conditions = uppercased;
@@ -52,22 +56,23 @@ export const ProductMetadataManager: React.FC = () => {
 
         // Add defaults if empty
         if (!newSettings.families || newSettings.families.length === 0) {
-            newSettings.families = [...PREDEFINED_FAMILIES];
+            newSettings.families = [...PREDEFINED_FAMILIES].map(f => f.toUpperCase());
             needsUpdate = true;
         }
         if (!newSettings.categories || newSettings.categories.length === 0) {
-            newSettings.categories = [...PREDEFINED_CATEGORIES];
+            newSettings.categories = [...PREDEFINED_CATEGORIES].map(c => c.toUpperCase());
             needsUpdate = true;
         }
         if (!newSettings.product_conditions || newSettings.product_conditions.length === 0) {
-            newSettings.product_conditions = [...PRODUCT_STATES];
+            newSettings.product_conditions = [...PRODUCT_STATES].map(s => s.toUpperCase());
             needsUpdate = true;
         }
 
         if (needsUpdate) {
-            setWorkspaceSettings(newSettings);
+            // Need to set the document in firebase if it didn't exist or was modified
+            setWorkspaceSettings(newSettings as WorkspaceSettings);
         }
-    }, [workspaceSettings, setWorkspaceSettings]);
+    }, [workspaceSettings, setWorkspaceSettings, currentUser?.workspaceId]);
 
     const families = useMemo(() => workspaceSettings?.families || [], [workspaceSettings]);
     const categories = useMemo(() => workspaceSettings?.categories || [], [workspaceSettings]);

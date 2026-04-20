@@ -27,10 +27,14 @@ export const UserManager: React.FC = () => {
     };
 
     const handleSaveUser = (userData: User) => {
+        const processedData = {
+            ...userData,
+            email: userData.email?.trim().toLowerCase() || ''
+        };
         if (selectedUser) {
-            setUsers(users.map(u => (u.id === userData.id ? userData : u)));
+            setUsers(users.map(u => (u.id === processedData.id ? processedData : u)));
         } else {
-            setUsers([...users, { ...userData, id: `user-${Date.now()}` }]);
+            setUsers([...users, { ...processedData, id: `user-${Date.now()}` }]);
         }
         setIsModalOpen(false);
         setSelectedUser(null);

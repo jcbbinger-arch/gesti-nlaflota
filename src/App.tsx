@@ -117,6 +117,7 @@ const AppContent: React.FC = () => {
             <Route path="dashboard" element={<CreatorDashboard />} />
             <Route path="user-manager" element={<UserManager />} />
             <Route path="maintenance" element={<SupportMaintenance />} />
+            <Route path="profile" element={<MyProfile />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
         </Route>
