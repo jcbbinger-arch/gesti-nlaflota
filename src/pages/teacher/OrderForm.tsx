@@ -213,15 +213,21 @@ export const OrderForm: React.FC = () => {
 
     return (
         <div>
-            <div className="flex items-center gap-3 mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-                    Pedido para: {event.name}
-                </h1>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                    orderType === 'service' ? 'bg-primary-100 text-primary-700 border border-primary-200' : 'bg-amber-100 text-amber-700 border border-amber-200'
-                }`}>
-                    {orderType === 'service' ? 'Práctica de Servicio' : 'Reposición Semanal'}
-                </span>
+            <div className="mb-6">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
+                        Pedido para: {event.name}
+                    </h1>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        orderType === 'service' ? 'bg-primary-100 text-primary-700 border border-primary-200' : 'bg-amber-100 text-amber-700 border border-amber-200'
+                    }`}>
+                        {orderType === 'service' ? 'Práctica de Servicio' : 'Reposición Semanal'}
+                    </span>
+                </div>
+                <p className="mt-2 text-red-600 font-semibold bg-red-50 p-2 rounded border border-red-200 inline-block">
+                    Nota: El pedido se cierra el {new Date(event.end_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} 
+                    a las {new Date(event.end_date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}.
+                </p>
             </div>
             
             {isOverBudget && (
