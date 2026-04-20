@@ -29,6 +29,8 @@ export const MyProfile: React.FC = () => {
         confirmPassword: '',
     });
 
+    const [activeTab, setActiveTab] = useState<'info' | 'security'>('info');
+
     const isTeacher = currentUser?.profiles.includes(Profile.TEACHER);
 
     // Teacher Statistics Data
