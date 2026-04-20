@@ -156,8 +156,8 @@ export const AssignmentManager: React.FC = () => {
                                     </div>
                                 }>
                                     <div className="space-y-1">
-                                        { (group.module_ids.length > 0
-                                            ? group.module_ids.map(mid => modules.find(m => m.id === mid)).filter(Boolean) as Module[]
+                                        { ((group.module_ids || []).length > 0
+                                            ? (group.module_ids || []).map(mid => modules.find(m => m.id === mid)).filter(Boolean) as Module[]
                                             : modules.filter(m => m.cycle_id === cycle.id)
                                         ).map((module, mIdx) => (
                                             <div key={module.id} className={`flex items-center justify-between p-3 rounded-lg ${mIdx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800'}`}>
