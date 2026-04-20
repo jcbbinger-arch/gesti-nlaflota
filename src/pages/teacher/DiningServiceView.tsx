@@ -80,10 +80,9 @@ export const DiningServiceView: React.FC = () => {
         
         (doc as any).autoTable({
             startY: startY + 5,
-            head: [['Ref/Nombre', 'Mesa', 'Cliente', 'Pax', 'Teléfono', 'Total']],
+            head: [['Nombre', 'Cliente', 'Pax', 'Teléfono', 'Total']],
             body: serviceReservations.map(res => [
                 res.reference_name,
-                res.table_number || '-',
                 res.client_entity || '-',
                 res.pax.toString(),
                 res.phone_1,
