@@ -45,10 +45,16 @@ export const ComposeMessageModal: React.FC<{
         if (!searchTerm) return recipientOptions;
         const lowerTerm = searchTerm.toLowerCase();
         return recipientOptions.filter(u => 
-            u.name.toLowerCase().includes(lowerTerm) || 
-            u.email.toLowerCase().includes(lowerTerm)
+            (u.name && u.name.toLowerCase().includes(lowerTerm)) || 
+            (u.email && u.email.toLowerCase().includes(lowerTerm))
         );
     }, [recipientOptions, searchTerm]);
+
+    const handleRecipientToggle = (userId: string) => {
+        setRecipients(prev => 
+            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        );
+    };
 
     const handleSelectGroup = (profile: Profile) => {
         const groupIds = users.filter(u => u.profiles.includes(profile) && u.id !== currentUser?.id && !SUPER_USER_EMAILS.includes(u.email)).map(u => u.id);
@@ -67,10 +73,18 @@ export const ComposeMessageModal: React.FC<{
                 <div>
                     <label>Para:</label>
                     <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar nombre o email..." className="w-full p-2 border rounded dark:bg-gray-700 mb-2 text-sm" />
-                    {/* FIX: Explicitly type `option` to resolve type inference issue. */}
-                    <select multiple value={recipients} onChange={e => setRecipients(Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value))} className="w-full h-32 p-2 border rounded dark:bg-gray-700">
-                        {filteredRecipients.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
-                    </select>
+                    <div className="w-full h-40 p-2 border rounded dark:bg-gray-700 overflow-y-auto">
+                        {filteredRecipients.map(user => (
+                            <label key={user.id} className="flex items-center space-x-2 py-1 hover:bg-gray-600/20 cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    checked={recipients.includes(user.id)}
+                                    onChange={() => handleRecipientToggle(user.id)}
+                                />
+                                <span className="text-sm">{user.name}</span>
+                            </label>
+                        ))}
+                    </div>
                     {!isStudent && (
                         <div className="flex space-x-2 mt-1">
                             <button type="button" onClick={() => handleSelectGroup(Profile.TEACHER)} className="text-xs bg-gray-200 px-2 py-1 rounded">Profesores</button>
@@ -200,6 +214,7 @@ const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, Use
             {message.body}
         </div>
          <div className="flex justify-end space-x-2 mt-6">
+            <button onClick={() => window.print()} className="bg-green-600 text-white px-4 py-2 rounded-md">Imprimir</button>
             <button onClick={() => downloadJson(`mensaje_${message.id}.json`, message)} className="bg-blue-600 text-white px-4 py-2 rounded-md">Descargar</button>
             <button onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded-md">Cerrar</button>
         </div>
