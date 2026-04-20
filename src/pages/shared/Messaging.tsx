@@ -6,6 +6,9 @@ import { Modal } from '../../components/Modal';
 import { PlusIcon, DownloadIcon } from '../../components/icons';
 import { Message, User, Profile, SUPER_USER_EMAILS } from '../../types';
 import { downloadJson } from '../../utils/export';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import { useCompany } from '../../contexts/CompanyContext';
 
 export const ComposeMessageModal: React.FC<{ 
     users: User[], 
@@ -203,20 +206,61 @@ export const Messaging: React.FC = () => {
     );
 };
 
-const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, User>, onClose: () => void }> = ({ message, usersMap, onClose }) => (
-    <Modal isOpen={true} onClose={onClose} title={message.subject}>
-        <div className="space-y-2 text-sm">
-            <p><strong>De:</strong> {usersMap.get(message.sender_id)?.name || 'Sistema'}</p>
-            <p><strong>Para:</strong> {message.recipient_ids.map(id => usersMap.get(id)?.name).join(', ')}</p>
-            <p><strong>Fecha:</strong> {new Date(message.date).toLocaleString()}</p>
-        </div>
-        <div className="mt-4 pt-4 border-t dark:border-gray-600 whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-3 rounded-md max-h-60 overflow-y-auto">
-            {message.body}
-        </div>
-         <div className="flex justify-end space-x-2 mt-6">
-            <button onClick={() => window.print()} className="bg-green-600 text-white px-4 py-2 rounded-md">Imprimir</button>
-            <button onClick={() => downloadJson(`mensaje_${message.id}.json`, message)} className="bg-blue-600 text-white px-4 py-2 rounded-md">Descargar</button>
-            <button onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded-md">Cerrar</button>
-        </div>
-    </Modal>
-);
+const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, User>, onClose: () => void }> = ({ message, usersMap, onClose }) => {
+    const { companyInfo } = useCompany();
+
+    const exportMessageToPdf = () => {
+        const doc = new jsPDF();
+        const startY = 20;
+
+        // Logo
+        try {
+            if (companyInfo.print_logo) {
+                doc.addImage(companyInfo.print_logo, 'PNG', 14, startY, 30, 15);
+            }
+        } catch (e) {
+            doc.setFontSize(8);
+            doc.text('LOGO', 14, startY + 5);
+        }
+
+        // Header Info
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(companyInfo.name.toUpperCase(), 50, startY + 5);
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`De: ${usersMap.get(message.sender_id)?.name || 'Sistema'}`, 14, startY + 25);
+        doc.text(`Para: ${message.recipient_ids.map(id => usersMap.get(id)?.name).join(', ')}`, 14, startY + 30);
+        doc.text(`Fecha: ${new Date(message.date).toLocaleString()}`, 14, startY + 35);
+
+        // Title & Body
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Asunto: ${message.subject}`, 14, startY + 45);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        
+        const splitBody = doc.splitTextToSize(message.body, 180);
+        doc.text(splitBody, 14, startY + 55);
+
+        doc.save(`correo_${message.id}.pdf`);
+    };
+
+    return (
+        <Modal isOpen={true} onClose={onClose} title={message.subject}>
+            <div className="space-y-2 text-sm">
+                <p><strong>De:</strong> {usersMap.get(message.sender_id)?.name || 'Sistema'}</p>
+                <p><strong>Para:</strong> {message.recipient_ids.map(id => usersMap.get(id)?.name).join(', ')}</p>
+                <p><strong>Fecha:</strong> {new Date(message.date).toLocaleString()}</p>
+            </div>
+            <div className="mt-4 pt-4 border-t dark:border-gray-600 whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-3 rounded-md max-h-60 overflow-y-auto">
+                {message.body}
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+                <button onClick={exportMessageToPdf} className="bg-green-600 text-white px-4 py-2 rounded-md">Exportar PDF</button>
+                <button onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded-md">Cerrar</button>
+            </div>
+        </Modal>
+    );
+};
