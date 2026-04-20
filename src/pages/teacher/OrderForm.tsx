@@ -22,7 +22,7 @@ export const OrderForm: React.FC = () => {
     const [pendingQuantities, setPendingQuantities] = useState<Record<string, number>>({});
     const [notes, setNotes] = useState('');
     const [new_requests, set_new_requests] = useState<NewProductRequest[]>([]);
-    const [new_request_form, set_new_request_form] = useState({ product_name: '', quantity: 1, notes: '' });
+    const [new_request_form, set_new_request_form] = useState({ product_name: '', quantity: 1, unit: 'uds', notes: '' });
     const [searchTerm, setSearchTerm] = useState('');
     const [isDirty, setIsDirty] = useState(false);
 
@@ -391,6 +391,10 @@ export const OrderForm: React.FC = () => {
                         <input type="number" disabled={!isEditable} value={new_request_form.quantity} min="1" onChange={e => set_new_request_form({...new_request_form, quantity: Number(e.target.value)})} className="w-full p-2 border rounded dark:bg-gray-700"/>
                     </div>
                     <div>
+                        <label className="text-sm">Unidad (kg, L, etc.)</label>
+                        <input type="text" disabled={!isEditable} value={new_request_form.unit} onChange={e => set_new_request_form({...new_request_form, unit: e.target.value})} className="w-full p-2 border rounded dark:bg-gray-700"/>
+                    </div>
+                    <div>
                         <button type="submit" disabled={!isEditable} className="w-full bg-blue-500 text-white p-2 rounded flex items-center justify-center"><PlusIcon className="w-5 h-5 mr-1"/> Añadir Solicitud</button>
                     </div>
                     <div className="md:col-span-4">
@@ -402,7 +406,7 @@ export const OrderForm: React.FC = () => {
                     {new_requests.map((req, index) => (
                         <div key={index} className="flex justify-between items-center p-2 bg-blue-50 dark:bg-blue-900/50 rounded">
                             <div>
-                                <p><strong>{req.product_name}</strong> x {req.quantity}</p>
+                                <p><strong>{req.product_name}</strong> - {req.quantity} {req.unit}</p>
                                 <p className="text-xs text-gray-500">{req.notes}</p>
                             </div>
                             {isEditable && <button onClick={() => handleRemoveRequest(index)} className="text-red-500"><TrashIcon className="w-5 h-5"/></button>}

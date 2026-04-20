@@ -165,6 +165,7 @@ export interface OrderItem {
 export interface NewProductRequest {
     product_name: string;
     quantity: number;
+    unit: string;
     notes: string;
 }
 
