@@ -36,82 +36,9 @@ export const suppliers: Supplier[] = [];
 export const events: AppEvent[] = [];
 export const orders: Order[] = [];
 export const incidents: Incident[] = [];
-export const trainingCycles: TrainingCycle[] = [
-    { id: 'cycle-1', name: 'Técnico en Cocina y Gastronomía' },
-    { id: 'cycle-2', name: 'Técnico en Servicios en Restauración' },
-    { id: 'cycle-3', name: 'Técnico Superior en Dirección de Cocina' },
-    { id: 'cycle-4', name: 'Técnico Superior en Dirección de Servicios de Restauración' },
-    { id: 'cycle-5', name: 'Especialista en Panadería y bollería Artesanales (Master)' },
-    { id: 'cycle-6', name: 'Técnico en Panadería, Repostería y Confitería' }
-];
-export const modules: Module[] = [
-    // Cocina y Gastronomía
-    { id: 'mod-c1-1', cycle_id: 'cycle-1', name: 'Preelaboración y conservación de alimentos' },
-    { id: 'mod-c1-2', cycle_id: 'cycle-1', name: 'Técnicas culinarias' },
-    { id: 'mod-c1-3', cycle_id: 'cycle-1', name: 'Procesos básicos de pastelería y repostería' },
-    { id: 'mod-c1-4', cycle_id: 'cycle-1', name: 'Productos culinarios' },
-    { id: 'mod-c1-5', cycle_id: 'cycle-1', name: 'Postres en restauración' },
-    { id: 'mod-c1-6', cycle_id: 'cycle-1', name: 'Sostenibilidad aplicada al sistema productivo' },
-    { id: 'mod-c1-7', cycle_id: 'cycle-1', name: 'Optativa' },
-    // Servicios en Restauración
-    { id: 'mod-c2-1', cycle_id: 'cycle-2', name: 'Operaciones básicas en bar-cafetería' },
-    { id: 'mod-c2-2', cycle_id: 'cycle-2', name: 'Operaciones básicas en restaurante' },
-    { id: 'mod-c2-3', cycle_id: 'cycle-2', name: 'Servicios en bar-cafetería' },
-    { id: 'mod-c2-4', cycle_id: 'cycle-2', name: 'Servicios en restaurante y eventos especiales' },
-    { id: 'mod-c2-5', cycle_id: 'cycle-2', name: 'El vino y su servicio' },
-    // Dirección de Cocina
-    { id: 'mod-c3-1', cycle_id: 'cycle-3', name: 'Procesos de preelaboración y conservación en cocina' },
-    { id: 'mod-c3-2', cycle_id: 'cycle-3', name: 'Elaboraciones de pastelería y repostería en cocina' },
-    { id: 'mod-c3-3', cycle_id: 'cycle-3', name: 'Procesos de elaboración culinaria' },
-    { id: 'mod-c3-4', cycle_id: 'cycle-3', name: 'Gestión de la producción en cocina' },
-    { id: 'mod-c3-5', cycle_id: 'cycle-3', name: 'Control del aprovisionamiento de materias primas' },
-    { id: 'mod-c3-6', cycle_id: 'cycle-3', name: 'Gestión de la calidad y de la seguridad e higiene alimentaria' },
-    { id: 'mod-c3-7', cycle_id: 'cycle-3', name: 'Gastronomía y nutrición' },
-    // Dirección de Servicios de Restauración
-    { id: 'mod-c4-1', cycle_id: 'cycle-4', name: 'Procesos de servicios en bar-cafetería' },
-    { id: 'mod-c4-2', cycle_id: 'cycle-4', name: 'Procesos de servicios en restaurante' },
-    { id: 'mod-c4-3', cycle_id: 'cycle-4', name: 'Sumillería' },
-    { id: 'mod-c4-4', cycle_id: 'cycle-4', name: 'Planificación y dirección de servicios y eventos en restauración' },
-    { id: 'mod-c4-5', cycle_id: 'cycle-4', name: 'Control del aprovisionamiento de materias primas' },
-    // Panadería y bollería Artesanales
-    { id: 'mod-c5-1', cycle_id: 'cycle-5', name: 'Masas madre de cultivo y prefermentos' },
-    { id: 'mod-c5-2', cycle_id: 'cycle-5', name: 'Tecnología del frío aplicada a la panadería artesanal' },
-    { id: 'mod-c5-3', cycle_id: 'cycle-5', name: 'Panes artesanos de cereales tradicionales, especiales y pseudocereales' },
-    { id: 'mod-c5-4', cycle_id: 'cycle-5', name: 'Bollería artesanal y hojaldres' },
-    { id: 'mod-c5-5', cycle_id: 'cycle-5', name: 'Cata y maridaje de productos de panificación' },
-    // Panadería, Repostería y Confitería
-    { id: 'mod-c6-1', cycle_id: 'cycle-6', name: 'Elaboraciones de panadería-bollería' },
-    { id: 'mod-c6-2', cycle_id: 'cycle-6', name: 'Procesos básicos de pastelería y repostería' },
-    { id: 'mod-c6-3', cycle_id: 'cycle-6', name: 'Operaciones y control de almacén en la industria alimentaria' },
-    { id: 'mod-c6-4', cycle_id: 'cycle-6', name: 'Presentación y venta de productos de panadería y pastelería' },
-    { id: 'mod-c6-5', cycle_id: 'cycle-6', name: 'Materias primas y procesos en panadería, pastelería y repostería' },
-    { id: 'mod-c6-6', cycle_id: 'cycle-6', name: 'Elaboraciones de confitería y otras especialidades' },
-    { id: 'mod-c6-7', cycle_id: 'cycle-6', name: 'Postres en restauración' },
-    { id: 'mod-c6-8', cycle_id: 'cycle-6', name: 'Productos de obrador' },
-    { id: 'mod-c6-9', cycle_id: 'cycle-6', name: 'Optativa' },
-];
-export const groups: Group[] = [
-    { id: 'grp-c1-1', cycle_id: 'cycle-1', name: '1HCA', module_ids: [] },
-    { id: 'grp-c1-2', cycle_id: 'cycle-1', name: '1HCB', module_ids: [] },
-    { id: 'grp-c1-3', cycle_id: 'cycle-1', name: '1HCC', module_ids: [] },
-    { id: 'grp-c1-4', cycle_id: 'cycle-1', name: '2HCA', module_ids: [] },
-    { id: 'grp-c1-5', cycle_id: 'cycle-1', name: '2HCB', module_ids: [] },
-    // Servicios en Restauración
-    { id: 'grp-c2-1', cycle_id: 'cycle-2', name: 'IHS', module_ids: [] },
-    { id: 'grp-c2-2', cycle_id: 'cycle-2', name: '1HS', module_ids: [] },
-    { id: 'grp-c2-3', cycle_id: 'cycle-2', name: '2HS', module_ids: [] },
-    // Dirección de Cocina
-    { id: 'grp-c3-1', cycle_id: 'cycle-3', name: '3HDC', module_ids: [] },
-    { id: 'grp-c3-2', cycle_id: 'cycle-3', name: '4HDC', module_ids: [] },
-    // Dirección de Servicios de Restauración
-    { id: 'grp-c4-1', cycle_id: 'cycle-4', name: '3HDS', module_ids: [] },
-    { id: 'grp-c4-2', cycle_id: 'cycle-4', name: '4HDS', module_ids: [] },
-    // Panadería y bollería Artesanales
-    { id: 'grp-c5-1', cycle_id: 'cycle-5', name: '5PBA', module_ids: [] },
-    // Panadería, Repostería y Confitería
-    { id: 'grp-c6-1', cycle_id: 'cycle-6', name: '1YP', module_ids: [] },
-    { id: 'grp-c6-2', cycle_id: 'cycle-6', name: '2YP', module_ids: [] },
-];
+export const trainingCycles: TrainingCycle[] = [];
+export const modules: Module[] = [];
+export const groups: Group[] = [];
 export const assignments: Assignment[] = [];
 export const recipes: Recipe[] = [];
 export const sales: Sale[] = [];
