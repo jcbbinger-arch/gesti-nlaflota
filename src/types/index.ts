@@ -215,6 +215,7 @@ export interface Group {
     id: string;
     cycle_id: string;
     name: string;
+    module_ids: string[];
 }
 
 export interface Assignment {

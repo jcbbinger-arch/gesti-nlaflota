@@ -91,27 +91,26 @@ export const modules: Module[] = [
     { id: 'mod-c6-9', cycle_id: 'cycle-6', name: 'Optativa' },
 ];
 export const groups: Group[] = [
-    // Cocina y Gastronomía
-    { id: 'grp-c1-1', cycle_id: 'cycle-1', name: '1HCA' },
-    { id: 'grp-c1-2', cycle_id: 'cycle-1', name: '1HCB' },
-    { id: 'grp-c1-3', cycle_id: 'cycle-1', name: '1HCC' },
-    { id: 'grp-c1-4', cycle_id: 'cycle-1', name: '2HCA' },
-    { id: 'grp-c1-5', cycle_id: 'cycle-1', name: '2HCB' },
+    { id: 'grp-c1-1', cycle_id: 'cycle-1', name: '1HCA', module_ids: [] },
+    { id: 'grp-c1-2', cycle_id: 'cycle-1', name: '1HCB', module_ids: [] },
+    { id: 'grp-c1-3', cycle_id: 'cycle-1', name: '1HCC', module_ids: [] },
+    { id: 'grp-c1-4', cycle_id: 'cycle-1', name: '2HCA', module_ids: [] },
+    { id: 'grp-c1-5', cycle_id: 'cycle-1', name: '2HCB', module_ids: [] },
     // Servicios en Restauración
-    { id: 'grp-c2-1', cycle_id: 'cycle-2', name: 'IHS' },
-    { id: 'grp-c2-2', cycle_id: 'cycle-2', name: '1HS' },
-    { id: 'grp-c2-3', cycle_id: 'cycle-2', name: '2HS' },
+    { id: 'grp-c2-1', cycle_id: 'cycle-2', name: 'IHS', module_ids: [] },
+    { id: 'grp-c2-2', cycle_id: 'cycle-2', name: '1HS', module_ids: [] },
+    { id: 'grp-c2-3', cycle_id: 'cycle-2', name: '2HS', module_ids: [] },
     // Dirección de Cocina
-    { id: 'grp-c3-1', cycle_id: 'cycle-3', name: '3HDC' },
-    { id: 'grp-c3-2', cycle_id: 'cycle-3', name: '4HDC' },
+    { id: 'grp-c3-1', cycle_id: 'cycle-3', name: '3HDC', module_ids: [] },
+    { id: 'grp-c3-2', cycle_id: 'cycle-3', name: '4HDC', module_ids: [] },
     // Dirección de Servicios de Restauración
-    { id: 'grp-c4-1', cycle_id: 'cycle-4', name: '3HDS' },
-    { id: 'grp-c4-2', cycle_id: 'cycle-4', name: '4HDS' },
+    { id: 'grp-c4-1', cycle_id: 'cycle-4', name: '3HDS', module_ids: [] },
+    { id: 'grp-c4-2', cycle_id: 'cycle-4', name: '4HDS', module_ids: [] },
     // Panadería y bollería Artesanales
-    { id: 'grp-c5-1', cycle_id: 'cycle-5', name: '5PBA' },
+    { id: 'grp-c5-1', cycle_id: 'cycle-5', name: '5PBA', module_ids: [] },
     // Panadería, Repostería y Confitería
-    { id: 'grp-c6-1', cycle_id: 'cycle-6', name: '1YP' },
-    { id: 'grp-c6-2', cycle_id: 'cycle-6', name: '2YP' },
+    { id: 'grp-c6-1', cycle_id: 'cycle-6', name: '1YP', module_ids: [] },
+    { id: 'grp-c6-2', cycle_id: 'cycle-6', name: '2YP', module_ids: [] },
 ];
 export const assignments: Assignment[] = [];
 export const recipes: Recipe[] = [];

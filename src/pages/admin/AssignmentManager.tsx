@@ -33,6 +33,12 @@ export const AssignmentManager: React.FC = () => {
         const assignmentKey = `${group_id}|${module_id}`;
         const existingAssignment = assignments.find(a => a.group_id === group_id && a.module_id === module_id);
         
+        // Update Group's module_ids
+        const group = groups.find(g => g.id === group_id);
+        if (group && !group.module_ids.includes(module_id)) {
+            setGroups(groups.map(g => g.id === group_id ? { ...g, module_ids: [...g.module_ids, module_id] } : g));
+        }
+        
         if (user_id === "") { // Unassigning
             if (existingAssignment) {
                 setAssignments(assignments.filter(a => !(a.group_id === group_id && a.module_id === module_id)));
@@ -79,7 +85,7 @@ export const AssignmentManager: React.FC = () => {
         } else { // Creating
             if(newCycle) setTrainingCycles([...training_cycles, {id: `cycle-${Date.now()}`, name}]);
             if(newModule) setModules([...modules, {id: `mod-${Date.now()}`, name, cycle_id: newModule.cycle_id!}]);
-            if(newGroup) setGroups([...groups, {id: `grp-${Date.now()}`, name, cycle_id: newGroup.cycle_id!}]);
+            if(newGroup) setGroups([...groups, {id: `grp-${Date.now()}`, name, cycle_id: newGroup.cycle_id!, module_ids: []}]);
         }
         handleCloseModal();
     };
@@ -150,7 +156,10 @@ export const AssignmentManager: React.FC = () => {
                                     </div>
                                 }>
                                     <div className="space-y-1">
-                                        {modules.filter(m => m.cycle_id === cycle.id).map((module, mIdx) => (
+                                        { (group.module_ids.length > 0
+                                            ? group.module_ids.map(mid => modules.find(m => m.id === mid)).filter(Boolean) as Module[]
+                                            : modules.filter(m => m.cycle_id === cycle.id)
+                                        ).map((module, mIdx) => (
                                             <div key={module.id} className={`flex items-center justify-between p-3 rounded-lg ${mIdx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800/50' : 'bg-white dark:bg-gray-800'}`}>
                                                 <div className="flex-1 flex items-center justify-between">
                                                     <span className="font-medium text-gray-700 dark:text-gray-300">{module.name}</span>
