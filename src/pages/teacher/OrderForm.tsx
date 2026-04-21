@@ -168,7 +168,7 @@ export const OrderForm: React.FC = () => {
                     product_id,
                     quantity,
                     price: product.suppliers[0]?.price || 0,
-                    tax: product.tax,
+                    tax: product.tax || 0,
                 };
             });
 
@@ -183,10 +183,12 @@ export const OrderForm: React.FC = () => {
                 new_product_requests: new_requests,
                 cost: calculateTotalCost,
                 notes: notes,
-                is_economato_order: isEconomatoOrder,
-                is_staff_meal: existingOrder?.is_staff_meal,
-                dining_service_id: existingOrder?.dining_service_id
+                is_economato_order: !!isEconomatoOrder
             };
+
+            // Add optional fields only if they exist to avoid Firestore undefined error
+            if (existingOrder?.is_staff_meal !== undefined) orderToSave.is_staff_meal = existingOrder.is_staff_meal;
+            if (existingOrder?.dining_service_id !== undefined) orderToSave.dining_service_id = existingOrder.dining_service_id;
             
             const newOrders = existingOrder 
                 ? orders.map(o => o.id === existingOrder.id ? orderToSave : o)
