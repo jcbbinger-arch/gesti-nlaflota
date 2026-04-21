@@ -390,6 +390,9 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                                         <span className="text-xl">{teacherName}</span>
                                     </div>
                                     <div className="flex gap-2">
+                                        {teacherOrders.some(o => o.is_economato_order) && (
+                                            <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-1 rounded-full border border-blue-300">ECONOMATO</span>
+                                        )}
                                         {teacherOrders.some(o => o.order_type === 'service') && (
                                             <span className="bg-primary-100 text-primary-800 text-[10px] px-2 py-1 rounded-full border border-primary-300">SERVICIO</span>
                                         )}
@@ -422,6 +425,11 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                                                                 <td className="px-3 py-2 text-center text-gray-400 text-xs">{p?.reference}</td>
                                                                 <td className="px-3 py-2 text-right">
                                                                     <div className="flex justify-end gap-1">
+                                                                        {teacherOrders.some(o => o.is_economato_order && o.items.some(i => i.product_id === cItem.product_id)) && (
+                                                                            <span className="text-[9px] px-1.5 py-0.5 rounded border bg-blue-50 text-blue-600 border-blue-200">
+                                                                                Economato
+                                                                            </span>
+                                                                        )}
                                                                         {Array.from(cItem.types).map(t => (
                                                                             <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded border capitalize ${
                                                                                 t === 'service' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-amber-50 text-amber-600 border-amber-200'

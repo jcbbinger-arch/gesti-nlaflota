@@ -29,15 +29,14 @@ export const OrderPortal: React.FC = () => {
     const staffMealOrders = orders.filter(o => o.is_staff_meal && o.user_id === currentUser?.id);
 
     const getMyOrderForEvent = (event: AppEvent, type?: 'weekly' | 'service') => {
-        const userId = isEconomatoMode ? 'mini-economato' : currentUser?.id;
+        const userId = currentUser?.id;
         if (!type && !isEconomatoMode) {
-            // Return any order for this event
-            return orders.find(o => o.user_id === userId && o.event_id === event.id);
+            return orders.find(o => o.user_id === userId && o.event_id === event.id && !o.is_economato_order);
         }
         return orders.find(o => 
             o.user_id === userId && 
             o.event_id === event.id && 
-            (isEconomatoMode ? true : o.order_type === type)
+            (isEconomatoMode ? o.is_economato_order : (o.order_type === type && !o.is_economato_order))
         );
     };
 

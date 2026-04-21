@@ -55,9 +55,8 @@ export const OrderForm: React.FC = () => {
 
     const isEditable = useMemo(() => {
         if (!existingOrder) return true; // New order
-        if (existingOrder.status === 'Procesado') return false;
-        if (existingOrder.status === 'Cerrado') return !!isAlmacen;
-        return !!(isOwner || isAlmacen);
+        if (existingOrder.status === 'Procesado' || existingOrder.status === 'Cerrado' || existingOrder.status === 'Recibido OK') return false;
+        return isOwner || isAlmacen;
     }, [existingOrder, isAlmacen, isOwner]);
     
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
@@ -156,7 +155,7 @@ export const OrderForm: React.FC = () => {
 
     if (!event) return <Card title="Error">Evento no encontrado.</Card>;
 
-    const handleSubmit = async (status: 'Borrador' | 'Enviado' | 'Cerrado') => {
+    const handleSubmit = async (status: 'Enviado' | 'Cerrado') => {
         if (!currentUser) return;
         
         setIsSubmitting(true);
@@ -175,7 +174,7 @@ export const OrderForm: React.FC = () => {
 
             const orderToSave: Order = {
                 id: existingOrder?.id || `ord-${Date.now()}`,
-                user_id: isEconomatoOrder ? 'mini-economato' : currentUser.id,
+                user_id: currentUser.id,
                 date: new Date().toISOString(),
                 status,
                 event_id: event.id,
@@ -184,6 +183,7 @@ export const OrderForm: React.FC = () => {
                 new_product_requests: new_requests,
                 cost: calculateTotalCost,
                 notes: notes,
+                is_economato_order: isEconomatoOrder,
                 is_staff_meal: existingOrder?.is_staff_meal,
                 dining_service_id: existingOrder?.dining_service_id
             };
@@ -194,23 +194,13 @@ export const OrderForm: React.FC = () => {
 
             await setOrders(newOrders);
 
-            // If it's an economato order, add to mini_economato_stock
-            if (isEconomatoOrder && status === 'Enviado') {
-                await setMiniEconomatoStock(prev => {
-                    const newStock = [...prev];
-                    newOrderItems.forEach(item => {
-                        const idx = newStock.findIndex(s => s.id === item.product_id);
-                        if (idx >= 0) {
-                            newStock[idx] = { ...newStock[idx], stock: newStock[idx].stock + item.quantity };
-                        } else {
-                            newStock.push({ id: item.product_id, stock: item.quantity, min_stock: 0 });
-                        }
-                    });
-                    return newStock;
-                });
-            }
+            // Logic: Stock update happens when Almacen closes/processes the order, 
+            // but if the user wants it "delivered" to economato upon sending, we keep it here.
+            // However, to allow the teacher to modify it, we should probably only update stock 
+            // when it becomes 'Cerrado' or 'Procesado' from the Warehouse side.
+            // But if the user explicitly wants stock to update now, we keep it.
             
-            alert(`Pedido ${status === 'Borrador' ? 'guardado como borrador' : 'enviado'} correctamente.`);
+            alert(`Pedido ${status === 'Enviado' ? 'enviado' : 'cerrado'} correctamente.`);
             navigate(isEconomatoOrder ? '/almacen/mini-economato' : '/teacher/order-portal');
         } catch (error) {
             console.error("Error saving order:", error);
@@ -449,17 +439,10 @@ export const OrderForm: React.FC = () => {
                     <div className="mt-6 flex justify-end space-x-3">
                         <button 
                             disabled={isSubmitting}
-                            onClick={() => handleSubmit('Borrador')} 
-                            className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 disabled:opacity-50"
-                        >
-                            {isSubmitting ? 'Guardando...' : 'Guardar Borrador'}
-                        </button>
-                        <button 
-                            disabled={isSubmitting}
                             onClick={() => handleSubmit('Enviado')} 
                             className="bg-primary-600 text-white px-6 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50"
                         >
-                            {isSubmitting ? 'Enviando...' : 'Enviar Pedido'}
+                            {isSubmitting ? 'Procesando...' : (existingOrder ? 'Actualizar y Enviar' : 'Enviar Pedido')}
                         </button>
                         {isAlmacen && (
                             <button 

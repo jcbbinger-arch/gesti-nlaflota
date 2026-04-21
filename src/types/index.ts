@@ -180,6 +180,7 @@ export interface Order {
   new_product_requests?: NewProductRequest[];
   cost?: number;
   notes?: string;
+  is_economato_order?: boolean;
   is_staff_meal?: boolean;
   dining_service_id?: string;
 }

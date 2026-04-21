@@ -17,10 +17,12 @@ export const TeacherOrderHistory: React.FC = () => {
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
     const eventsMap = useMemo(() => new Map(events.map(e => [e.id, e.name])), [events]);
 
+    const isAlmacen = currentUser?.profiles.includes(Profile.ALMACEN);
+    
     const myOrders = useMemo(() => {
         if (!currentUser) return [];
         return orders
-            .filter(o => o.user_id === currentUser.id || (currentUser.profiles.includes(Profile.ALMACEN) && o.user_id === 'mini-economato'))
+            .filter(o => o.user_id === currentUser.id || (isAlmacen && o.is_economato_order))
             .sort((a, b) => {
                 const dateA = a.date ? new Date(a.date).getTime() : 0;
                 const dateB = b.date ? new Date(b.date).getTime() : 0;
@@ -49,9 +51,17 @@ export const TeacherOrderHistory: React.FC = () => {
                     <div className="space-y-4">
                         {myOrders.map(order => (
                             <details key={order.id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg print:block print:p-0 print:border-b print:mb-4">
-                                <summary className="font-semibold cursor-pointer flex justify-between">
-                                    <span>Pedido para "{eventsMap.get(order.event_id)}" - {new Date(order.date).toLocaleDateString()}</span>
-                                    <span className="font-mono">{order.status} - {order.cost?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
+                                <summary className="font-semibold cursor-pointer flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <span>Pedido para "{eventsMap.get(order.event_id)}" - {new Date(order.date).toLocaleDateString()}</span>
+                                        {order.is_economato_order && (
+                                            <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full border border-blue-200 uppercase font-bold">ECONOMATO</span>
+                                        )}
+                                        {order.order_type === 'service' && (
+                                            <span className="bg-primary-100 text-primary-700 text-[10px] px-2 py-0.5 rounded-full border border-primary-200 uppercase font-bold">SERVICIO</span>
+                                        )}
+                                    </div>
+                                    <span className="font-mono text-sm">{order.status} - {order.cost?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
                                 </summary>
                                 <div className="mt-4 pt-4 border-t dark:border-gray-600">
                                     <h4 className="font-bold">Artículos del Pedido:</h4>
