@@ -116,6 +116,77 @@ export const ComposeMessageModal: React.FC<{
 };
 
 
+// Helper to handle safe date expiration check
+const isMessageExpiredForMe = (message: Message, userId: string) => {
+    if (!message || !message.read_at || !message.read_at[userId]) return false;
+    const readDate = new Date(message.read_at[userId]);
+    if (isNaN(readDate.getTime())) return false;
+    const expiryDate = new Date(readDate);
+    expiryDate.setDate(expiryDate.getDate() + 15);
+    return new Date() > expiryDate;
+};
+
+const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, User>, onClose: () => void }> = ({ message, usersMap, onClose }) => {
+    const { companyInfo } = useCompany();
+
+    const exportMessageToPdf = () => {
+        const doc = new jsPDF();
+        
+        const sender = usersMap.get(message.sender_id || '')?.name || 'Sistema';
+        const recipients = (message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ');
+        const date = message.date ? new Date(message.date).toLocaleString() : 'N/A';
+
+        const startY = addHeaderToPdf(
+            doc, 
+            companyInfo, 
+            'MENSAJERÍA INTERNA', 
+            `De: ${sender}\nPara: ${recipients}\nFecha: ${date}`
+        );
+
+        // Subject & Body
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Asunto: ${message.subject || '(Sin Asunto)'}`, 14, startY + 10);
+        
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        const splitBody = doc.splitTextToSize(message.body || '', 180);
+        doc.text(splitBody, 14, startY + 20);
+
+        if (message.attachment) {
+            const bodyY = startY + 25 + (splitBody.length * 7);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'italic');
+            doc.text(`* Incluye archivo adjunto: ${message.attachment.name}`, 14, bodyY);
+        }
+
+        doc.save(`correo_${message.id}.pdf`);
+    };
+
+    return (
+        <Modal isOpen={true} onClose={onClose} title={message.subject || 'Mensaje'}>
+            <div className="space-y-2 text-sm">
+                <p><strong>De:</strong> {usersMap.get(message.sender_id || '')?.name || 'Sistema'}</p>
+                <p><strong>Para:</strong> {(message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ')}</p>
+                <p><strong>Fecha:</strong> {message.date ? new Date(message.date).toLocaleString() : 'N/A'}</p>
+            </div>
+            <div className="mt-4 pt-4 border-t dark:border-gray-600 whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-3 rounded-md max-h-60 overflow-y-auto">
+                {message.body}
+                {message.attachment && (
+                    <div className="mt-4 pt-2 border-t">
+                        <p className="text-sm font-semibold">Adjunto: </p>
+                        <a href={message.attachment.content} download={message.attachment.name} className="text-blue-500 underline">{message.attachment.name}</a>
+                    </div>
+                )}
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+                <button onClick={exportMessageToPdf} className="bg-green-600 text-white px-4 py-2 rounded-md">Exportar PDF</button>
+                <button onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded-md">Cerrar</button>
+            </div>
+        </Modal>
+    );
+};
+
 export const Messaging: React.FC = () => {
     const { messages, setMessages, users } = useData();
     const { currentUser } = useAuth();
@@ -123,24 +194,33 @@ export const Messaging: React.FC = () => {
     const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
-    const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
+    const usersMap = useMemo(() => new Map((users || []).map(u => [u.id, u])), [users]);
 
     const myInbox = useMemo(() => 
         (messages || [])
             .filter(m => m?.recipient_ids?.includes(currentUser?.id || '') && !isMessageExpiredForMe(m, currentUser?.id || ''))
-            .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .sort((a,b) => {
+                const dateA = a.date ? new Date(a.date).getTime() : 0;
+                const dateB = b.date ? new Date(b.date).getTime() : 0;
+                return dateB - dateA;
+            })
     , [messages, currentUser]);
 
     const mySentBox = useMemo(() =>
         (messages || [])
             .filter(m => m?.sender_id === currentUser?.id)
-            .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .sort((a,b) => {
+                const dateA = a.date ? new Date(a.date).getTime() : 0;
+                const dateB = b.date ? new Date(b.date).getTime() : 0;
+                return dateB - dateA;
+            })
     , [messages, currentUser]);
 
     const handleSendMessage = (newMessage: Omit<Message, 'id' | 'date' | 'sender_id' | 'read_by' | 'read_at'>) => {
+        if (!currentUser) return;
         const message: Message = {
             id: `msg-${Date.now()}`,
-            sender_id: currentUser!.id,
+            sender_id: currentUser.id,
             date: new Date().toISOString(),
             read_by: {},
             read_at: {},
@@ -164,16 +244,6 @@ export const Messaging: React.FC = () => {
         }
     };
 
-    // Filter messages for current user, excluding those read > 15 days ago (local filter)
-    const isMessageExpiredForMe = (message: Message, userId: string) => {
-        if (!message.read_at || !message.read_at[userId]) return false;
-        const readDate = new Date(message.read_at[userId]);
-        const expiryDate = new Date(readDate);
-        expiryDate.setDate(expiryDate.getDate() + 15);
-        return new Date() > expiryDate;
-    };
-
-
     const handleDownloadAll = () => {
         const messagesToDownload = view === 'inbox' ? myInbox : mySentBox;
         if (messagesToDownload.length > 0) {
@@ -182,6 +252,8 @@ export const Messaging: React.FC = () => {
             alert('No hay mensajes para descargar.');
         }
     };
+
+    if (!currentUser) return null;
 
     return (
         <div>
@@ -234,66 +306,5 @@ export const Messaging: React.FC = () => {
             {isComposeModalOpen && <ComposeMessageModal users={users} onClose={() => setIsComposeModalOpen(false)} onSend={handleSendMessage} />}
             {selectedMessage && <MessageDetailModal message={selectedMessage} usersMap={usersMap} onClose={() => setSelectedMessage(null)} />}
         </div>
-    );
-};
-
-const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, User>, onClose: () => void }> = ({ message, usersMap, onClose }) => {
-    const { companyInfo } = useCompany();
-
-    const exportMessageToPdf = () => {
-        const doc = new jsPDF();
-        
-        const sender = usersMap.get(message.sender_id)?.name || 'Sistema';
-        const recipients = (message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ');
-        const date = new Date(message.date).toLocaleString();
-
-        const startY = addHeaderToPdf(
-            doc, 
-            companyInfo, 
-            'MENSAJERÍA INTERNA', 
-            `De: ${sender}\nPara: ${recipients}\nFecha: ${date}`
-        );
-
-        // Subject & Body
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Asunto: ${message.subject}`, 14, startY + 10);
-        
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-        const splitBody = doc.splitTextToSize(message.body, 180);
-        doc.text(splitBody, 14, startY + 20);
-
-        if (message.attachment) {
-            const bodyY = startY + 25 + (splitBody.length * 7);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'italic');
-            doc.text(`* Incluye archivo adjunto: ${message.attachment.name}`, 14, bodyY);
-        }
-
-        doc.save(`correo_${message.id}.pdf`);
-    };
-
-    return (
-        <Modal isOpen={true} onClose={onClose} title={message.subject}>
-            <div className="space-y-2 text-sm">
-                <p><strong>De:</strong> {usersMap.get(message.sender_id)?.name || 'Sistema'}</p>
-                <p><strong>Para:</strong> {(message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ')}</p>
-                <p><strong>Fecha:</strong> {new Date(message.date).toLocaleString()}</p>
-            </div>
-            <div className="mt-4 pt-4 border-t dark:border-gray-600 whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-3 rounded-md max-h-60 overflow-y-auto">
-                {message.body}
-                {message.attachment && (
-                    <div className="mt-4 pt-2 border-t">
-                        <p className="text-sm font-semibold">Adjunto: </p>
-                        <a href={message.attachment.content} download={message.attachment.name} className="text-blue-500 underline">{message.attachment.name}</a>
-                    </div>
-                )}
-            </div>
-            <div className="flex justify-end space-x-2 mt-6">
-                <button onClick={exportMessageToPdf} className="bg-green-600 text-white px-4 py-2 rounded-md">Exportar PDF</button>
-                <button onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded-md">Cerrar</button>
-            </div>
-        </Modal>
     );
 };
