@@ -23,6 +23,7 @@ export const OrderForm: React.FC = () => {
     const [notes, setNotes] = useState('');
     const [new_requests, set_new_requests] = useState<NewProductRequest[]>([]);
     const [new_request_form, set_new_request_form] = useState({ product_name: '', quantity: 1, unit: 'uds', notes: '' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [isDirty, setIsDirty] = useState(false);
 
@@ -155,60 +156,68 @@ export const OrderForm: React.FC = () => {
 
     if (!event) return <Card title="Error">Evento no encontrado.</Card>;
 
-    const handleSubmit = (status: 'Borrador' | 'Enviado' | 'Cerrado') => {
+    const handleSubmit = async (status: 'Borrador' | 'Enviado' | 'Cerrado') => {
         if (!currentUser) return;
         
-        setIsDirty(false);
+        setIsSubmitting(true);
+        try {
+            setIsDirty(false);
 
-        const newOrderItems: OrderItem[] = Array.from(orderItems.entries()).map(([product_id, quantity]) => {
-            const product = productsMap.get(product_id)!;
-            return {
-                product_id,
-                quantity,
-                price: product.suppliers[0]?.price || 0,
-                tax: product.tax,
-            };
-        });
-
-        const orderToSave: Order = {
-            id: existingOrder?.id || `ord-${Date.now()}`,
-            user_id: isEconomatoOrder ? 'mini-economato' : currentUser.id,
-            date: new Date().toISOString(),
-            status,
-            event_id: event.id,
-            order_type: orderType,
-            items: newOrderItems,
-            new_product_requests: new_requests,
-            cost: calculateTotalCost,
-            notes: notes,
-            is_staff_meal: existingOrder?.is_staff_meal,
-            dining_service_id: existingOrder?.dining_service_id
-        };
-        
-        const newOrders = existingOrder 
-            ? orders.map(o => o.id === existingOrder.id ? orderToSave : o)
-            : [...orders, orderToSave];
-
-        setOrders(newOrders);
-
-        // If it's an economato order, add to mini_economato_stock
-        if (isEconomatoOrder && status === 'Enviado') {
-            newOrderItems.forEach(item => {
-                setMiniEconomatoStock(prev => {
-                    const existingItem = prev.find(s => s.id === item.product_id);
-                    if (existingItem) {
-                        return prev.map(s => s.id === item.product_id ? { ...s, stock: s.stock + item.quantity } : s);
-                    } else {
-                        return [...prev, { id: item.product_id, stock: item.quantity, min_stock: 0 }];
-                    }
-                });
+            const newOrderItems: OrderItem[] = Array.from(orderItems.entries()).map(([product_id, quantity]) => {
+                const product = productsMap.get(product_id)!;
+                return {
+                    product_id,
+                    quantity,
+                    price: product.suppliers[0]?.price || 0,
+                    tax: product.tax,
+                };
             });
-        }
-        
-        setTimeout(() => {
-            alert(`Pedido ${status === 'Borrador' ? 'guardado como borrador' : 'enviado'}.`);
+
+            const orderToSave: Order = {
+                id: existingOrder?.id || `ord-${Date.now()}`,
+                user_id: isEconomatoOrder ? 'mini-economato' : currentUser.id,
+                date: new Date().toISOString(),
+                status,
+                event_id: event.id,
+                order_type: orderType,
+                items: newOrderItems,
+                new_product_requests: new_requests,
+                cost: calculateTotalCost,
+                notes: notes,
+                is_staff_meal: existingOrder?.is_staff_meal,
+                dining_service_id: existingOrder?.dining_service_id
+            };
+            
+            const newOrders = existingOrder 
+                ? orders.map(o => o.id === existingOrder.id ? orderToSave : o)
+                : [...orders, orderToSave];
+
+            await setOrders(newOrders);
+
+            // If it's an economato order, add to mini_economato_stock
+            if (isEconomatoOrder && status === 'Enviado') {
+                await setMiniEconomatoStock(prev => {
+                    const newStock = [...prev];
+                    newOrderItems.forEach(item => {
+                        const idx = newStock.findIndex(s => s.id === item.product_id);
+                        if (idx >= 0) {
+                            newStock[idx] = { ...newStock[idx], stock: newStock[idx].stock + item.quantity };
+                        } else {
+                            newStock.push({ id: item.product_id, stock: item.quantity, min_stock: 0 });
+                        }
+                    });
+                    return newStock;
+                });
+            }
+            
+            alert(`Pedido ${status === 'Borrador' ? 'guardado como borrador' : 'enviado'} correctamente.`);
             navigate(isEconomatoOrder ? '/almacen/mini-economato' : '/teacher/order-portal');
-        }, 100);
+        } catch (error) {
+            console.error("Error saving order:", error);
+            alert("Error al guardar el pedido. Por favor, revisa tu conexión.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -253,50 +262,58 @@ export const OrderForm: React.FC = () => {
                 {searchTerm.trim() !== '' && Object.entries(groupedProducts).map(([family, familyProducts]) => (
                     <div key={family} className="mb-6">
                         <h3 className="text-lg font-bold mb-3 text-gray-700 dark:text-gray-300 border-b pb-1">{family}</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                             {familyProducts.map(product => (
-                                <div key={product.id} className="p-3 border rounded-lg dark:border-gray-600 flex flex-col h-full">
-                                    <div className="w-full h-32 mb-3 rounded-md overflow-hidden bg-gray-100">
+                                <div key={product.id} className="p-2 border rounded-lg dark:border-gray-600 flex flex-col h-full bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="w-full h-20 mb-2 rounded overflow-hidden bg-gray-100 flex-shrink-0">
                                         <img 
-                                            src={product.image || `https://picsum.photos/seed/${encodeURIComponent(product.name)}/400/300`} 
+                                            src={product.image || `https://picsum.photos/seed/${encodeURIComponent(product.name)}/200/200`} 
                                             alt={product.name} 
                                             className="w-full h-full object-cover" 
                                             referrerPolicy="no-referrer"
                                         />
                                     </div>
-                                    <h4 className="font-semibold">{product.name}</h4>
+                                    <h4 className="font-bold text-[11px] leading-tight line-clamp-2 min-h-[2.2em]">{product.name}</h4>
+                                    
+                                    {product.description && (
+                                        <p className="text-[9px] text-gray-400 mt-0.5 line-clamp-2 italic leading-tight" title={product.description}>
+                                            {product.description}
+                                        </p>
+                                    )}
+                                    
+                                    <div className="mt-1">
+                                        <p className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
+                                            {product.suppliers[0]?.price.toFixed(2) || 'N/A'}€ <span className="font-normal text-gray-500 text-[9px]">/ {product.unit}</span>
+                                        </p>
+                                    </div>
+
                                     {(() => {
                                         const stock = mini_economato_stock.find(s => s.id === product.id);
                                         if (stock && stock.stock > 0) {
                                             return (
-                                                <div className="mt-1 flex items-center">
-                                                    <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">
-                                                        En Mini-Economato: {stock.stock.toFixed(1)} {product.unit}
+                                                <div className="mt-1">
+                                                    <span className="text-[8px] bg-blue-50 text-blue-600 font-bold px-1 py-0.5 rounded border border-blue-100 block text-center">
+                                                        S: {stock.stock.toFixed(1)}
                                                     </span>
                                                 </div>
                                             );
                                         }
                                         return null;
                                     })()}
-                                    {product.description && (
-                                        <p className="text-xs text-gray-400 mt-1 line-clamp-2 italic" title={product.description}>
-                                            {product.description}
-                                        </p>
-                                    )}
-                                    <p className="text-sm text-gray-500 mt-auto pt-2">{product.suppliers[0]?.price.toFixed(2) || 'N/A'}€ / {product.unit}</p>
-                                    <div className="flex gap-2 mt-2">
+
+                                    <div className="flex gap-1 mt-auto pt-2">
                                         <input
                                             type="number"
                                             step="0.01"
                                             min="0"
-                                            disabled={!isEditable}
+                                            disabled={!isEditable || isSubmitting}
                                             value={pendingQuantities[product.id] || ''}
                                             onChange={e => setPendingQuantities({...pendingQuantities, [product.id]: parseFloat(e.target.value) || 0})}
-                                            className="w-full p-1 border rounded dark:bg-gray-700"
-                                            placeholder="Añadir cant."
+                                            className="w-full p-1 border rounded text-[10px] bg-gray-50 dark:bg-gray-700 focus:ring-1 focus:ring-blue-500 outline-none"
+                                            placeholder="Cant."
                                         />
                                         <button 
-                                            disabled={!isEditable}
+                                            disabled={!isEditable || isSubmitting}
                                             onClick={() => {
                                                 const qty = pendingQuantities[product.id] || 0;
                                                 if (qty > 0) {
@@ -304,9 +321,9 @@ export const OrderForm: React.FC = () => {
                                                     setPendingQuantities({...pendingQuantities, [product.id]: 0});
                                                 }
                                             }}
-                                            className="bg-blue-500 text-white px-2 py-1 rounded text-sm whitespace-nowrap"
+                                            className="bg-primary-600 text-white px-1.5 py-1 rounded text-[10px] font-bold active:bg-primary-700"
                                         >
-                                            {orderItems.has(product.id) ? 'Sumar' : 'Agregar'}
+                                            {orderItems.has(product.id) ? 'Add' : 'Ok'}
                                         </button>
                                     </div>
                                 </div>
@@ -430,9 +447,29 @@ export const OrderForm: React.FC = () => {
                 </div>
                 {isEditable && (
                     <div className="mt-6 flex justify-end space-x-3">
-                        <button onClick={() => handleSubmit('Borrador')} className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600">Guardar Borrador</button>
-                        <button onClick={() => handleSubmit('Enviado')} className="bg-primary-600 text-white px-6 py-2 rounded-md hover:bg-primary-700">Enviar Pedido</button>
-                        {isAlmacen && <button onClick={() => handleSubmit('Cerrado')} className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700">Cerrar Pedido</button>}
+                        <button 
+                            disabled={isSubmitting}
+                            onClick={() => handleSubmit('Borrador')} 
+                            className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 disabled:opacity-50"
+                        >
+                            {isSubmitting ? 'Guardando...' : 'Guardar Borrador'}
+                        </button>
+                        <button 
+                            disabled={isSubmitting}
+                            onClick={() => handleSubmit('Enviado')} 
+                            className="bg-primary-600 text-white px-6 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50"
+                        >
+                            {isSubmitting ? 'Enviando...' : 'Enviar Pedido'}
+                        </button>
+                        {isAlmacen && (
+                            <button 
+                                disabled={isSubmitting}
+                                onClick={() => handleSubmit('Cerrado')} 
+                                className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'Cerrando...' : 'Cerrar Pedido'}
+                            </button>
+                        )}
                     </div>
                 )}
             </Card>

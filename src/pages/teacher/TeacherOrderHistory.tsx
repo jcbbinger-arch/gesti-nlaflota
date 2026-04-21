@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompany } from '../../contexts/CompanyContext';
+import { Profile } from '../../types';
 import { Card } from '../../components/Card';
 import { DownloadIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
@@ -19,8 +20,12 @@ export const TeacherOrderHistory: React.FC = () => {
     const myOrders = useMemo(() => {
         if (!currentUser) return [];
         return orders
-            .filter(o => o.user_id === currentUser.id)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .filter(o => o.user_id === currentUser.id || (currentUser.profiles.includes(Profile.ALMACEN) && o.user_id === 'mini-economato'))
+            .sort((a, b) => {
+                const dateA = a.date ? new Date(a.date).getTime() : 0;
+                const dateB = b.date ? new Date(b.date).getTime() : 0;
+                return dateB - dateA;
+            });
     }, [orders, currentUser]);
 
     return (
