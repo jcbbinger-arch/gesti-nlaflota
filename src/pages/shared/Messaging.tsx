@@ -126,14 +126,14 @@ export const Messaging: React.FC = () => {
     const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
 
     const myInbox = useMemo(() => 
-        messages
-            .filter(m => m.recipient_ids.includes(currentUser?.id || '') && !isMessageExpiredForMe(m, currentUser?.id || ''))
+        (messages || [])
+            .filter(m => m?.recipient_ids?.includes(currentUser?.id || '') && !isMessageExpiredForMe(m, currentUser?.id || ''))
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     , [messages, currentUser]);
 
     const mySentBox = useMemo(() =>
-        messages
-            .filter(m => m.sender_id === currentUser?.id)
+        (messages || [])
+            .filter(m => m?.sender_id === currentUser?.id)
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     , [messages, currentUser]);
 
@@ -153,12 +153,12 @@ export const Messaging: React.FC = () => {
 
     const handleMessageClick = (message: Message) => {
         setSelectedMessage(message);
-        if (view === 'inbox' && currentUser && !message.read_by[currentUser.id]) {
+        if (view === 'inbox' && currentUser && !message?.read_by?.[currentUser.id]) {
             const now = new Date().toISOString();
             const updatedMessage = { 
                 ...message, 
-                read_by: { ...message.read_by, [currentUser.id]: true },
-                read_at: { ...message.read_at, [currentUser.id]: now }
+                read_by: { ...(message.read_by || {}), [currentUser.id]: true },
+                read_at: { ...(message.read_at || {}), [currentUser.id]: now }
             };
             setMessages(messages.map(m => m.id === message.id ? updatedMessage : m));
         }
@@ -198,19 +198,21 @@ export const Messaging: React.FC = () => {
             </div>
             
             <div className="mb-4 flex space-x-1 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg no-print">
-                <button onClick={() => setView('inbox')} className={`w-full py-2 rounded-md ${view === 'inbox' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>Bandeja de Entrada ({myInbox.filter(m => currentUser && !m.read_by[currentUser.id]).length})</button>
+                <button onClick={() => setView('inbox')} className={`w-full py-2 rounded-md ${view === 'inbox' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>
+                    Bandeja de Entrada ({myInbox.filter(m => currentUser && !m?.read_by?.[currentUser.id]).length})
+                </button>
                 <button onClick={() => setView('sent')} className={`w-full py-2 rounded-md ${view === 'sent' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>Enviados</button>
             </div>
 
             <Card title={view === 'inbox' ? 'Bandeja de Entrada' : 'Mensajes Enviados'}>
                 <div className="space-y-2">
                     {(view === 'inbox' ? myInbox : mySentBox).map(message => (
-                        <div key={message.id} onClick={() => handleMessageClick(message)} className={`p-3 border-l-4 rounded-r-md cursor-pointer ${ (view === 'sent' || (currentUser && message.read_by[currentUser.id])) ? 'bg-gray-50 dark:bg-gray-700 border-gray-300' : 'bg-blue-50 dark:bg-blue-900/50 border-primary-500'}`}>
+                        <div key={message.id} onClick={() => handleMessageClick(message)} className={`p-3 border-l-4 rounded-r-md cursor-pointer ${ (view === 'sent' || (currentUser && message?.read_by?.[currentUser.id])) ? 'bg-gray-50 dark:bg-gray-700 border-gray-300' : 'bg-blue-50 dark:bg-blue-900/50 border-primary-500'}`}>
                             <div className="flex justify-between text-sm">
                                 <p className="font-bold">
                                     {view === 'inbox' 
                                         ? usersMap.get(message.sender_id)?.name || 'Sistema'
-                                        : message.recipient_ids.map(id => usersMap.get(id)?.name).join(', ')
+                                        : (message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ')
                                     }
                                 </p>
                                 <div className="flex items-center space-x-3">
@@ -242,7 +244,7 @@ const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, Use
         const doc = new jsPDF();
         
         const sender = usersMap.get(message.sender_id)?.name || 'Sistema';
-        const recipients = message.recipient_ids.map(id => usersMap.get(id)?.name).join(', ');
+        const recipients = (message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ');
         const date = new Date(message.date).toLocaleString();
 
         const startY = addHeaderToPdf(
@@ -276,7 +278,7 @@ const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, Use
         <Modal isOpen={true} onClose={onClose} title={message.subject}>
             <div className="space-y-2 text-sm">
                 <p><strong>De:</strong> {usersMap.get(message.sender_id)?.name || 'Sistema'}</p>
-                <p><strong>Para:</strong> {message.recipient_ids.map(id => usersMap.get(id)?.name).join(', ')}</p>
+                <p><strong>Para:</strong> {(message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ')}</p>
                 <p><strong>Fecha:</strong> {new Date(message.date).toLocaleString()}</p>
             </div>
             <div className="mt-4 pt-4 border-t dark:border-gray-600 whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-3 rounded-md max-h-60 overflow-y-auto">

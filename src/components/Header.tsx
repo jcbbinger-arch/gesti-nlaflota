@@ -32,12 +32,12 @@ export const Header: React.FC = () => {
   }, []);
 
   const unreadMessagesCount = useMemo(() => {
-    if (!currentUser) return 0;
-    return messages.filter(m => 
-      m.recipient_ids.includes(currentUser.id) && 
-      !m.read_by[currentUser.id]
+    if (!currentUser || !selectedProfile) return 0;
+    return (messages || []).filter(m => 
+      m?.recipient_ids?.includes(currentUser.id) && 
+      !m?.read_by?.[currentUser.id]
     ).length;
-  }, [messages, currentUser]);
+  }, [messages, currentUser, selectedProfile]);
 
   const academicYear = getCurrentAcademicYear();
 

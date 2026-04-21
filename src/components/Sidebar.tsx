@@ -234,7 +234,6 @@ export const Sidebar: React.FC = () => {
         <MobileNavLink to={`/${selectedProfile}/dashboard`} icon={<HouseIcon />} label="Inicio" />
         {selectedProfile === Profile.TEACHER && <MobileNavLink to="/teacher/order-portal" icon={<ClipboardDocumentListIcon />} label="Pedidos" />}
         {selectedProfile === Profile.ALMACEN && <MobileNavLink to="/almacen/process-orders" icon={<PrinterIcon />} label="Procesar" />}
-        <MobileNavLink to={`/${selectedProfile}/messaging`} icon={<MessageIcon />} label="Mensajes" />
         <MobileNavLink to={`/${selectedProfile}/profile`} icon={<ProfileIcon />} label="Perfil" />
       </nav>
     </>
