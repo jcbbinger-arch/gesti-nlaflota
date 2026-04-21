@@ -62,17 +62,8 @@ export const addHeaderToPdf = (doc: jsPDF, companyInfo: Company, title: string, 
     // Logo (Square or Rectangle) - Fallback to Text if image fails
     try {
         if (companyInfo.print_logo) {
-            const imgProps = doc.getImageProperties(companyInfo.print_logo);
-            const maxWidth = 35;
-            const maxHeight = 18;
-            let width = imgProps.width;
-            let height = imgProps.height;
-
-            const ratio = Math.min(maxWidth / width, maxHeight / height);
-            width = width * ratio;
-            height = height * ratio;
-
-            doc.addImage(companyInfo.print_logo, 'PNG', 14, 10, width, height);
+            // Force 20x20mm = ~56.7 units
+            doc.addImage(companyInfo.print_logo, 'PNG', 14, 10, 20, 20);
         }
     } catch (e) {
         doc.setFontSize(8);
@@ -82,12 +73,12 @@ export const addHeaderToPdf = (doc: jsPDF, companyInfo: Company, title: string, 
     // Institute / Center Name
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text(companyInfo.name.toUpperCase(), 50, 18);
+    doc.text(companyInfo.name.toUpperCase(), 40, 18);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(companyInfo.address, 50, 23);
-    doc.text(`CIF: ${companyInfo.cif} | Tlf: ${companyInfo.phone}`, 50, 28);
+    doc.text(companyInfo.address, 40, 23);
+    doc.text(`CIF: ${companyInfo.cif} | Tlf: ${companyInfo.phone}`, 40, 28);
 
     // Document Title
     doc.setFontSize(14);
