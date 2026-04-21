@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronDownIcon, LogoutIcon, ProfileIcon } from './icons';
-import { Link } from 'react-router-dom';
+import { useData } from '../contexts/DataContext';
+import { ChevronDownIcon, LogoutIcon, ProfileIcon, MessageIcon } from './icons';
+import { Link, useNavigate } from 'react-router-dom';
 import { Avatar } from './Avatar';
 import { getProfileDisplayName, Profile } from '../types';
 import { useCompany } from '../contexts/CompanyContext';
@@ -13,9 +14,11 @@ const getCurrentAcademicYear = () => {
 
 export const Header: React.FC = () => {
   const { currentUser, selectedProfile, logout, selectProfile } = useAuth();
+  const { messages } = useData();
   const { companyInfo } = useCompany();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const navigate = useNavigate();
   
   React.useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -27,6 +30,14 @@ export const Header: React.FC = () => {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  const unreadMessagesCount = useMemo(() => {
+    if (!currentUser) return 0;
+    return messages.filter(m => 
+      m.recipient_ids.includes(currentUser.id) && 
+      !m.read_by[currentUser.id]
+    ).length;
+  }, [messages, currentUser]);
 
   const academicYear = getCurrentAcademicYear();
 
@@ -52,13 +63,13 @@ export const Header: React.FC = () => {
           <div className="hidden lg:flex bg-indigo-600 text-white font-bold text-sm py-2 px-4 rounded-lg shadow">
               <span>{academicYear}</span>
           </div>
-          <div className="flex items-center space-x-2 bg-indigo-600 text-white font-bold text-sm py-2 px-4 rounded-lg shadow">
+          <div className="flex items-center space-x-2 bg-indigo-600 text-white font-bold text-sm py-2 px-4 rounded-lg shadow overflow-hidden max-w-[200px]">
               {currentUser.instituteLogo ? (
                   <img src={currentUser.instituteLogo} alt={currentUser.instituteName} className="h-5 w-auto" />
               ) : (
                   <img src={companyInfo.logo} alt="Logo de la Empresa" className="h-5 w-auto" />
               )}
-              <span>{currentUser.instituteName || companyInfo.name}</span>
+              <span className="truncate">{currentUser.instituteName || companyInfo.name}</span>
           </div>
           
           {currentUser.profiles.length > 1 && (
@@ -79,35 +90,54 @@ export const Header: React.FC = () => {
             </div>
           )}
       </div>
-      <div className="relative">
+
+      <div className="flex items-center space-x-4">
+        {/* Messages Notification Icon */}
         <button 
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center space-x-2 focus:outline-none"
+          onClick={() => navigate(`/${selectedProfile}/messaging`)}
+          className="relative p-2 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors"
+          title="Mensajería"
         >
-          <Avatar user={currentUser} className="w-10 h-10" />
-          <div className="text-left hidden md:block">
-            <p className="font-semibold text-gray-800 dark:text-gray-200">{currentUser.teacherName || currentUser.name}</p>
-            <p className="text-xs text-gray-500">
-                {selectedProfile ? getProfileDisplayName(selectedProfile) : ''}
-            </p>
-          </div>
-          <ChevronDownIcon className="w-5 h-5 text-gray-500" />
+          <MessageIcon className="w-6 h-6" />
+          {unreadMessagesCount > 0 && (
+            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+              {unreadMessagesCount}
+            </span>
+          )}
         </button>
-        {isDropdownOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 z-20">
-            <Link to={`/${selectedProfile}/profile`} className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
-              <ProfileIcon className="w-5 h-5 mr-2" />
-              Mi Perfil
-            </Link>
-            <button
-              onClick={logout}
-              className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
-            >
-              <LogoutIcon className="w-5 h-5 mr-2" />
-              Cerrar Sesión
-            </button>
-          </div>
-        )}
+
+        <div className="relative">
+          <button 
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center space-x-2 focus:outline-none"
+          >
+            <Avatar user={currentUser} className="w-10 h-10" />
+            <div className="text-left hidden md:block">
+              <p className="font-semibold text-gray-800 dark:text-gray-200 leading-tight">{currentUser.teacherName || currentUser.name}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
+                  {selectedProfile ? getProfileDisplayName(selectedProfile) : ''}
+              </p>
+            </div>
+            <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+          </button>
+          
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 z-20 border dark:border-gray-600">
+              <Link to={`/${selectedProfile}/profile`} className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+                <ProfileIcon className="w-5 h-5 mr-2" />
+                Mi Perfil
+              </Link>
+              <div className="border-t border-gray-100 dark:border-gray-600 my-1"></div>
+              <button
+                onClick={logout}
+                className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+              >
+                <LogoutIcon className="w-5 h-5 mr-2" />
+                Cerrar Sesión
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

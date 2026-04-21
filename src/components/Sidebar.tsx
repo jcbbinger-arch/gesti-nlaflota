@@ -37,7 +37,6 @@ const adminNav = [
   { name: 'Aulas de Práctica', href: '/admin/classrooms', icon: <BookIcon /> },
   { name: 'Gestión de Comedor', href: '/admin/dining-services', icon: <ClipboardDocumentListIcon /> },
   { name: 'Vista Comedor', href: '/admin/dining-view', icon: <UserGroupIcon /> },
-  { name: 'Mensajería', href: '/admin/messaging', icon: <MessageIcon /> },
   { name: 'Mi Perfil', href: '/admin/profile', icon: <ProfileIcon /> },
 ];
 
@@ -54,7 +53,6 @@ const almacenNav = [
   { name: 'Reservas Comedor', href: '/almacen/dining-reservations', icon: <ClipboardDocumentListIcon /> },
   { name: 'Vista Comedor', href: '/almacen/dining-view', icon: <UserGroupIcon /> },
   { name: 'Historial de Pedidos', href: '/almacen/order-history', icon: <HistoryIcon /> },
-  { name: 'Mensajería', href: '/almacen/messaging', icon: <MessageIcon /> },
   { name: 'Mi Perfil', href: '/almacen/profile', icon: <ProfileIcon /> },
 ];
 
@@ -72,7 +70,6 @@ const teacherNav = [
   { name: 'Mini-Economato (Consulta)', href: '/teacher/mini-economato', icon: <HouseIcon /> },
   { name: 'Notificaciones', href: '/teacher/notifications', icon: <ShareIcon /> },
   { name: 'Aula de Almacén', href: '/teacher/aula', icon: <BookIcon /> },
-  { name: 'Mensajería', href: '/teacher/messaging', icon: <MessageIcon /> },
   { name: 'Mi Perfil', href: '/teacher/profile', icon: <ProfileIcon /> },
 ];
 
@@ -81,7 +78,6 @@ const salesManagerNav = [
   { name: 'Catálogo de Ventas', href: '/sales_manager/takeaway-catalog', icon: <ShoppingCartIcon /> },
   { name: 'Gestión de Reservas', href: '/sales_manager/reservations', icon: <ClipboardDocumentListIcon /> },
   { name: 'Ventas Realizadas', href: '/sales_manager/sales-history', icon: <CurrencyEuroIcon /> },
-  { name: 'Mensajería', href: '/sales_manager/messaging', icon: <MessageIcon /> },
   { name: 'Mi Perfil', href: '/sales_manager/profile', icon: <ProfileIcon /> },
 ];
 

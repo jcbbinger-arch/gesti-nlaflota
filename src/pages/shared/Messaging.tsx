@@ -127,7 +127,7 @@ export const Messaging: React.FC = () => {
 
     const myInbox = useMemo(() => 
         messages
-            .filter(m => m.recipient_ids.includes(currentUser?.id || ''))
+            .filter(m => m.recipient_ids.includes(currentUser?.id || '') && !isMessageExpiredForMe(m, currentUser?.id || ''))
             .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     , [messages, currentUser]);
 
@@ -148,6 +148,7 @@ export const Messaging: React.FC = () => {
         };
         setMessages([...messages, message]);
         setIsComposeModalOpen(false);
+        alert('Mensaje enviado con éxito');
     };
 
     const handleMessageClick = (message: Message) => {
@@ -163,8 +164,8 @@ export const Messaging: React.FC = () => {
         }
     };
 
-    // Filter messages for current user, excluding those read > 15 days ago
-    const isMessageExpired = (message: Message, userId: string) => {
+    // Filter messages for current user, excluding those read > 15 days ago (local filter)
+    const isMessageExpiredForMe = (message: Message, userId: string) => {
         if (!message.read_at || !message.read_at[userId]) return false;
         const readDate = new Date(message.read_at[userId]);
         const expiryDate = new Date(readDate);
@@ -172,15 +173,6 @@ export const Messaging: React.FC = () => {
         return new Date() > expiryDate;
     };
 
-    // Auto-delete expired messages from storage
-    useEffect(() => {
-        if (currentUser) {
-            const expiredMessages = messages.filter(m => isMessageExpired(m, currentUser.id));
-            if (expiredMessages.length > 0) {
-                setMessages(messages.filter(m => !isMessageExpired(m, currentUser.id)));
-            }
-        }
-    }, [messages, currentUser, setMessages]);
 
     const handleDownloadAll = () => {
         const messagesToDownload = view === 'inbox' ? myInbox : mySentBox;
