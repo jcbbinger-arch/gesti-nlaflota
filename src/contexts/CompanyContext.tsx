@@ -12,13 +12,13 @@ interface CompanyContextType {
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 const initialCompanyInfo: Company = {
-  name: "Manager Pro Edu",
+  name: "IES Escuela de Hostelería",
   logo: "https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=600",
   print_logo: "https://tailwindui.com/img/logos/mark.svg?color=black",
-  cif: "B12345678",
-  address: "Calle Educación 123, Ciudad del Saber, 45678",
-  phone: "555-010203",
-  email: "contact@managerpro.edu",
+  cif: "Q1234567J",
+  address: "Avenida de la Gastronomía s/n, 28001 Madrid",
+  phone: "910 00 00 00",
+  email: "contacto@ieshosteleria.edu",
   default_budget: 300,
   manager_user_id: 'user-2',
 };

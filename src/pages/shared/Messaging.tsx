@@ -5,7 +5,7 @@ import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, DownloadIcon } from '../../components/icons';
 import { Message, User, Profile, SUPER_USER_EMAILS } from '../../types';
-import { downloadJson } from '../../utils/export';
+import { downloadJson, addHeaderToPdf } from '../../utils/export';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { useCompany } from '../../contexts/CompanyContext';
@@ -248,38 +248,34 @@ const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, Use
 
     const exportMessageToPdf = () => {
         const doc = new jsPDF();
-        const startY = 20;
-
-        // Logo
-        try {
-            if (companyInfo.print_logo) {
-                doc.addImage(companyInfo.print_logo, 'PNG', 14, startY, 30, 15);
-            }
-        } catch (e) {
-            doc.setFontSize(8);
-            doc.text('LOGO', 14, startY + 5);
-        }
-
-        // Header Info
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(companyInfo.name.toUpperCase(), 50, startY + 5);
         
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`De: ${usersMap.get(message.sender_id)?.name || 'Sistema'}`, 14, startY + 25);
-        doc.text(`Para: ${message.recipient_ids.map(id => usersMap.get(id)?.name).join(', ')}`, 14, startY + 30);
-        doc.text(`Fecha: ${new Date(message.date).toLocaleString()}`, 14, startY + 35);
+        const sender = usersMap.get(message.sender_id)?.name || 'Sistema';
+        const recipients = message.recipient_ids.map(id => usersMap.get(id)?.name).join(', ');
+        const date = new Date(message.date).toLocaleString();
 
-        // Title & Body
+        const startY = addHeaderToPdf(
+            doc, 
+            companyInfo, 
+            'MENSAJERÍA INTERNA', 
+            `De: ${sender}\nPara: ${recipients}\nFecha: ${date}`
+        );
+
+        // Subject & Body
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text(`Asunto: ${message.subject}`, 14, startY + 45);
+        doc.text(`Asunto: ${message.subject}`, 14, startY + 10);
+        
         doc.setFontSize(12);
         doc.setFont('helvetica', 'normal');
-        
         const splitBody = doc.splitTextToSize(message.body, 180);
-        doc.text(splitBody, 14, startY + 55);
+        doc.text(splitBody, 14, startY + 20);
+
+        if (message.attachment) {
+            const bodyY = startY + 25 + (splitBody.length * 7);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'italic');
+            doc.text(`* Incluye archivo adjunto: ${message.attachment.name}`, 14, bodyY);
+        }
 
         doc.save(`correo_${message.id}.pdf`);
     };

@@ -376,24 +376,24 @@ export const MyProfile: React.FC = () => {
                                 </div>
                                 <div className="grid grid-cols-1 gap-4">
                                     <div>
-                                        <label className="block text-sm">Nombre y Apellidos</label>
-                                        <input type="text" value={personalInfo.name} onChange={e => setPersonalInfo({...personalInfo, name: e.target.value})} className="w-full mt-1 p-2 border rounded"/>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre y Apellidos</label>
+                                        <input type="text" value={personalInfo.name} onChange={e => setPersonalInfo({...personalInfo, name: e.target.value})} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-primary-500 focus:border-primary-500"/>
                                     </div>
                                     <div>
-                                        <label className="block text-sm">Correo Electrónico</label>
-                                        <input type="email" value={currentUser.email} readOnly className="w-full mt-1 p-2 border rounded bg-gray-100 dark:bg-gray-800"/>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Correo Electrónico</label>
+                                        <input type="email" value={currentUser.email} readOnly className="w-full mt-1 p-2 border rounded-md bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 cursor-not-allowed"/>
                                     </div>
                                      <div>
-                                        <label className="block text-sm">Teléfono Principal</label>
-                                        <input type="tel" value={personalInfo.phone} onChange={e => setPersonalInfo({...personalInfo, phone: e.target.value})} className="w-full mt-1 p-2 border rounded"/>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Teléfono Principal</label>
+                                        <input type="tel" value={personalInfo.phone} onChange={e => setPersonalInfo({...personalInfo, phone: e.target.value})} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-primary-500 focus:border-primary-500"/>
                                     </div>
                                      <div>
-                                        <label className="block text-sm">Teléfono Secundario</label>
-                                        <input type="tel" value={personalInfo.secondary_phone} onChange={e => setPersonalInfo({...personalInfo, secondary_phone: e.target.value})} className="w-full mt-1 p-2 border rounded"/>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Teléfono Secundario</label>
+                                        <input type="tel" value={personalInfo.secondary_phone} onChange={e => setPersonalInfo({...personalInfo, secondary_phone: e.target.value})} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-primary-500 focus:border-primary-500"/>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm">Dirección</label>
-                                        <textarea value={personalInfo.address} onChange={e => setPersonalInfo({...personalInfo, address: e.target.value})} rows={2} className="w-full mt-1 p-2 border rounded"/>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Dirección</label>
+                                        <textarea value={personalInfo.address} onChange={e => setPersonalInfo({...personalInfo, address: e.target.value})} rows={2} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-primary-500 focus:border-primary-500"/>
                                     </div>
                                 </div>
                                  <div className="text-right">
@@ -402,18 +402,18 @@ export const MyProfile: React.FC = () => {
                              </form>
                          ) : (
                              <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm">Contraseña Actual</label>
-                                    <input type="password" value={passwordInfo.currentPassword} onChange={e => setPasswordInfo({...passwordInfo, currentPassword: e.target.value})} className="w-full mt-1 p-2 border rounded" required={!!currentUser.password} />
-                                </div>
-                                <div>
-                                    <label className="block text-sm">Nueva Contraseña</label>
-                                    <input type="password" value={passwordInfo.newPassword} onChange={e => setPasswordInfo({...passwordInfo, newPassword: e.target.value})} className="w-full mt-1 p-2 border rounded" />
-                                </div>
                                  <div>
-                                    <label className="block text-sm">Confirmar Nueva Contraseña</label>
-                                    <input type="password" value={passwordInfo.confirmPassword} onChange={e => setPasswordInfo({...passwordInfo, confirmPassword: e.target.value})} className="w-full mt-1 p-2 border rounded" />
-                                </div>
+                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Contraseña Actual</label>
+                                     <input type="password" value={passwordInfo.currentPassword} onChange={e => setPasswordInfo({...passwordInfo, currentPassword: e.target.value})} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" required={!!currentUser.password} />
+                                 </div>
+                                 <div>
+                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nueva Contraseña</label>
+                                     <input type="password" value={passwordInfo.newPassword} onChange={e => setPasswordInfo({...passwordInfo, newPassword: e.target.value})} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                                 </div>
+                                  <div>
+                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirmar Nueva Contraseña</label>
+                                     <input type="password" value={passwordInfo.confirmPassword} onChange={e => setPasswordInfo({...passwordInfo, confirmPassword: e.target.value})} className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                                 </div>
                                  <div className="text-right">
                                     <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Cambiar Contraseña</button>
                                 </div>

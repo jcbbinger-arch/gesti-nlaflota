@@ -5,6 +5,7 @@ import { Users, Calendar, Download, AlertTriangle } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { useCompany } from '../../contexts/CompanyContext';
+import { addHeaderToPdf } from '../../utils/export';
 import { DiningService, DiningReservation } from '../../types';
 
 export const DiningServiceView: React.FC = () => {
@@ -46,40 +47,37 @@ export const DiningServiceView: React.FC = () => {
         const doc = new jsPDF();
         const dateStr = new Date(selectedService.date).toLocaleDateString();
         
-        // Header
-        doc.setFontSize(20);
-        doc.text('Hoja de Servicio de Comedor', 14, 22);
-        
-        doc.setFontSize(12);
-        doc.text(`Centro: ${companyInfo.name}`, 14, 32);
-        doc.text(`Fecha: ${dateStr}`, 14, 38);
-        doc.text(`Aforo: ${selectedService.current_pax} / ${selectedService.max_capacity} pax`, 14, 44);
-        doc.text(`Estado: ${selectedService.status.toUpperCase()}`, 14, 50);
+        const startY = addHeaderToPdf(
+            doc, 
+            companyInfo, 
+            'HOJA DE SERVICIO DE COMEDOR', 
+            `Fecha: ${dateStr}\nAforo: ${selectedService.current_pax} / ${selectedService.max_capacity} pax\nEstado: ${selectedService.status.toUpperCase()}`
+        );
 
-        let startY = 60;
+        let currentY = startY + 10;
 
         // Bloque 1: Matriz de Alérgenos
         if (allergenMatrix.length > 0) {
             doc.setFontSize(14);
-            doc.text('Resumen de Alérgenos (Para Cocina)', 14, startY);
+            doc.text('Resumen de Alérgenos (Para Cocina)', 14, currentY);
             
             (doc as any).autoTable({
-                startY: startY + 5,
+                startY: currentY + 5,
                 head: [['Alérgeno', 'Cantidad Total']],
                 body: allergenMatrix.map(([allergen, count]) => [allergen, count.toString()]),
                 theme: 'grid',
                 headStyles: { fillColor: [220, 38, 38] }, // Red header for allergens
                 margin: { left: 14, right: 14 }
             });
-            startY = (doc as any).lastAutoTable.finalY + 15;
+            currentY = (doc as any).lastAutoTable.finalY + 15;
         }
 
         // Bloque 2: Listado de Reservas
         doc.setFontSize(14);
-        doc.text('Listado de Reservas (Para Sala/Recepción)', 14, startY);
+        doc.text('Listado de Reservas (Para Sala/Recepción)', 14, currentY);
         
         (doc as any).autoTable({
-            startY: startY + 5,
+            startY: currentY + 5,
             head: [['Nombre', 'Cliente', 'Pax', 'Teléfono', 'Total']],
             body: serviceReservations.map(res => [
                 res.reference_name,
@@ -92,24 +90,24 @@ export const DiningServiceView: React.FC = () => {
             headStyles: { fillColor: [37, 99, 235] }, // Blue header
             margin: { left: 14, right: 14 }
         });
-        startY = (doc as any).lastAutoTable.finalY + 15;
+        currentY = (doc as any).lastAutoTable.finalY + 15;
 
-        // Bloque 3: Detalle de Intolerancias por Mesa
+        // Bloque 3: Detalle de Intolerancias
         if (reservationsWithAllergens.length > 0) {
             // Check if we need a new page
-            if (startY > 250) {
+            if (currentY > 250) {
                 doc.addPage();
-                startY = 20;
+                currentY = 20;
             }
 
             doc.setFontSize(14);
-            doc.text('Detalle de Intolerancias por Mesa', 14, startY);
+            doc.text('Detalle de Intolerancias', 14, currentY);
             
             const allergenBody: string[][] = [];
             reservationsWithAllergens.forEach(res => {
                 res.diners_allergens.forEach(diner => {
                     allergenBody.push([
-                        `${res.reference_name}${res.table_number ? ` (${res.table_number})` : ''}`,
+                        res.reference_name,
                         diner.diner_name || 'Comensal sin nombre',
                         diner.allergens.join(', ')
                     ]);
@@ -117,7 +115,7 @@ export const DiningServiceView: React.FC = () => {
             });
 
             (doc as any).autoTable({
-                startY: startY + 5,
+                startY: currentY + 5,
                 head: [['Reserva', 'Comensal', 'Alérgenos']],
                 body: allergenBody,
                 theme: 'grid',
@@ -203,7 +201,6 @@ export const DiningServiceView: React.FC = () => {
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                                         <tr>
                                             <th className="px-4 py-3">Referencia</th>
-                                            <th className="px-4 py-3">Mesa</th>
                                             <th className="px-4 py-3 text-center">Pax</th>
                                             <th className="px-4 py-3">Teléfono</th>
                                             <th className="px-4 py-3">Alérgenos</th>
@@ -215,9 +212,6 @@ export const DiningServiceView: React.FC = () => {
                                                 <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
                                                     {res.reference_name}
                                                     {res.client_entity && <div className="text-xs text-gray-500">{res.client_entity}</div>}
-                                                </td>
-                                                <td className="px-4 py-3 font-bold text-primary-600">
-                                                    {res.table_number || '-'}
                                                 </td>
                                                 <td className="px-4 py-3 text-center font-bold">{res.pax}</td>
                                                 <td className="px-4 py-3">{res.phone_1}</td>

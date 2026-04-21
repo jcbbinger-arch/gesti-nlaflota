@@ -58,7 +58,7 @@ export const downloadJson = (filename: string, data: any) => {
 /**
  * Helper to add the institute/company logo to a jsPDF document.
  */
-const addHeaderToPdf = (doc: jsPDF, companyInfo: Company, title: string, subtitle?: string, teacherName?: string) => {
+export const addHeaderToPdf = (doc: jsPDF, companyInfo: Company, title: string, subtitle?: string, teacherName?: string) => {
     // Logo (Square or Rectangle) - Fallback to Text if image fails
     try {
         if (companyInfo.print_logo) {

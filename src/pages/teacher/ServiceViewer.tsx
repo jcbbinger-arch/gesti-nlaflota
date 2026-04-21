@@ -6,6 +6,8 @@ import { Service, ServiceGroup, User, Profile, ServiceRole, Recipe, Order, AppEv
 import { Modal } from '../../components/Modal';
 import { PlusIcon, TrashIcon, PrinterIcon } from '../../components/icons';
 import { useNavigate } from 'react-router-dom';
+import { addHeaderToPdf } from '../../utils/export';
+import { useCompany } from '../../contexts/CompanyContext';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -14,6 +16,7 @@ const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', '
 // --- DETAIL VIEW COMPONENT ---
 const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({ service, onBack }) => {
     const { services, setServices, service_groups, users, recipes, products, setOrders, events } = useData();
+    const { companyInfo } = useCompany();
     const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
     const navigate = useNavigate();
 
@@ -42,8 +45,8 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
 
     const generateAllergenDoc = () => {
         const doc = new jsPDF();
-        doc.text(`Informe de Alérgenos - ${service.name}`, 14, 15);
-        doc.text(`Fecha: ${new Date(service.date).toLocaleDateString()}`, 14, 22);
+        const date = new Date(service.date).toLocaleDateString();
+        const startY = addHeaderToPdf(doc, companyInfo, 'INFORME DE ALÉRGENOS', `Servicio: ${service.name}\nFecha: ${date}`);
 
         const body = service.menu.flatMap(item => {
             const recipe = recipesMap.get(item.recipe_id);
@@ -58,14 +61,14 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
             };
         }).map(r => [r.name, r.allergens]);
 
-        (doc as any).autoTable({ startY: 30, head: [['Plato', 'Alérgenos']], body });
+        (doc as any).autoTable({ startY: startY + 10, head: [['Plato', 'Alérgenos']], body });
         doc.save(`alergenos_${service.name}.pdf`);
     };
     
     const generateServiceOrderDoc = () => {
         const doc = new jsPDF();
-        doc.text(`Orden de Servicio - ${service.name}`, 14, 15);
-        doc.text(`Fecha: ${new Date(service.date).toLocaleDateString()}`, 14, 22);
+        const date = new Date(service.date).toLocaleDateString();
+        const startY = addHeaderToPdf(doc, companyInfo, 'ORDEN DE SERVICIO', `Servicio: ${service.name}\nFecha: ${date}`);
 
         const body = service.menu.map(item => {
             const r = recipesMap.get(item.recipe_id);
@@ -85,7 +88,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
             ];
         });
 
-        (doc as any).autoTable({ startY: 30, head: [['Plato', 'Alérgenos', 'Presentación', 'Temp/Pase', 'Marcaje', 'Servicio', 'Descripción Cliente']], body });
+        (doc as any).autoTable({ startY: startY + 10, head: [['Plato', 'Alérgenos', 'Presentación', 'Temp/Pase', 'Marcaje', 'Servicio', 'Descripción Cliente']], body });
         doc.save(`orden_servicio_${service.name}.pdf`);
     };
 
