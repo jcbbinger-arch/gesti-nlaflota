@@ -31,7 +31,7 @@ const demoEvents: AppEvent[] = [
 
 const demoOrders: Order[] = [
     { id: 'ord-1', user_id: 'teacher-1', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), status: 'Completado', event_id: 'evt-2', items: [{ product_id: 'prod-1', quantity: 5, price: 25.50, tax: 10 }], cost: 140.25, notes: 'Para el menú de Navidad' },
-    { id: 'ord-2', user_id: 'teacher-2', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), status: 'Enviado', event_id: 'evt-1', items: [{ product_id: 'prod-2', quantity: 10, price: 0.80, tax: 4 }, { product_id: 'prod-4', quantity: 12, price: 0.60, tax: 4 }], cost: 15.90, notes: 'Básicos de cocina', new_product_requests: [{ product_name: 'Tinta de Calamar Fresca (500g)', quantity: 2, notes: 'Proveedor sugerido: Pescados del Mar Menor, precio aprox 8€/ud' }] },
+    { id: 'ord-2', user_id: 'teacher-2', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), status: 'Enviado', event_id: 'evt-1', items: [{ product_id: 'prod-2', quantity: 10, price: 0.80, tax: 4 }, { product_id: 'prod-4', quantity: 12, price: 0.60, tax: 4 }], cost: 15.90, notes: 'Básicos de cocina', new_product_requests: [{ product_name: 'Tinta de Calamar Fresca (500g)', quantity: 2, unit: 'uds', notes: 'Proveedor sugerido: Pescados del Mar Menor, precio aprox 8€/ud' }] },
     { id: 'ord-3', user_id: 'teacher-1', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), status: 'Enviado', event_id: 'evt-1', items: [{ product_id: 'prod-3', quantity: 2, price: 6.50, tax: 10 }], cost: 14.30, notes: '' },
 ];
 

@@ -128,7 +128,7 @@ export const OrderForm: React.FC = () => {
         if(new_request_form.product_name && new_request_form.quantity > 0) {
             setIsDirty(true);
             set_new_requests([...new_requests, { ...new_request_form, quantity: Number(new_request_form.quantity) }]);
-            set_new_request_form({ product_name: '', quantity: 1, notes: '' });
+            set_new_request_form({ product_name: '', quantity: 1, unit: 'uds', notes: '' });
         }
     };
 
