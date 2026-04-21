@@ -12,9 +12,19 @@ export const PrintHeader: React.FC<PrintHeaderProps> = ({ companyInfo, managerUs
     <div className="hidden print:block mb-8 border-b-2 border-black pb-4">
       <div className="flex justify-between items-start">
         <div className="flex flex-col space-y-2">
-          <img src={companyInfo.print_logo} alt="Logo Empresa" className="max-w-[150px] max-h-[75px]" />
+          <img 
+            src={companyInfo.print_logo} 
+            alt="Logo Empresa" 
+            className="max-w-[150px] max-h-[75px] w-auto h-auto object-contain" 
+            referrerPolicy="no-referrer"
+          />
           {currentUser?.instituteLogo && (
-            <img src={currentUser.instituteLogo} alt="Logo Instituto" className="max-w-[120px] max-h-[60px]" />
+            <img 
+              src={currentUser.instituteLogo} 
+              alt="Logo Instituto" 
+              className="max-w-[120px] max-h-[60px] w-auto h-auto object-contain" 
+              referrerPolicy="no-referrer"
+            />
           )}
         </div>
         <div className="text-right text-xs">

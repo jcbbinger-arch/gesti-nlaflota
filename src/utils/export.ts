@@ -62,7 +62,17 @@ export const addHeaderToPdf = (doc: jsPDF, companyInfo: Company, title: string, 
     // Logo (Square or Rectangle) - Fallback to Text if image fails
     try {
         if (companyInfo.print_logo) {
-            doc.addImage(companyInfo.print_logo, 'PNG', 14, 10, 30, 15);
+            const imgProps = doc.getImageProperties(companyInfo.print_logo);
+            const maxWidth = 35;
+            const maxHeight = 18;
+            let width = imgProps.width;
+            let height = imgProps.height;
+
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = width * ratio;
+            height = height * ratio;
+
+            doc.addImage(companyInfo.print_logo, 'PNG', 14, 10, width, height);
         }
     } catch (e) {
         doc.setFontSize(8);
