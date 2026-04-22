@@ -179,7 +179,7 @@ export const Messaging: React.FC = () => {
     const { currentUser } = useAuth();
     const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
     const [composeParams, setComposeParams] = useState<{ subject: string, body: string, recipients?: string[] } | null>(null);
-    const [selectedThreadSubject, setSelectedThreadSubject] = useState<string | null>(null);
+    const [selectedThreadKey, setSelectedThreadKey] = useState<string | null>(null);
 
     const usersMap = useMemo(() => new Map((users || []).map(u => [u.id, u])), [users]);
 
@@ -187,15 +187,17 @@ export const Messaging: React.FC = () => {
         if (!currentUser) return [];
         const groups: Record<string, Message[]> = {};
         messages.filter(m => m.recipient_ids.includes(currentUser.id) || m.sender_id === currentUser.id).forEach(m => {
-            if (!groups[m.subject]) groups[m.subject] = [];
-            groups[m.subject].push(m);
+            const participants = [m.sender_id, ...m.recipient_ids].filter(id => id !== currentUser.id);
+            const key = participants.sort().join('-');
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(m);
         });
         return Object.entries(groups).sort((a, b) => new Date(b[1][b[1].length-1].date).getTime() - new Date(a[1][a[1].length-1].date).getTime());
     }, [messages, currentUser]);
 
-    const handleReply = (subject: string, recipients: string[]) => {
-        setComposeParams({ subject: `Re: ${subject.startsWith('Re: ') ? subject.substring(4) : subject}`, body: '', recipients });
-        setSelectedThreadSubject(null);
+    const handleReply = (recipients: string[]) => {
+        setComposeParams({ subject: 'Re: Conversación', body: '', recipients });
+        setSelectedThreadKey(null);
         setIsComposeModalOpen(true);
     };
 
@@ -223,7 +225,7 @@ export const Messaging: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Mensajes (Mis Conversaciones)</h1>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Mensajes (Conversaciones)</h1>
                 <button onClick={handleOpenCompose} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
                     <PlusIcon className="w-5 h-5 mr-1" /> Nuevo Chat
                 </button>
@@ -231,13 +233,15 @@ export const Messaging: React.FC = () => {
             
             <Card title="Conversaciones">
                 <div className="space-y-2">
-                    {threads.map(([subject, msgs]) => {
+                    {threads.map(([key, msgs]) => {
                         const lastMsg = msgs[msgs.length - 1];
                         const isUnread = !lastMsg.read_by[currentUser.id];
+                        const participantIds = key.split('-');
+                        const displayName = participantIds.map(id => usersMap.get(id)?.name || 'Usuario').join(', ');
                         return (
-                            <div key={subject} onClick={() => setSelectedThreadSubject(subject)} className={`p-4 rounded-md cursor-pointer border ${isUnread ? 'bg-blue-50 dark:bg-blue-900/20 border-primary-500' : 'bg-gray-50 dark:bg-gray-700 border-gray-200'}`}>
+                            <div key={key} onClick={() => setSelectedThreadKey(key)} className={`p-4 rounded-md cursor-pointer border ${isUnread ? 'bg-blue-50 dark:bg-blue-900/20 border-primary-500' : 'bg-gray-50 dark:bg-gray-700 border-gray-200'}`}>
                                 <div className="flex justify-between">
-                                    <p className="font-bold">{subject}</p>
+                                    <p className="font-bold">{displayName}</p>
                                     <span className="text-xs text-gray-500">{new Date(lastMsg.date).toLocaleDateString()}</span>
                                 </div>
                                 <p className="text-sm truncate">{lastMsg.body}</p>
@@ -255,13 +259,16 @@ export const Messaging: React.FC = () => {
                     {...(composeParams || {})}
                 />
             )}
-            {selectedThreadSubject && (
+            {selectedThreadKey && (
                 <ChatWindow 
-                    subject={selectedThreadSubject} 
-                    messages={threads.find(t => t[0] === selectedThreadSubject)?.[1] || []}
+                    subject={(() => {
+                        const ids = selectedThreadKey.split('-');
+                        return ids.map(id => usersMap.get(id)?.name || 'Usuario').join(', ');
+                    })()} 
+                    messages={threads.find(t => t[0] === selectedThreadKey)?.[1] || []}
                     usersMap={usersMap} 
-                    onClose={() => setSelectedThreadSubject(null)} 
-                    onReply={handleReply}
+                    onClose={() => setSelectedThreadKey(null)} 
+                    onReply={() => handleReply(selectedThreadKey.split('-'))}
                 />
             )}
         </div>
