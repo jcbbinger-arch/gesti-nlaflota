@@ -16,10 +16,11 @@ export const ComposeMessageModal: React.FC<{
     onSend: (msg: any) => void,
     initialSubject?: string,
     initialBody?: string,
-}> = ({ users, onClose, onSend, initialSubject = '', initialBody = '' }) => {
+    recipients?: string[]
+}> = ({ users, onClose, onSend, initialSubject = '', initialBody = '', recipients: initialRecipients = [] }) => {
     const { currentUser } = useAuth();
     const { classrooms } = useData();
-    const [recipients, setRecipients] = useState<string[]>([]);
+    const [recipients, setRecipients] = useState<string[]>(initialRecipients);
     const [subject, setSubject] = useState(initialSubject);
     const [body, setBody] = useState(initialBody);
     const [searchTerm, setSearchTerm] = useState('');
@@ -126,7 +127,7 @@ const isMessageExpiredForMe = (message: Message, userId: string) => {
     return new Date() > expiryDate;
 };
 
-const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, User>, onClose: () => void }> = ({ message, usersMap, onClose }) => {
+const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, User>, onClose: () => void, onReply: (message: Message) => void }> = ({ message, usersMap, onClose, onReply }) => {
     const { companyInfo } = useCompany();
 
     const exportMessageToPdf = () => {
@@ -180,6 +181,7 @@ const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, Use
                 )}
             </div>
             <div className="flex justify-end space-x-2 mt-6">
+                <button onClick={() => onReply(message)} className="bg-primary-600 text-white px-4 py-2 rounded-md">Responder</button>
                 <button onClick={exportMessageToPdf} className="bg-green-600 text-white px-4 py-2 rounded-md">Exportar PDF</button>
                 <button onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded-md">Cerrar</button>
             </div>
@@ -192,9 +194,26 @@ export const Messaging: React.FC = () => {
     const { currentUser } = useAuth();
     const [view, setView] = useState<'inbox' | 'sent'>('inbox');
     const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
+    const [composeParams, setComposeParams] = useState<{ subject: string, body: string, recipients?: string[] } | null>(null);
     const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
     const usersMap = useMemo(() => new Map((users || []).map(u => [u.id, u])), [users]);
+
+    const handleReply = (message: Message) => {
+        const sender = usersMap.get(message.sender_id || '');
+        setComposeParams({
+            subject: `Re: ${message.subject}`,
+            body: `\n\n--- Original ---\nDe: ${sender?.name}\nFecha: ${new Date(message.date).toLocaleString()}\n${message.body}`,
+            recipients: message.sender_id ? [message.sender_id] : []
+        });
+        setSelectedMessage(null);
+        setIsComposeModalOpen(true);
+    };
+
+    const handleOpenCompose = () => {
+        setComposeParams(null);
+        setIsComposeModalOpen(true);
+    };
 
     const myInbox = useMemo(() => 
         (messages || [])
@@ -263,7 +282,7 @@ export const Messaging: React.FC = () => {
                     <button onClick={handleDownloadAll} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
                         <DownloadIcon className="w-5 h-5 mr-1" /> Descargar Todos
                     </button>
-                    <button onClick={() => setIsComposeModalOpen(true)} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
+                    <button onClick={handleOpenCompose} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
                         <PlusIcon className="w-5 h-5 mr-1" /> Redactar Mensaje
                     </button>
                 </div>
@@ -303,8 +322,22 @@ export const Messaging: React.FC = () => {
                 </div>
             </Card>
             
-            {isComposeModalOpen && <ComposeMessageModal users={users} onClose={() => setIsComposeModalOpen(false)} onSend={handleSendMessage} />}
-            {selectedMessage && <MessageDetailModal message={selectedMessage} usersMap={usersMap} onClose={() => setSelectedMessage(null)} />}
+            {isComposeModalOpen && (
+                <ComposeMessageModal 
+                    users={users} 
+                    onClose={() => setIsComposeModalOpen(false)} 
+                    onSend={handleSendMessage}
+                    {...(composeParams || {})}
+                />
+            )}
+            {selectedMessage && (
+                <MessageDetailModal 
+                    message={selectedMessage} 
+                    usersMap={usersMap} 
+                    onClose={() => setSelectedMessage(null)} 
+                    onReply={handleReply}
+                />
+            )}
         </div>
     );
 };
