@@ -53,11 +53,17 @@ export const SupportMaintenance: React.FC = () => {
 
     const handleBackup = async () => {
         setLoading(true);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 300s
+
         try {
             const token = await auth.currentUser?.getIdToken() || '';
             const response = await fetch('/api/backup', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}` },
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
+
             if (!response.ok) throw new Error('Error al generar la copia');
             
             const backupData = await response.json();
