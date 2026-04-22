@@ -42,6 +42,7 @@ import { EconomatoManager } from './pages/manager/EconomatoManager';
 import { MiniEconomato } from './pages/manager/MiniEconomato';
 import { OrderHistory } from './pages/manager/OrderHistory';
 import { ProductMetadataManager } from './pages/manager/ProductMetadataManager';
+import { DataCleanupManager } from './pages/manager/DataCleanupManager';
 
 import { TeacherLayout } from './pages/layouts/TeacherLayout';
 import { TeacherDashboard } from './pages/teacher/TeacherDashboard';
@@ -155,6 +156,7 @@ const AppContent: React.FC = () => {
               <Route path="dining-reservations" element={<DiningReservations />} />
               <Route path="dining-view" element={<DiningServiceView />} />
               <Route path="order-history" element={<OrderHistory />} />
+              <Route path="cleanup" element={<DataCleanupManager />} />
               <Route path="products" element={<ProductManager />} />
               <Route path="product-metadata" element={<ProductMetadataManager />} />
               <Route path="suppliers" element={<SupplierManager />} />

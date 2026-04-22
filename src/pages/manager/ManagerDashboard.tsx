@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
-import { EventIcon, ProductIcon, SupplierIcon, HistoryIcon, DownloadIcon } from '../../components/icons';
+import { EventIcon, ProductIcon, SupplierIcon, HistoryIcon, DownloadIcon, TrashIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
 
 const StatCard: React.FC<{ title: string; icon: React.ReactNode; value: string | number; color: string }> = ({ title, icon, value, color }) => (
@@ -205,6 +205,12 @@ export const ManagerDashboard: React.FC = () => {
                                     <HistoryIcon className="w-5 h-5" />
                                 </div>
                                 <span className="font-medium">Historial de Pedidos</span>
+                            </Link>
+                            <Link to="/almacen/cleanup" className="flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
+                                <div className="p-2 rounded-md bg-red-100 dark:bg-red-900/30 text-red-600 mr-3 group-hover:bg-red-600 group-hover:text-white transition-colors">
+                                    <TrashIcon className="w-5 h-5" />
+                                </div>
+                                <span className="font-medium">Limpieza de Pedidos Fantasma</span>
                             </Link>
                         </div>
                     </Card>
