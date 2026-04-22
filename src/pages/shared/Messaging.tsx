@@ -13,7 +13,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 export const ComposeMessageModal: React.FC<{ 
     users: User[], 
     onClose: () => void, 
-    onSend: (msg: any) => void,
+    onSend: (msg: any, type: 'group' | 'broadcast') => void,
     initialSubject?: string,
     initialBody?: string,
     recipients?: string[]
@@ -25,6 +25,7 @@ export const ComposeMessageModal: React.FC<{
     const [body, setBody] = useState(initialBody);
     const [searchTerm, setSearchTerm] = useState('');
     const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
+    const [messageType, setMessageType] = useState<'group' | 'broadcast'>('group');
 
     const isStudent = currentUser?.profiles.includes(Profile.STUDENT);
 
@@ -69,7 +70,7 @@ export const ComposeMessageModal: React.FC<{
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSend({ recipient_ids: recipients, subject, body, attachment });
+        onSend({ recipient_ids: recipients, subject, body, attachment }, messageType);
     };
 
     return (
@@ -99,6 +100,17 @@ export const ComposeMessageModal: React.FC<{
                 </div>
                 <input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="Asunto" required className="w-full p-2 border rounded dark:bg-gray-700"/>
                 <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Mensaje..." rows={5} required className="w-full p-2 border rounded dark:bg-gray-700"/>
+                
+                <div className="flex gap-4 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                    <label className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+                        <input type="radio" checked={messageType === 'group'} onChange={() => setMessageType('group')} />
+                        <span>Grupo (Chat común)</span>
+                    </label>
+                    <label className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
+                        <input type="radio" checked={messageType === 'broadcast'} onChange={() => setMessageType('broadcast')} />
+                        <span>Difusión (Privado individual)</span>
+                    </label>
+                </div>
                 <div>
                     <label className="block text-sm font-medium">Adjunto:</label>
                     <input type="file" onChange={e => {
@@ -206,18 +218,28 @@ export const Messaging: React.FC = () => {
         setIsComposeModalOpen(true);
     };
 
-    const handleSendMessage = (newMessage: Omit<Message, 'id' | 'date' | 'sender_id' | 'read_by' | 'read_at'>) => {
+    const handleSendMessage = (newMessage: Omit<Message, 'id' | 'date' | 'sender_id' | 'read_by' | 'read_at'>, type: 'group' | 'broadcast') => {
         if (!currentUser) return;
-        const message: Message = {
-            id: `msg-${Date.now()}`,
+        
+        const messagesToSend = type === 'broadcast'
+            ? newMessage.recipient_ids.map(rId => ({
+                ...newMessage,
+                recipient_ids: [rId]
+            }))
+            : [newMessage];
+
+        const newMessages = messagesToSend.map(msg => ({
+            id: `msg-${Date.now()}-${Math.random()}`,
             sender_id: currentUser.id,
             date: new Date().toISOString(),
             read_by: { [currentUser.id]: true },
             read_at: { [currentUser.id]: new Date().toISOString() },
-            ...newMessage
-        };
-        setMessages([...messages, message]);
+            ...msg
+        }));
+
+        setMessages([...messages, ...newMessages]);
         setIsComposeModalOpen(false);
+        alert(type === 'broadcast' ? 'Difusión enviada individualmente' : 'Grupo creado/mensaje enviado');
     };
 
     if (!currentUser) return null;
