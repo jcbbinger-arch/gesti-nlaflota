@@ -53,20 +53,38 @@ export const SupportMaintenance: React.FC = () => {
 
     const handleBackup = async () => {
         setLoading(true);
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 300000); // 300s
-
         try {
-            const token = await auth.currentUser?.getIdToken() || '';
-            const response = await fetch('/api/backup', {
-                headers: { 'Authorization': `Bearer ${token}` },
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) throw new Error('Error al generar la copia');
+            // Build the backup object from the data context
+            const backupData = {
+                users: data.users,
+                products: data.products,
+                suppliers: data.suppliers,
+                events: data.events,
+                orders: data.orders,
+                incidents: data.incidents,
+                training_cycles: data.training_cycles,
+                modules: data.modules,
+                groups: data.groups,
+                assignments: data.assignments,
+                recipes: data.recipes,
+                sales: data.sales,
+                mini_economato_stock: data.mini_economato_stock,
+                messages: data.messages,
+                classrooms: data.classrooms,
+                classroom_products: data.classroom_products,
+                classroom_suppliers: data.classroom_suppliers,
+                classroom_events: data.classroom_events,
+                classroom_orders: data.classroom_orders,
+                service_groups: data.service_groups,
+                services: data.services,
+                dining_services: data.dining_services,
+                dining_reservations: data.dining_reservations,
+                stock_receptions: data.stock_receptions,
+                sale_items: data.sale_items,
+                reservations: data.reservations,
+                backup_timestamp: new Date().toISOString()
+            };
             
-            const backupData = await response.json();
             const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -76,7 +94,7 @@ export const SupportMaintenance: React.FC = () => {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error(error);
-            alert('Error al descargar la copia de seguridad');
+            alert('Error al generar la copia de seguridad');
         } finally {
             setLoading(false);
         }
