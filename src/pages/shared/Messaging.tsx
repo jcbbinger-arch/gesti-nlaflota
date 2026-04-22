@@ -127,63 +127,48 @@ const isMessageExpiredForMe = (message: Message, userId: string) => {
     return new Date() > expiryDate;
 };
 
-const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, User>, onClose: () => void, onReply: (message: Message) => void }> = ({ message, usersMap, onClose, onReply }) => {
-    const { companyInfo } = useCompany();
-
-    const exportMessageToPdf = () => {
-        const doc = new jsPDF();
-        
-        const sender = usersMap.get(message.sender_id || '')?.name || 'Sistema';
-        const recipients = (message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ');
-        const date = message.date ? new Date(message.date).toLocaleString() : 'N/A';
-
-        const startY = addHeaderToPdf(
-            doc, 
-            companyInfo, 
-            'MENSAJERÍA INTERNA', 
-            `De: ${sender}\nPara: ${recipients}\nFecha: ${date}`
-        );
-
-        // Subject & Body
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Asunto: ${message.subject || '(Sin Asunto)'}`, 14, startY + 10);
-        
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-        const splitBody = doc.splitTextToSize(message.body || '', 180);
-        doc.text(splitBody, 14, startY + 20);
-
-        if (message.attachment) {
-            const bodyY = startY + 25 + (splitBody.length * 7);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'italic');
-            doc.text(`* Incluye archivo adjunto: ${message.attachment.name}`, 14, bodyY);
-        }
-
-        doc.save(`correo_${message.id}.pdf`);
-    };
+const ChatWindow: React.FC<{ 
+    subject: string, 
+    messages: Message[], 
+    usersMap: Map<string, User>, 
+    onClose: () => void, 
+    onReply: (subject: string, recipients: string[]) => void 
+}> = ({ subject, messages, usersMap, onClose, onReply }) => {
+    const { currentUser } = useAuth();
+    const sortedMessages = [...messages].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Get unique recipients (excluding sender) to reply to
+    const allRecipientIds = new Set<string>();
+    messages.forEach(m => {
+        m.recipient_ids.forEach(id => allRecipientIds.add(id));
+        if (m.sender_id !== currentUser?.id) allRecipientIds.add(m.sender_id);
+    });
+    if (currentUser) allRecipientIds.delete(currentUser.id);
 
     return (
-        <Modal isOpen={true} onClose={onClose} title={message.subject || 'Mensaje'}>
-            <div className="space-y-2 text-sm">
-                <p><strong>De:</strong> {usersMap.get(message.sender_id || '')?.name || 'Sistema'}</p>
-                <p><strong>Para:</strong> {(message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ')}</p>
-                <p><strong>Fecha:</strong> {message.date ? new Date(message.date).toLocaleString() : 'N/A'}</p>
+        <Modal isOpen={true} onClose={onClose} title={`Chat: ${subject}`}>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto p-2 bg-gray-100 dark:bg-gray-900 rounded-md">
+                {sortedMessages.map(msg => {
+                    const isCurrentUser = msg.sender_id === currentUser?.id;
+                    return (
+                        <div key={msg.id} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[80%] p-3 rounded-lg ${isCurrentUser ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-700'}`}>
+                                <p className="text-xs font-semibold opacity-75">{usersMap.get(msg.sender_id)?.name}</p>
+                                <p className="text-sm mt-1">{msg.body}</p>
+                                {msg.attachment && !isMessageExpiredForMe(msg, currentUser?.id || '') && (
+                                    <div className="mt-2 text-xs p-2 bg-black/10 rounded">
+                                        <p>Adjunto: <a href={msg.attachment.content} download={msg.attachment.name} className="underline">{msg.attachment.name}</a></p>
+                                        <p className="opacity-75">* Se eliminará en {(15 - Math.floor((Date.now() - new Date(msg.read_at?.[currentUser?.id || ''] || msg.date).getTime()) / (24*60*60*1000))) } días.</p>
+                                    </div>
+                                )}
+                                <p className="text-[10px] mt-1 opacity-75 text-right">{new Date(msg.date).toLocaleTimeString()}</p>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
-            <div className="mt-4 pt-4 border-t dark:border-gray-600 whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-3 rounded-md max-h-60 overflow-y-auto">
-                {message.body}
-                {message.attachment && (
-                    <div className="mt-4 pt-2 border-t">
-                        <p className="text-sm font-semibold">Adjunto: </p>
-                        <a href={message.attachment.content} download={message.attachment.name} className="text-blue-500 underline">{message.attachment.name}</a>
-                    </div>
-                )}
-            </div>
-            <div className="flex justify-end space-x-2 mt-6">
-                <button onClick={() => onReply(message)} className="bg-primary-600 text-white px-4 py-2 rounded-md">Responder</button>
-                <button onClick={exportMessageToPdf} className="bg-green-600 text-white px-4 py-2 rounded-md">Exportar PDF</button>
-                <button onClick={onClose} className="bg-gray-500 text-white px-4 py-2 rounded-md">Cerrar</button>
+            <div className="mt-4 flex justify-end">
+                <button onClick={() => onReply(subject, Array.from(allRecipientIds))} className="bg-primary-600 text-white px-6 py-2 rounded-md">Responder</button>
             </div>
         </Modal>
     );
@@ -192,22 +177,25 @@ const MessageDetailModal: React.FC<{ message: Message, usersMap: Map<string, Use
 export const Messaging: React.FC = () => {
     const { messages, setMessages, users } = useData();
     const { currentUser } = useAuth();
-    const [view, setView] = useState<'inbox' | 'sent'>('inbox');
     const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
     const [composeParams, setComposeParams] = useState<{ subject: string, body: string, recipients?: string[] } | null>(null);
-    const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+    const [selectedThreadSubject, setSelectedThreadSubject] = useState<string | null>(null);
 
     const usersMap = useMemo(() => new Map((users || []).map(u => [u.id, u])), [users]);
 
-    const handleReply = (message: Message) => {
-        const sender = usersMap.get(message.sender_id || '');
-        const quotedBody = message.body.split('\n').map(line => `> ${line}`).join('\n');
-        setComposeParams({
-            subject: `Re: ${message.subject.startsWith('Re: ') ? message.subject.substring(4) : message.subject}`,
-            body: `\n\n\n________________________________________\nDe: ${sender?.name}\nEnviado el: ${new Date(message.date).toLocaleString()}\nAsunto: ${message.subject}\n\n${quotedBody}`,
-            recipients: message.sender_id ? [message.sender_id] : []
+    const threads = useMemo(() => {
+        if (!currentUser) return [];
+        const groups: Record<string, Message[]> = {};
+        messages.filter(m => m.recipient_ids.includes(currentUser.id) || m.sender_id === currentUser.id).forEach(m => {
+            if (!groups[m.subject]) groups[m.subject] = [];
+            groups[m.subject].push(m);
         });
-        setSelectedMessage(null);
+        return Object.entries(groups).sort((a, b) => new Date(b[1][b[1].length-1].date).getTime() - new Date(a[1][a[1].length-1].date).getTime());
+    }, [messages, currentUser]);
+
+    const handleReply = (subject: string, recipients: string[]) => {
+        setComposeParams({ subject: `Re: ${subject.startsWith('Re: ') ? subject.substring(4) : subject}`, body: '', recipients });
+        setSelectedThreadSubject(null);
         setIsComposeModalOpen(true);
     };
 
@@ -216,61 +204,18 @@ export const Messaging: React.FC = () => {
         setIsComposeModalOpen(true);
     };
 
-    const myInbox = useMemo(() => 
-        (messages || [])
-            .filter(m => m?.recipient_ids?.includes(currentUser?.id || '') && !isMessageExpiredForMe(m, currentUser?.id || ''))
-            .sort((a,b) => {
-                const dateA = a.date ? new Date(a.date).getTime() : 0;
-                const dateB = b.date ? new Date(b.date).getTime() : 0;
-                return dateB - dateA;
-            })
-    , [messages, currentUser]);
-
-    const mySentBox = useMemo(() =>
-        (messages || [])
-            .filter(m => m?.sender_id === currentUser?.id)
-            .sort((a,b) => {
-                const dateA = a.date ? new Date(a.date).getTime() : 0;
-                const dateB = b.date ? new Date(b.date).getTime() : 0;
-                return dateB - dateA;
-            })
-    , [messages, currentUser]);
-
     const handleSendMessage = (newMessage: Omit<Message, 'id' | 'date' | 'sender_id' | 'read_by' | 'read_at'>) => {
         if (!currentUser) return;
         const message: Message = {
             id: `msg-${Date.now()}`,
             sender_id: currentUser.id,
             date: new Date().toISOString(),
-            read_by: {},
-            read_at: {},
+            read_by: { [currentUser.id]: true },
+            read_at: { [currentUser.id]: new Date().toISOString() },
             ...newMessage
         };
         setMessages([...messages, message]);
         setIsComposeModalOpen(false);
-        alert('Mensaje enviado con éxito');
-    };
-
-    const handleMessageClick = (message: Message) => {
-        setSelectedMessage(message);
-        if (view === 'inbox' && currentUser && !message?.read_by?.[currentUser.id]) {
-            const now = new Date().toISOString();
-            const updatedMessage = { 
-                ...message, 
-                read_by: { ...(message.read_by || {}), [currentUser.id]: true },
-                read_at: { ...(message.read_at || {}), [currentUser.id]: now }
-            };
-            setMessages(messages.map(m => m.id === message.id ? updatedMessage : m));
-        }
-    };
-
-    const handleDownloadAll = () => {
-        const messagesToDownload = view === 'inbox' ? myInbox : mySentBox;
-        if (messagesToDownload.length > 0) {
-            downloadJson(`${view}_messages_${new Date().toISOString().slice(0,10)}.json`, messagesToDownload);
-        } else {
-            alert('No hay mensajes para descargar.');
-        }
     };
 
     if (!currentUser) return null;
@@ -278,51 +223,30 @@ export const Messaging: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Mensajería Interna</h1>
-                <div className="no-print flex space-x-2">
-                    <button onClick={handleDownloadAll} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
-                        <DownloadIcon className="w-5 h-5 mr-1" /> Descargar Todos
-                    </button>
-                    <button onClick={handleOpenCompose} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
-                        <PlusIcon className="w-5 h-5 mr-1" /> Redactar Mensaje
-                    </button>
-                </div>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Mensajes (Mis Conversaciones)</h1>
+                <button onClick={handleOpenCompose} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
+                    <PlusIcon className="w-5 h-5 mr-1" /> Nuevo Chat
+                </button>
             </div>
             
-            <div className="mb-4 flex space-x-1 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg no-print">
-                <button onClick={() => setView('inbox')} className={`w-full py-2 rounded-md ${view === 'inbox' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>
-                    Bandeja de Entrada ({myInbox.filter(m => currentUser && !m?.read_by?.[currentUser.id]).length})
-                </button>
-                <button onClick={() => setView('sent')} className={`w-full py-2 rounded-md ${view === 'sent' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>Enviados</button>
-            </div>
-
-            <Card title={view === 'inbox' ? 'Bandeja de Entrada' : 'Mensajes Enviados'}>
+            <Card title="Conversaciones">
                 <div className="space-y-2">
-                    {(view === 'inbox' ? myInbox : mySentBox).map(message => (
-                        <div key={message.id} onClick={() => handleMessageClick(message)} className={`p-3 border-l-4 rounded-r-md cursor-pointer ${ (view === 'sent' || (currentUser && message?.read_by?.[currentUser.id])) ? 'bg-gray-50 dark:bg-gray-700 border-gray-300' : 'bg-blue-50 dark:bg-blue-900/50 border-primary-500'}`}>
-                            <div className="flex justify-between text-sm">
-                                <p className="font-bold">
-                                    {view === 'inbox' 
-                                        ? usersMap.get(message.sender_id)?.name || 'Sistema'
-                                        : (message.recipient_ids || []).map(id => usersMap.get(id)?.name).join(', ')
-                                    }
-                                </p>
-                                <div className="flex items-center space-x-3">
-                                   <p>{new Date(message.date).toLocaleString()}</p>
-                                   <button onClick={(e) => { e.stopPropagation(); downloadJson(`mensaje_${message.id}.json`, message); }} className="no-print text-gray-400 hover:text-primary-500">
-                                       <DownloadIcon className="w-4 h-4"/>
-                                   </button>
+                    {threads.map(([subject, msgs]) => {
+                        const lastMsg = msgs[msgs.length - 1];
+                        const isUnread = !lastMsg.read_by[currentUser.id];
+                        return (
+                            <div key={subject} onClick={() => setSelectedThreadSubject(subject)} className={`p-4 rounded-md cursor-pointer border ${isUnread ? 'bg-blue-50 dark:bg-blue-900/20 border-primary-500' : 'bg-gray-50 dark:bg-gray-700 border-gray-200'}`}>
+                                <div className="flex justify-between">
+                                    <p className="font-bold">{subject}</p>
+                                    <span className="text-xs text-gray-500">{new Date(lastMsg.date).toLocaleDateString()}</span>
                                 </div>
+                                <p className="text-sm truncate">{lastMsg.body}</p>
                             </div>
-                            <p className="font-semibold">{message.subject}</p>
-                        </div>
-                    ))}
-                     {((view === 'inbox' && myInbox.length === 0) || (view === 'sent' && mySentBox.length === 0)) && (
-                        <p className="text-center text-gray-500 p-4">No hay mensajes.</p>
-                     )}
+                        );
+                    })}
                 </div>
             </Card>
-            
+
             {isComposeModalOpen && (
                 <ComposeMessageModal 
                     users={users} 
@@ -331,11 +255,12 @@ export const Messaging: React.FC = () => {
                     {...(composeParams || {})}
                 />
             )}
-            {selectedMessage && (
-                <MessageDetailModal 
-                    message={selectedMessage} 
+            {selectedThreadSubject && (
+                <ChatWindow 
+                    subject={selectedThreadSubject} 
+                    messages={threads.find(t => t[0] === selectedThreadSubject)?.[1] || []}
                     usersMap={usersMap} 
-                    onClose={() => setSelectedMessage(null)} 
+                    onClose={() => setSelectedThreadSubject(null)} 
                     onReply={handleReply}
                 />
             )}
