@@ -201,9 +201,10 @@ export const Messaging: React.FC = () => {
 
     const handleReply = (message: Message) => {
         const sender = usersMap.get(message.sender_id || '');
+        const quotedBody = message.body.split('\n').map(line => `> ${line}`).join('\n');
         setComposeParams({
-            subject: `Re: ${message.subject}`,
-            body: `\n\n--- Original ---\nDe: ${sender?.name}\nFecha: ${new Date(message.date).toLocaleString()}\n${message.body}`,
+            subject: `Re: ${message.subject.startsWith('Re: ') ? message.subject.substring(4) : message.subject}`,
+            body: `\n\n\n________________________________________\nDe: ${sender?.name}\nEnviado el: ${new Date(message.date).toLocaleString()}\nAsunto: ${message.subject}\n\n${quotedBody}`,
             recipients: message.sender_id ? [message.sender_id] : []
         });
         setSelectedMessage(null);

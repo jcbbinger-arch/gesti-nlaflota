@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCompany } from '../contexts/CompanyContext';
 import { useCreator } from '../contexts/CreatorContext';
 import { useData } from '../contexts/DataContext';
+import { useNavigation } from '../contexts/NavigationContext';
 import { Profile } from '../types';
 import { 
     UsersIcon, ProductIcon, SupplierIcon, EventIcon, 
@@ -100,6 +101,7 @@ const rewriteStudentNav = (nav: typeof teacherNav | typeof almacenNav, newPrefix
 };
 
 export const Sidebar: React.FC = () => {
+  const { isMobileSidebarOpen, closeMobileSidebar } = useNavigation();
   const { selectedProfile, currentUser } = useAuth();
   const { companyInfo } = useCompany();
   const { creatorInfo } = useCreator();
@@ -162,7 +164,12 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
-      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200 hidden md:flex flex-col shrink-0 transition-all duration-300 relative group/sidebar`}>
+      {/* Backdrop for mobile */}
+      {isMobileSidebarOpen && (
+        <div className="md:hidden fixed inset-0 bg-black/50 z-[90]" onClick={closeMobileSidebar} />
+      )}
+      
+      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-gradient-to-b from-gray-900 to-blue-950 text-gray-200 ${isMobileSidebarOpen ? 'fixed left-0 top-0 bottom-0 z-[100] flex' : 'hidden md:flex'} flex-col shrink-0 transition-all duration-300 relative group/sidebar`}>
         {/* Collapse Toggle */}
         <button 
             onClick={() => setIsCollapsed(!isCollapsed)}

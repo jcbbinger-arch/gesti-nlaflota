@@ -5,6 +5,7 @@ import { DataProvider } from './contexts/DataContext';
 import { CompanyProvider } from './contexts/CompanyContext';
 import { CreatorProvider } from './contexts/CreatorContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { NavigationProvider } from './contexts/NavigationContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -238,15 +239,17 @@ const App: React.FC = () => {
     <Router>
       <AuthProvider>
         <ThemeProvider>
-          <CompanyProvider>
-            <CreatorProvider>
-              <DataProvider>
-                <ErrorBoundary>
-                  <AppContent />
-                </ErrorBoundary>
-              </DataProvider>
-            </CreatorProvider>
-          </CompanyProvider>
+          <NavigationProvider>
+            <CompanyProvider>
+              <CreatorProvider>
+                <DataProvider>
+                  <ErrorBoundary>
+                    <AppContent />
+                  </ErrorBoundary>
+                </DataProvider>
+              </CreatorProvider>
+            </CompanyProvider>
+          </NavigationProvider>
         </ThemeProvider>
       </AuthProvider>
     </Router>
