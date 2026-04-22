@@ -145,8 +145,9 @@ const ChatWindow: React.FC<{
     usersMap: Map<string, User>, 
     onClose: () => void, 
     onReply: (subject: string, recipients: string[]) => void,
-    onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void
-}> = ({ subject, messages, usersMap, onClose, onReply, onDeleteMessage }) => {
+    onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void,
+    isGroup?: boolean
+}> = ({ subject, messages, usersMap, onClose, onReply, onDeleteMessage, isGroup = false }) => {
     const { currentUser } = useAuth();
     const sortedMessages = [...messages].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
@@ -160,7 +161,7 @@ const ChatWindow: React.FC<{
 
     return (
         <Modal isOpen={true} onClose={onClose} title={`Chat: ${subject}`}>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto p-2 bg-gray-100 dark:bg-gray-900 rounded-md">
+            <div className={`space-y-4 max-h-[60vh] overflow-y-auto p-4 rounded-md transition-colors ${isGroup ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'bg-green-50/50 dark:bg-green-900/10'}`}>
                 {sortedMessages.map(msg => {
                     const isCurrentUser = msg.sender_id === currentUser?.id;
                     const isDeletedByMe = msg.deleted_for?.includes(currentUser?.id || '');
@@ -169,9 +170,9 @@ const ChatWindow: React.FC<{
 
                     return (
                         <div key={msg.id} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[80%] p-3 rounded-lg relative group transition-all ${isCurrentUser ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-700'}`}>
+                            <div className={`max-w-[80%] p-3 rounded-lg relative group transition-all shadow-sm ${isCurrentUser ? 'bg-primary-600 text-white rounded-br-none' : 'bg-white dark:bg-gray-700 rounded-bl-none'}`}>
                                 <div className="flex justify-between items-start mb-1">
-                                    <p className="text-xs font-semibold opacity-75">{usersMap.get(msg.sender_id)?.name}</p>
+                                    <p className={`text-xs font-semibold ${isCurrentUser ? 'text-blue-100' : 'text-primary-600 dark:text-primary-400'}`}>{usersMap.get(msg.sender_id)?.name}</p>
                                     <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button 
                                             onClick={() => {
@@ -324,11 +325,20 @@ export const Messaging: React.FC = () => {
                         const lastMsg = msgs[msgs.length - 1];
                         const isUnread = !lastMsg.read_by[currentUser.id];
                         const participantIds = key.split('-');
+                        const isGroup = participantIds.length > 1;
                         const displayName = participantIds.map(id => usersMap.get(id)?.name || 'Usuario').join(', ');
+                        
+                        const bgColor = isGroup 
+                            ? (isUnread ? 'bg-blue-100 border-blue-500' : 'bg-blue-50/50 border-blue-200')
+                            : (isUnread ? 'bg-green-100 border-green-500' : 'bg-green-50/50 border-green-200');
+
                         return (
-                            <div key={key} onClick={() => setSelectedThreadKey(key)} className={`p-4 rounded-md cursor-pointer border ${isUnread ? 'bg-blue-50 dark:bg-blue-900/20 border-primary-500' : 'bg-gray-50 dark:bg-gray-700 border-gray-200'}`}>
+                            <div key={key} onClick={() => setSelectedThreadKey(key)} className={`p-4 rounded-md cursor-pointer border transition-colors ${bgColor} ${isUnread ? 'dark:bg-blue-900/40' : 'dark:bg-gray-800'}`}>
                                 <div className="flex justify-between">
-                                    <p className="font-bold">{displayName}</p>
+                                    <p className="font-bold flex items-center">
+                                        {isGroup && <span className="mr-2 text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded-full uppercase">Grupo</span>}
+                                        {displayName}
+                                    </p>
                                     <span className="text-xs text-gray-500">{new Date(lastMsg.date).toLocaleDateString()}</span>
                                 </div>
                                 <p className="text-sm truncate">{lastMsg.body}</p>
@@ -357,6 +367,7 @@ export const Messaging: React.FC = () => {
                     onClose={() => setSelectedThreadKey(null)} 
                     onReply={() => handleReply(selectedThreadKey.split('-'))}
                     onDeleteMessage={handleDeleteMessage}
+                    isGroup={selectedThreadKey.split('-').length > 1}
                 />
             )}
         </div>
