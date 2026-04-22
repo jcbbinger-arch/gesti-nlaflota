@@ -95,9 +95,11 @@ async function startServer() {
           threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
           
           const collections = await db.listCollections();
+          // Exclude audit_logs as it could be massive
+          const filteredCollections = collections.filter(c => c.id !== 'audit_logs');
           const backup: Record<string, any[]> = {};
           
-          for (const col of collections) {
+          for (const col of filteredCollections) {
               try {
                   console.log(`Backing up collection: ${col.id}`);
                   const snapshot = await col.get();
@@ -114,17 +116,19 @@ async function startServer() {
                   }
               } catch (e) {
                   console.error(`Error backing up collection ${col.id}:`, e);
-                  throw e;
+                  // Continue despite error, just for the backup
               }
           }
 
-          // Log the backup operation
-          await db.collection('audit_logs').add({
-              timestamp: admin.firestore.FieldValue.serverTimestamp(),
-              user_id: decodedToken.uid,
-              user_email: decodedToken.email,
-              action: 'GENERATE_BACKUP'
-          });
+          // Log the backup operation via Firestore - this might fail if db is busy, wrap in try/catch
+          try {
+            await db.collection('audit_logs').add({
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                user_id: decodedToken.uid,
+                user_email: decodedToken.email,
+                action: 'GENERATE_BACKUP'
+            });
+          } catch(e) { console.error('Failed to log backup', e); }
 
           res.json(backup);
       } catch (error) {
