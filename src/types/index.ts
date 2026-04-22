@@ -301,6 +301,7 @@ export interface Message {
     read_by: { [user_id: string]: boolean };
     read_at?: { [user_id: string]: string }; // Map user_id to ISO read date
     attachment?: { name: string; content: string }; // name and base64 content
+    deleted_for?: string[]; // Array of user IDs who deleted this message for themselves
 }
 
 export interface Classroom {

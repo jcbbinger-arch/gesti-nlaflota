@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
-import { PlusIcon, DownloadIcon } from '../../components/icons';
+import { PlusIcon, DownloadIcon, TrashIcon } from '../../components/icons';
 import { Message, User, Profile, SUPER_USER_EMAILS } from '../../types';
 import { downloadJson, addHeaderToPdf } from '../../utils/export';
 import { jsPDF } from 'jspdf';
@@ -144,8 +144,9 @@ const ChatWindow: React.FC<{
     messages: Message[], 
     usersMap: Map<string, User>, 
     onClose: () => void, 
-    onReply: (subject: string, recipients: string[]) => void 
-}> = ({ subject, messages, usersMap, onClose, onReply }) => {
+    onReply: (subject: string, recipients: string[]) => void,
+    onDeleteMessage: (messageId: string, type: 'me' | 'everyone') => void
+}> = ({ subject, messages, usersMap, onClose, onReply, onDeleteMessage }) => {
     const { currentUser } = useAuth();
     const sortedMessages = [...messages].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
@@ -162,11 +163,39 @@ const ChatWindow: React.FC<{
             <div className="space-y-4 max-h-[60vh] overflow-y-auto p-2 bg-gray-100 dark:bg-gray-900 rounded-md">
                 {sortedMessages.map(msg => {
                     const isCurrentUser = msg.sender_id === currentUser?.id;
+                    const isDeletedByMe = msg.deleted_for?.includes(currentUser?.id || '');
+                    
+                    if (isDeletedByMe) return null;
+
                     return (
                         <div key={msg.id} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[80%] p-3 rounded-lg ${isCurrentUser ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-700'}`}>
-                                <p className="text-xs font-semibold opacity-75">{usersMap.get(msg.sender_id)?.name}</p>
-                                <p className="text-sm mt-1">{msg.body}</p>
+                            <div className={`max-w-[80%] p-3 rounded-lg relative group transition-all ${isCurrentUser ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-700'}`}>
+                                <div className="flex justify-between items-start mb-1">
+                                    <p className="text-xs font-semibold opacity-75">{usersMap.get(msg.sender_id)?.name}</p>
+                                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                            onClick={() => {
+                                                if (window.confirm('¿Eliminar mensaje para ti?')) onDeleteMessage(msg.id, 'me');
+                                            }}
+                                            title="Eliminar para mí"
+                                            className="p-1 hover:bg-black/10 rounded transition-colors"
+                                        >
+                                            <TrashIcon className="w-3 h-3" />
+                                        </button>
+                                        {isCurrentUser && (
+                                            <button 
+                                                onClick={() => {
+                                                    if (window.confirm('¿Eliminar mensaje para todos?')) onDeleteMessage(msg.id, 'everyone');
+                                                }}
+                                                title="Eliminar para todos"
+                                                className="p-1 hover:bg-black/10 rounded transition-colors text-red-300"
+                                            >
+                                                <TrashIcon className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                <p className="text-sm">{msg.body}</p>
                                 {msg.attachment && !isMessageExpiredForMe(msg, currentUser?.id || '') && (
                                     <div className="mt-2 text-xs p-2 bg-black/10 rounded">
                                         <p>Adjunto: <a href={msg.attachment.content} download={msg.attachment.name} className="underline">{msg.attachment.name}</a></p>
@@ -198,19 +227,43 @@ export const Messaging: React.FC = () => {
     const threads = useMemo(() => {
         if (!currentUser) return [];
         const groups: Record<string, Message[]> = {};
-        messages.filter(m => m.recipient_ids.includes(currentUser.id) || m.sender_id === currentUser.id).forEach(m => {
+        messages.filter(m => {
+            const isRelevant = m.recipient_ids.includes(currentUser.id) || m.sender_id === currentUser.id;
+            const isDeletedForMe = m.deleted_for?.includes(currentUser.id);
+            return isRelevant && !isDeletedForMe;
+        }).forEach(m => {
             const participants = [m.sender_id, ...m.recipient_ids].filter(id => id !== currentUser.id);
             const key = participants.sort().join('-');
             if (!groups[key]) groups[key] = [];
             groups[key].push(m);
         });
-        return Object.entries(groups).sort((a, b) => new Date(b[1][b[1].length-1].date).getTime() - new Date(a[1][a[1].length-1].date).getTime());
+        return Object.entries(groups).filter(([_, msgs]) => msgs.length > 0).sort((a, b) => new Date(b[1][b[1].length-1].date).getTime() - new Date(a[1][a[1].length-1].date).getTime());
     }, [messages, currentUser]);
 
     const handleReply = (recipients: string[]) => {
         setComposeParams({ subject: 'Re: Conversación', body: '', recipients });
         setSelectedThreadKey(null);
         setIsComposeModalOpen(true);
+    };
+
+    const handleDeleteMessage = (messageId: string, type: 'me' | 'everyone') => {
+        if (!currentUser) return;
+        
+        if (type === 'everyone') {
+            // Remove completely from array
+            setMessages(prev => prev.filter(m => m.id !== messageId));
+        } else {
+            // Mark as deleted for me
+            setMessages(prev => prev.map(m => {
+                if (m.id === messageId) {
+                    const deletedFor = m.deleted_for || [];
+                    if (!deletedFor.includes(currentUser.id)) {
+                        return { ...m, deleted_for: [...deletedFor, currentUser.id] };
+                    }
+                }
+                return m;
+            }));
+        }
     };
 
     const handleOpenCompose = () => {
@@ -242,15 +295,27 @@ export const Messaging: React.FC = () => {
         alert(type === 'broadcast' ? 'Difusión enviada individualmente' : 'Grupo creado/mensaje enviado');
     };
 
+    const handleClearAll = () => {
+        if (window.confirm('¿Estás seguro de que quieres borrar TODO el historial de mensajes? Esta acción no se puede deshacer.')) {
+            setMessages([]);
+            alert('Historial de mensajes vaciado.');
+        }
+    };
+
     if (!currentUser) return null;
 
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Mensajes (Conversaciones)</h1>
-                <button onClick={handleOpenCompose} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
-                    <PlusIcon className="w-5 h-5 mr-1" /> Nuevo Chat
-                </button>
+                <div className="flex space-x-2">
+                    <button onClick={handleClearAll} className="bg-red-100 text-red-600 py-2 px-4 rounded-md hover:bg-red-200 flex items-center text-sm font-medium border border-red-200">
+                        <TrashIcon className="w-5 h-5 mr-1" /> Vaciar Historial
+                    </button>
+                    <button onClick={handleOpenCompose} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
+                        <PlusIcon className="w-5 h-5 mr-1" /> Nuevo Chat
+                    </button>
+                </div>
             </div>
             
             <Card title="Conversaciones">
@@ -291,6 +356,7 @@ export const Messaging: React.FC = () => {
                     usersMap={usersMap} 
                     onClose={() => setSelectedThreadKey(null)} 
                     onReply={() => handleReply(selectedThreadKey.split('-'))}
+                    onDeleteMessage={handleDeleteMessage}
                 />
             )}
         </div>
