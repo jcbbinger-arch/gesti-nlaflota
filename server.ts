@@ -38,7 +38,7 @@ async function startServer() {
 
   app.use(express.json());
 
-  // API routes
+  // API routes DEFINED FIRST
   app.post('/api/admin/create-user', async (req, res) => {
     res.status(400).json({ error: 'La creación manual de usuarios está deshabilitada. Los usuarios deben iniciar sesión con Google.' });
   });
