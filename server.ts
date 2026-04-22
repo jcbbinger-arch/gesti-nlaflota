@@ -98,17 +98,23 @@ async function startServer() {
           const backup: Record<string, any[]> = {};
           
           for (const col of collections) {
-              const snapshot = await col.get();
-              backup[col.id] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              
-              // Only filter specific collections by date
-              const academicCollections = ['orders', 'incidents', 'sales', 'reservations', 'dining_services', 'dining_reservations', 'events', 'classroom_orders'];
-              if (academicCollections.includes(col.id)) {
-                  backup[col.id] = backup[col.id].filter(doc => {
-                      const dateField = doc.date || doc.start_date || doc.created_at || doc.sale_date;
-                      if (!dateField) return true; // keep if no date
-                      return new Date(dateField) >= threeYearsAgo;
-                  });
+              try {
+                  console.log(`Backing up collection: ${col.id}`);
+                  const snapshot = await col.get();
+                  backup[col.id] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                  
+                  // Only filter specific collections by date
+                  const academicCollections = ['orders', 'incidents', 'sales', 'reservations', 'dining_services', 'dining_reservations', 'events', 'classroom_orders'];
+                  if (academicCollections.includes(col.id)) {
+                      backup[col.id] = backup[col.id].filter(doc => {
+                          const dateField = doc.date || doc.start_date || doc.created_at || doc.sale_date;
+                          if (!dateField) return true; // keep if no date
+                          return new Date(dateField) >= threeYearsAgo;
+                      });
+                  }
+              } catch (e) {
+                  console.error(`Error backing up collection ${col.id}:`, e);
+                  throw e;
               }
           }
 

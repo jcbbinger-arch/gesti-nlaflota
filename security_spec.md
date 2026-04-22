@@ -1,31 +1,23 @@
-# Security Specifications - ManagerPro App
+# Firestore Security Audit & Hardened Rules Plan
 
-## Data Invariants
-1. **User Identity**: A user cannot modify their own `role` or `access_profiles` once created. This prevents privilege escalation.
-2. **Relational Ownership**: An `order` must be linked to a valid `user_id` that matches the authenticated user, or managed by an `admin`.
-3. **Typology Consistency**: `products` must belong to a `family` and `category` defined in `workspace_settings` (enforced via rules).
-4. **Budget Integrity**: Expense updates are restricted to ensure `budget_per_teacher` in `events` is respected (enforced by application logic and guarded by rules).
-5. **Terminal State Locking**: `orders` marked as 'Completado' or 'Cancelado' cannot be further modified except by an `admin`.
-6. **Immutable Fields**: `createdAt`, `author_id`, and `workspace_id` fields are immutable after document creation.
+## 1. Context & Invariants
+- **Master Gate:** Every restricted collection (`/orders/`, `/messages/`, etc.) must derive access directly from the user's ID or authorization documents.
+- **Strict Validation:** All writes must be validated via helper functions (`isValidOrder`, `isValidUser`, etc.) before any operational logic.
+- **Query Enforcer:** All `allow list` rules MUST evaluate `resource.data` to prevent unauthorized "scrape-all" attacks.
 
-## The "Dirty Dozen" Payloads (Attacks)
-Below are 12 malicious payloads designed to bypass security.
+## 2. "The Dirty Dozen" Payloads (Examples to deny)
+1. **Payload Payload (Poison ID):** Creating an order with a document ID: "a".repeat(1000) (Should fail `isValidId`).
+2. **Ghost Field Update:** Updating an order Whitelisted Key + extra field `{ ..., "is_admin": true }` (Should fail `affectedKeys().hasOnly()`).
+3. **Role Spoofing:** A teacher trying to set their own profile to `role: 'admin'`.
+4. **Orphaned Order:** Creating an order with a non-existent `event_id`.
+5. **PII Leak:** An authenticated user trying to `get()` another user's PII field.
+6. **Immutable Field Attack:** Attempting to update `createdAt` timestamp.
+7. **Size Attack:** Order with 10,000 items in `items` array.
+8. **Value Poisoning:** Updating `cost` with a string instead of a number.
+9. **Identity Spoofing:** Creating an order with `user_id: "other_teacher_uid"`.
+10. **State Shortcutting:** Skipping 'Enviado' and directly setting order to 'Procesado' via client.
+11. **Query Scraping:** An `allow list` query without proper `if resource.data.ownerId == request.auth.uid`.
+12. **Incomplete Action:** An `update` operation that doesn't use the mandatory `isValid[Entity]` validation helper.
 
-1. **Privilege Escalation**: Update `/users/{myId}` with `{ "role": "admin" }`.
-2. **Access Profile Hijacking**: Update `/users/{myId}` with `{ "access_profiles": { "admin": true } }`.
-3. **Identity Spoofing (Order)**: Create `/orders` with a `user_id` of a different teacher.
-4. **Ghost Product**: Create `/products` as a `Profile.STUDENT`.
-5. **Typology Poisoning**: Create a product with a 2MB string in the `name` field.
-6. **State Shortcut**: Update a 'Borrador' order directly to 'Recibido OK' bypassing 'Enviado'.
-7. **Budget Exhaustion**: Update a sales amount to a negative number to "refund" budget.
-8. **Private Recipe Leak**: Read a recipe where `is_public` is `false` and `author_id` is different.
-9. **Message Sniffing**: Read a document in `/messages` where the user is neither sender nor recipient.
-10. **Admin Impersonation**: Attempt to update `/settings/config` without an admin email.
-11. **PII Blanket List**: Query all users and fetch their `phone` and `address` without being an admin.
-12. **Orphaned Order**: Create an order for an `event_id` that does not exist in `/events`.
-
-## Corrective Logic Gates
-- **isValidId()**: Regex and size checks on all IDs.
-- **isValid[Entity]()**: Strict schema validation for EVERY collection.
-- **affectedKeys().hasOnly()**: Named actions for updates.
-- **exists() / get()**: relational checks for orders and products.
+## 3. Test Runner Infrastructure
+We will create `firestore.rules.test.ts` using `firebase-rules-unit-testing` to programmatically verify these 12 scenarios.

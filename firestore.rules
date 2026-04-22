@@ -88,8 +88,22 @@ service cloud.firestore {
     match /dining_services/{id} { allow read, list: if isSignedIn(); allow write: if isManager(); }
     match /stock_receptions/{id} { allow read, list: if isSignedIn(); allow write: if isManager(); }
 
-    // Transactional Data (Orders require owner/manager for now, or just allow read for ease of development)
-    match /orders/{id} { allow read, list: if isSignedIn(); allow write: if isSignedIn(); }
+    // Transactional Data
+    match /orders/{id} {
+      allow read, list: if isSignedIn() && (
+        resource.data.user_id == request.auth.uid || 
+        isManager()
+      );
+      allow create: if isSignedIn() && isValidOrder(incoming()) && incoming().user_id == request.auth.uid;
+      allow update: if isSignedIn() && isValidOrder(incoming()) && (
+        isManager() || (
+          existing().user_id == request.auth.uid && 
+          incoming().user_id == existing().user_id &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'items', 'new_product_requests', 'cost', 'notes'])
+        )
+      );
+      allow delete: if isManager();
+    }
     match /classroom_orders/{id} { allow read, list: if isSignedIn(); allow write: if isSignedIn(); }
     match /dining_reservations/{id} { allow read, list: if isSignedIn(); allow write: if isSignedIn(); }
     match /reservations/{id} { allow read, list: if isSignedIn(); allow write: if isSignedIn(); }
