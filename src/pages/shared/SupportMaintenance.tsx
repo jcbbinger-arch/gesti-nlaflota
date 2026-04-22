@@ -110,10 +110,16 @@ export const SupportMaintenance: React.FC = () => {
         }
     };
 
+    const [restoreMode, setRestoreMode] = useState<string>('full'); 
+
     const handleRestore = () => {
         if (!backupFile) return;
-    
-        if (window.confirm(`¿Estás seguro de que quieres restaurar desde el archivo "${backupFile.name}"? Esta acción sobrescribirá todos los datos actuales y recargará la aplicación.`)) {
+        
+        const message = restoreMode === 'full' 
+            ? `¿Estás seguro de que quieres restaurar TODOS los datos desde "${backupFile.name}"? Esta acción sobrescribirá todos los datos actuales.`
+            : `¿Estás seguro de que quieres restaurar la colección "${restoreMode}" desde "${backupFile.name}"? Esta acción sobrescribirá los datos actuales de esta colección.`;
+
+        if (window.confirm(message)) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
@@ -124,32 +130,70 @@ export const SupportMaintenance: React.FC = () => {
                     setIsRestoring(true);
                     
                     setTimeout(() => {
-                        data.setUsers(restoredData.users || []);
-                        data.setProducts(restoredData.products || []);
-                        data.setSuppliers(restoredData.suppliers || []);
-                        data.setEvents(restoredData.events || []);
-                        data.setOrders(restoredData.orders || []);
-                        data.setIncidents(restoredData.incidents || []);
-                        data.setTrainingCycles(restoredData.training_cycles || []);
-                        data.setModules(restoredData.modules || []);
-                        data.setGroups(restoredData.groups || []);
-                        data.setAssignments(restoredData.assignments || []);
-                        data.setRecipes(restoredData.recipes || []);
-                        data.setSales(restoredData.sales || []);
-                        data.setMiniEconomatoStock(restoredData.mini_economato_stock || []);
-                        data.setMessages(restoredData.messages || []);
-                        data.setClassrooms(restoredData.classrooms || []);
-                        data.setClassroomProducts(restoredData.classroom_products || []);
-                        data.setClassroomSuppliers(restoredData.classroom_suppliers || []);
-                        data.setClassroomEvents(restoredData.classroom_events || []);
-                        data.setClassroomOrders(restoredData.classroom_orders || []);
-                        data.setServiceGroups(restoredData.service_groups || []);
-                        data.setServices(restoredData.services || []);
-                        data.setDiningServices(restoredData.dining_services || []);
-                        data.setDiningReservations(restoredData.dining_reservations || []);
-                        data.setStockReceptions(restoredData.stock_receptions || []);
-                        data.setSaleItems(restoredData.sale_items || []);
-                        data.setReservations(restoredData.reservations || []);
+                        if (restoreMode === 'full') {
+                            data.setUsers(restoredData.users || []);
+                            data.setProducts(restoredData.products || []);
+                            data.setSuppliers(restoredData.suppliers || []);
+                            data.setEvents(restoredData.events || []);
+                            data.setOrders(restoredData.orders || []);
+                            data.setIncidents(restoredData.incidents || []);
+                            data.setTrainingCycles(restoredData.training_cycles || []);
+                            data.setModules(restoredData.modules || []);
+                            data.setGroups(restoredData.groups || []);
+                            data.setAssignments(restoredData.assignments || []);
+                            data.setRecipes(restoredData.recipes || []);
+                            data.setSales(restoredData.sales || []);
+                            data.setMiniEconomatoStock(restoredData.mini_economato_stock || []);
+                            data.setMessages(restoredData.messages || []);
+                            data.setClassrooms(restoredData.classrooms || []);
+                            data.setClassroomProducts(restoredData.classroom_products || []);
+                            data.setClassroomSuppliers(restoredData.classroom_suppliers || []);
+                            data.setClassroomEvents(restoredData.classroom_events || []);
+                            data.setClassroomOrders(restoredData.classroom_orders || []);
+                            data.setServiceGroups(restoredData.service_groups || []);
+                            data.setServices(restoredData.services || []);
+                            data.setDiningServices(restoredData.dining_services || []);
+                            data.setDiningReservations(restoredData.dining_reservations || []);
+                            data.setStockReceptions(restoredData.stock_receptions || []);
+                            data.setSaleItems(restoredData.sale_items || []);
+                            data.setReservations(restoredData.reservations || []);
+                        } else {
+                            // Partial restore logic
+                            const setters: Record<string, Function> = {
+                                'Usuarios': data.setUsers,
+                                'Productos': data.setProducts,
+                                'Proveedores': data.setSuppliers,
+                                'Pedidos': data.setOrders,
+                                'Recetas': data.setRecipes,
+                                'Eventos': data.setEvents,
+                                'Incidentes': data.setIncidents,
+                                'Ciclos': data.setTrainingCycles,
+                                'Ciclos(Módulos)': data.setModules,
+                                'Grupos': data.setGroups,
+                                'Asignaciones': data.setAssignments,
+                                'Ventas': data.setSales,
+                                'MiniEconomato': data.setMiniEconomatoStock,
+                                'Mensajes': data.setMessages,
+                                'Aulas': data.setClassrooms,
+                                'Aula(Productos)': data.setClassroomProducts,
+                                'Aula(Proveedores)': data.setClassroomSuppliers,
+                                'Aula(Eventos)': data.setClassroomEvents,
+                                'Aula(Pedidos)': data.setClassroomOrders,
+                                'Servicios(Grupos)': data.setServiceGroups,
+                                'Servicios': data.setServices,
+                                'Comedor(Servicios)': data.setDiningServices,
+                                'Comedor(Reservas)': data.setDiningReservations,
+                                'RecepciónStock': data.setStockReceptions,
+                                'ItemsVenta': data.setSaleItems,
+                                'Reservas': data.setReservations
+                            };
+                            
+                            if (setters[restoreMode]) {
+                                setters[restoreMode](restoredData);
+                            } else {
+                                console.error('No se encontró el setter para:', restoreMode);
+                            }
+                        }
                         
                         setTimeout(() => {
                              alert("¡Datos restaurados con éxito! La aplicación se recargará.");
@@ -170,9 +214,9 @@ export const SupportMaintenance: React.FC = () => {
         fileInputRef.current?.click();
     };
 
-    const exportCollection = (name: string, collection: any[], format: 'csv' | 'json' = 'csv') => {
+    const exportCollection = (name: string, collection: any[], format: 'csv' | 'json' = 'json') => {
         if (collection.length === 0) {
-            alert(`No hay datos en la colección ${name} para exportar.`);
+            alert(`No hay datos en ${name} para exportar.`);
             return;
         }
         
@@ -191,92 +235,96 @@ export const SupportMaintenance: React.FC = () => {
         }
     };
 
+    const collectionsList = [
+        { name: 'Usuarios', data: data.users },
+        { name: 'Productos', data: data.products },
+        { name: 'Proveedores', data: data.suppliers },
+        { name: 'Pedidos', data: data.orders },
+        { name: 'Recetas', data: data.recipes },
+        { name: 'Eventos', data: data.events },
+        { name: 'Incidentes', data: data.incidents },
+        { name: 'Ciclos', data: data.training_cycles },
+        { name: 'Ciclos(Módulos)', data: data.modules },
+        { name: 'Grupos', data: data.groups },
+        { name: 'Asignaciones', data: data.assignments },
+        { name: 'Ventas', data: data.sales },
+        { name: 'MiniEconomato', data: data.mini_economato_stock },
+        { name: 'Mensajes', data: data.messages },
+        { name: 'Aulas', data: data.classrooms },
+        { name: 'Aula(Productos)', data: data.classroom_products },
+        { name: 'Aula(Proveedores)', data: data.classroom_suppliers },
+        { name: 'Aula(Eventos)', data: data.classroom_events },
+        { name: 'Aula(Pedidos)', data: data.classroom_orders },
+        { name: 'Servicios(Grupos)', data: data.service_groups },
+        { name: 'Servicios', data: data.services },
+        { name: 'Comedor(Servicios)', data: data.dining_services },
+        { name: 'Comedor(Reservas)', data: data.dining_reservations },
+        { name: 'RecepciónStock', data: data.stock_receptions },
+        { name: 'ItemsVenta', data: data.sale_items },
+        { name: 'Reservas', data: data.reservations }
+    ];
+
     return (
         <div className="p-6">
             {isRestoring && <RestoringOverlay />}
             <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Soporte y Mantenimiento</h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card title="Copia de Seguridad y Restauración">
-                    <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-                        Descarga una copia completa de todos los datos o exporta tablas individuales.
+            
+            <div className="grid grid-cols-1 gap-6">
+                <Card title="Gestión de Datos">
+                    <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+                        Exporta colecciones individuales en formato JSON. Para copias completas, utiliza el botón de exportación masiva.
                     </p>
-                    <div className="space-y-4">
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-                            <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center">
-                                <ShieldCheckIcon className="w-5 h-5 mr-2" /> Copia Completa (JSON)
-                            </h3>
-                            <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
-                                Recomendado para migraciones o restauraciones totales. Incluye: Usuarios, Productos, Proveedores, Pedidos, Recetas, Eventos, etc.
-                            </p>
-                            <button 
-                                onClick={handleBackup} 
-                                disabled={loading}
-                                className="w-full flex items-center justify-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
-                            >
-                                <DownloadIcon className="w-5 h-5 mr-2" /> {loading ? 'Generando...' : 'Descargar JSON Maestro'}
-                            </button>
-                        </div>
 
-                        <div className="flex items-center justify-between px-1">
-                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tablas Individuales</h4>
-                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-md">
-                                <button 
-                                    onClick={() => setExportFormat('csv')}
-                                    className={`px-3 py-1 text-xs rounded ${exportFormat === 'csv' ? 'bg-white dark:bg-gray-700 shadow-sm font-bold' : 'text-gray-500'}`}
-                                >
-                                    CSV
-                                </button>
-                                <button 
-                                    onClick={() => setExportFormat('json')}
-                                    className={`px-3 py-1 text-xs rounded ${exportFormat === 'json' ? 'bg-white dark:bg-gray-700 shadow-sm font-bold' : 'text-gray-500'}`}
-                                >
-                                    JSON
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => exportCollection('productos', data.products, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-                                <DownloadIcon className="w-3 h-3 mr-1" /> Productos
-                            </button>
-                            <button onClick={() => exportCollection('proveedores', data.suppliers, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-                                <DownloadIcon className="w-3 h-3 mr-1" /> Proveedores
-                            </button>
-                            <button onClick={() => exportCollection('profesores', data.users.filter(u => u.profiles.includes(Profile.TEACHER)), exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-                                <DownloadIcon className="w-3 h-3 mr-1" /> Profesores
-                            </button>
-                            <button onClick={() => exportCollection('pedidos', data.orders, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-                                <DownloadIcon className="w-3 h-3 mr-1" /> Pedidos
-                            </button>
-                            <button onClick={() => exportCollection('recetas', data.recipes, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-                                <DownloadIcon className="w-3 h-3 mr-1" /> Recetas
-                            </button>
-                            <button onClick={() => exportCollection('eventos', data.events, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-                                <DownloadIcon className="w-3 h-3 mr-1" /> Eventos
-                            </button>
-                            <button onClick={() => exportCollection('incidentes', data.incidents, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-                                <DownloadIcon className="w-3 h-3 mr-1" /> Incidentes
-                            </button>
-                            <button onClick={() => exportCollection('ciclos', data.training_cycles, exportFormat)} className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-                                <DownloadIcon className="w-3 h-3 mr-1" /> Ciclos
-                            </button>
-                        </div>
-
-                        <div className="pt-4 border-t dark:border-gray-700">
-                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
-                            <button onClick={triggerFileUpload} className="w-full flex items-center justify-center bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
-                                <UploadIcon className="w-5 h-5 mr-2" /> Restaurar desde JSON
-                            </button>
-                        </div>
+                    <div className="flex gap-4 mb-6">
+                        <button 
+                            onClick={handleBackup} 
+                            disabled={loading}
+                            className="flex items-center justify-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                            <DownloadIcon className="w-5 h-5 mr-2" /> Exportar TODO (JSON Maestro)
+                        </button>
                         
-                        {backupFile && (
-                            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800 rounded-md text-center space-y-3">
-                                <p className="text-sm text-yellow-800 dark:text-yellow-300">Archivo: <span className="font-bold">{backupFile.name}</span></p>
-                                <button onClick={handleRestore} className="w-full bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 font-bold">
-                                    Confirmar Restauración Total
-                                </button>
-                            </div>
-                        )}
+                        <div className="flex-1" />
+
+                        <div className="pt-0 flex gap-2">
+                            <select 
+                                value={restoreMode} 
+                                onChange={(e) => setRestoreMode(e.target.value)}
+                                className="p-2 bg-white dark:bg-gray-800 border rounded-md text-sm"
+                            >
+                                <option value="full">Restaurar TODO</option>
+                                {collectionsList.map(col => (
+                                    <option key={col.name} value={col.name}>Restaurar: {col.name}</option>
+                                ))}
+                            </select>
+                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
+                            <button onClick={triggerFileUpload} className="flex items-center justify-center bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
+                                <UploadIcon className="w-5 h-5 mr-2" /> Seleccionar JSON
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {backupFile && (
+                        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800 rounded-md text-center space-y-3">
+                            <p className="text-sm text-yellow-800 dark:text-yellow-300">Archivo seleccionado: <span className="font-bold">{backupFile.name}</span></p>
+                            <button onClick={handleRestore} className="bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 font-bold">
+                                Confirmar Restauración: {restoreMode === 'full' ? 'TOTAL' : restoreMode}
+                            </button>
+                        </div>
+                    )}
+
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Exportar Colecciones Individuales (JSON)</h4>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                        {collectionsList.map(col => (
+                            <button 
+                                key={col.name}
+                                onClick={() => exportCollection(col.name, col.data, 'json')} 
+                                className="flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 px-3 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            >
+                                <DownloadIcon className="w-3 h-3 mr-1" /> {col.name}
+                            </button>
+                        ))}
                     </div>
                 </Card>
                 <Card title="Datos de la Aplicación, del Creador" icon={<BookIcon className="w-8 h-8"/>}>
