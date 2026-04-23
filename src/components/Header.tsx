@@ -78,17 +78,17 @@ export const Header: React.FC = () => {
               </div>
           </div>
           
-          {currentUser.profiles.length > 1 && (
+          {currentUser.profiles.length >= 1 && (
             <div className="relative">
               <button
                 onClick={() => setIsProfileSwitcherOpen(!isProfileSwitcherOpen)}
                 className="flex items-center text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg shadow space-x-1 hover:bg-indigo-500 transition-colors"
               >
-                <span className="truncate max-w-[80px]">{selectedProfile ? getProfileDisplayName(selectedProfile) : 'Cambiar'}</span>
-                <ChevronDownIcon className="w-3 h-3" />
+                <span className="truncate max-w-[80px]">{selectedProfile ? getProfileDisplayName(selectedProfile) : 'Seleccionar'}</span>
+                {currentUser.profiles.length > 1 && <ChevronDownIcon className="w-3 h-3" />}
               </button>
               
-              {isProfileSwitcherOpen && (
+              {isProfileSwitcherOpen && currentUser.profiles.length > 1 && (
                 <div className="absolute top-full left-0 mt-2 w-40 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-600">
                   {currentUser.profiles.map((profile) => (
                     <button

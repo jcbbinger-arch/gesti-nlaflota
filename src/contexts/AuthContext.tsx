@@ -64,6 +64,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
          needsUpdate = true;
       }
 
+      // Migration for users created before the change or with missing status
+      if (!userData.activity_status && !isSuperUser) {
+        userData.activity_status = 'De Baja';
+        needsUpdate = true;
+      }
+      
       // Migration for users created before the change
       if (userData.profiles && userData.profiles.includes(Profile.STUDENT) && !userData.classroom_id && !isSuperUser) {
           // Keep as is, do not force TEACHER

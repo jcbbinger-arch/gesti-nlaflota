@@ -36,7 +36,8 @@ export const Login: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-      if (selectedProfile && currentUser.profiles.includes(selectedProfile)) {
+      // If user has no profiles or selectedProfile is invalid/missing, always go to select-profile
+      if (currentUser.profiles.length > 0 && selectedProfile && currentUser.profiles.includes(selectedProfile)) {
         navigate(`/${selectedProfile}/dashboard`);
       } else {
         navigate('/select-profile');

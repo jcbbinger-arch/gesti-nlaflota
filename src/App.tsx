@@ -74,7 +74,7 @@ const RedirectHandler: React.FC = () => {
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
-  if (!selectedProfile) {
+  if (!selectedProfile || !currentUser.profiles.includes(selectedProfile)) {
     return <Navigate to="/select-profile" replace />;
   }
   

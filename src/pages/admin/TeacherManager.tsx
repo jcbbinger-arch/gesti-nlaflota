@@ -16,8 +16,12 @@ export const TeacherManager: React.FC = () => {
 
     const staff = useMemo(() => users.filter(u => 
         u.email && u.name && // Filter out empty/corrupt users
-        // Include users with staff profiles OR users with NO profiles (pending approval)
-        (u.profiles.length === 0 || u.profiles.some(p => [Profile.TEACHER, Profile.ADMIN, Profile.ALMACEN, Profile.SALES_MANAGER].includes(p))) &&
+        // A user is staff if they have a staff profile OR if they have NO profiles at all 
+        // AND they are not explicitly a Student or Customer.
+        (
+            u.profiles.length === 0 || 
+            u.profiles.some(p => [Profile.TEACHER, Profile.ADMIN, Profile.ALMACEN, Profile.SALES_MANAGER, Profile.CREATOR].includes(p))
+        ) &&
         !u.profiles.includes(Profile.STUDENT) && 
         !u.profiles.includes(Profile.CUSTOMER) &&
         !SUPER_USER_EMAILS.includes(u.email)
@@ -162,9 +166,7 @@ export const TeacherManager: React.FC = () => {
             ? user.profiles.filter(p => p !== profile) 
             : [...user.profiles, profile];
         
-        // Ensure at least one profile remains
-        if (newProfiles.length === 0) return;
-
+        // Allow empty profiles so admin can deactivate access entirely
         setUsers(users.map(u => u.id === user.id ? { ...u, profiles: newProfiles } : u));
     };
 
@@ -253,7 +255,9 @@ const UserFormModal: React.FC<{
     const [formState, setFormState] = useState({
         name: user?.name || '',
         email: user?.email || '',
-        profiles: user?.profiles || (activeTab === 'profesores' ? [Profile.TEACHER] : activeTab === 'clientes' ? [Profile.CUSTOMER] : [Profile.STUDENT]),
+        // For new users, default to empty profile so admin MUST choose.
+        // For existing users, keep their profiles (which might be empty if pending).
+        profiles: user ? user.profiles : (activeTab === 'clientes' ? [Profile.CUSTOMER] : activeTab === 'alumnos' ? [Profile.STUDENT] : []),
         contract_type: user?.contract_type || 'Fijo',
         role_type: user?.role_type || 'Titular',
         phone: user?.phone || '',
