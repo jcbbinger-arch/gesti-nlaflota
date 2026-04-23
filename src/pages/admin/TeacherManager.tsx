@@ -16,18 +16,25 @@ export const TeacherManager: React.FC = () => {
 
     const staff = useMemo(() => users.filter(u => 
         u.email && u.name && // Filter out empty/corrupt users
-        u.profiles.includes(Profile.TEACHER) && 
+        // Include users with staff profiles OR users with NO profiles (pending approval)
+        (u.profiles.length === 0 || u.profiles.some(p => [Profile.TEACHER, Profile.ADMIN, Profile.ALMACEN, Profile.SALES_MANAGER].includes(p))) &&
+        !u.profiles.includes(Profile.STUDENT) && 
+        !u.profiles.includes(Profile.CUSTOMER) &&
         !SUPER_USER_EMAILS.includes(u.email)
     ), [users]);
 
     const takeawayCustomers = useMemo(() => users.filter(u => 
         u.email && u.name &&
-        u.profiles.includes(Profile.CUSTOMER)
+        u.profiles.includes(Profile.CUSTOMER) &&
+        !u.profiles.includes(Profile.TEACHER) && 
+        !u.profiles.includes(Profile.ADMIN)
     ), [users]);
 
     const students = useMemo(() => users.filter(u => 
         u.email && u.name &&
-        u.profiles.includes(Profile.STUDENT)
+        u.profiles.includes(Profile.STUDENT) &&
+        !u.profiles.includes(Profile.TEACHER) && 
+        !u.profiles.includes(Profile.ADMIN)
     ), [users]);
 
     const renderTable = (usersList: User[]) => (
@@ -37,7 +44,7 @@ export const TeacherManager: React.FC = () => {
                     <tr>
                         <th className="px-6 py-3">Nombre</th>
                         <th className="px-6 py-3">Email</th>
-                        <th className="px-6 py-3">Acceso Perfiles</th>
+                        {activeTab === 'profesores' && <th className="px-6 py-3">Acceso Perfiles</th>}
                         <th className="px-6 py-3">Estado</th>
                         <th className="px-6 py-3">Conexión</th>
                         <th className="px-6 py-3">Acciones</th>
@@ -48,21 +55,23 @@ export const TeacherManager: React.FC = () => {
                         <tr key={user.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                             <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{user.name}</td>
                             <td className="px-6 py-4">{user.email}</td>
-                            <td className="px-6 py-4">
-                                <div className="flex space-x-1">
-                                    {[Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.STUDENT, Profile.SALES_MANAGER].map(p => {
-                                        // Auto-calculate availability based on profiles array
-                                        const isEnabled = user.profiles.includes(p);
-                                        return (
-                                            <div 
-                                                key={p} 
-                                                className={`w-4 h-4 rounded-full ${isEnabled ? 'bg-green-500' : 'bg-red-500'}`}
-                                                title={`${getProfileDisplayName(p)}: ${isEnabled ? 'Activo' : 'Inactivo'}`}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </td>
+                            {activeTab === 'profesores' && (
+                                <td className="px-6 py-4">
+                                    <div className="flex space-x-1">
+                                        {[Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.SALES_MANAGER].map(p => {
+                                            // Auto-calculate availability based on profiles array
+                                            const isEnabled = user.profiles.includes(p);
+                                            return (
+                                                <div 
+                                                    key={p} 
+                                                    className={`w-3 h-3 rounded-full ${isEnabled ? 'bg-green-500' : 'bg-red-500/20'}`}
+                                                    title={`${getProfileDisplayName(p)}: ${isEnabled ? 'Activo' : 'Inactivo'}`}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                </td>
+                            )}
                             <td className="px-6 py-4">
                                 <button 
                                     onClick={() => handleToggleStatus(user)}
@@ -202,6 +211,7 @@ export const TeacherManager: React.FC = () => {
                     allAssignments={assignments}
                     allGroups={groups}
                     allModules={modules}
+                    activeTab={activeTab}
                 />
             )}
             
@@ -237,12 +247,13 @@ const UserFormModal: React.FC<{
     onSave: (user: Partial<User>) => void; 
     allAssignments: Assignment[],
     allGroups: Group[],
-    allModules: Module[]
-}> = ({ user, onClose, onSave, allAssignments, allGroups, allModules }) => {
+    allModules: Module[],
+    activeTab: 'profesores' | 'clientes' | 'alumnos'
+}> = ({ user, onClose, onSave, allAssignments, allGroups, allModules, activeTab }) => {
     const [formState, setFormState] = useState({
         name: user?.name || '',
         email: user?.email || '',
-        profiles: user?.profiles || [],
+        profiles: user?.profiles || (activeTab === 'profesores' ? [Profile.TEACHER] : activeTab === 'clientes' ? [Profile.CUSTOMER] : [Profile.STUDENT]),
         contract_type: user?.contract_type || 'Fijo',
         role_type: user?.role_type || 'Titular',
         phone: user?.phone || '',
@@ -287,7 +298,11 @@ const UserFormModal: React.FC<{
         onSave({ ...formState });
     };
 
-    const assignableProfiles = [Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.STUDENT, Profile.SALES_MANAGER];
+    const assignableProfiles = useMemo(() => {
+        if (activeTab === 'clientes') return [Profile.CUSTOMER];
+        if (activeTab === 'alumnos') return [Profile.STUDENT];
+        return [Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.SALES_MANAGER];
+    }, [activeTab]);
 
     return (
         <Modal isOpen={true} onClose={onClose} title={user ? 'Editar Personal' : 'Nuevo Personal'}>
@@ -300,17 +315,19 @@ const UserFormModal: React.FC<{
                     <input type="text" name="address" value={formState.address} onChange={handleChange} placeholder="Dirección" className="w-full p-2 border rounded dark:bg-gray-700"/>
                 </div>
 
-                <div>
-                    <label className="font-medium">Perfiles</label>
-                    <div className="grid grid-cols-3 gap-2 mt-1">
-                        {assignableProfiles.map(p => (
-                            <label key={p} className="flex items-center space-x-2 p-2 border rounded-md dark:border-gray-600">
-                                <input type="checkbox" checked={formState.profiles.includes(p)} onChange={() => handleProfileChange(p)} />
-                                <span className="text-sm">{getProfileDisplayName(p)}</span>
-                            </label>
-                        ))}
+                {activeTab === 'profesores' && (
+                    <div>
+                        <label className="font-medium">Perfiles / Permisos</label>
+                        <div className="grid grid-cols-2 gap-2 mt-1">
+                            {assignableProfiles.map(p => (
+                                <label key={p} className="flex items-center space-x-2 p-2 border rounded-md dark:border-gray-600 bg-white dark:bg-gray-800">
+                                    <input type="checkbox" checked={formState.profiles.includes(p)} onChange={() => handleProfileChange(p)} />
+                                    <span className="text-sm">{getProfileDisplayName(p)}</span>
+                                </label>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {formState.profiles.includes(Profile.TEACHER) && (
                     <div className="grid grid-cols-2 gap-4">

@@ -8,7 +8,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, query, collection, where, getDocs, deleteDoc, getDocFromServer } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, where, getDocs, deleteDoc, getDocFromServer, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { User, Profile, SUPER_USER_EMAILS } from '../types';
@@ -60,18 +60,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Sanitize fields
       if (!Array.isArray(userData.profiles)) {
-         userData.profiles = isSuperUser ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] : [Profile.TEACHER];
+         userData.profiles = isSuperUser ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] : []; // Do NOT default to TEACHER
          needsUpdate = true;
       }
 
       // Migration for users created before the change
       if (userData.profiles && userData.profiles.includes(Profile.STUDENT) && !userData.classroom_id && !isSuperUser) {
-          // Instead of forcing them to 'De Baja' and erasing their existing profiles,
-          // Just ensure they are listed. If they already have profiles, don't overwrite them violently.
-          if (userData.profiles.length === 1) { // Only if they were strictly broken students
-            userData.profiles = [Profile.TEACHER];
-            needsUpdate = true;
-          }
+          // Keep as is, do not force TEACHER
       }
       // Ensure workspaceId exists
       if (!userData.workspaceId) {
@@ -92,16 +87,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (isSuperUser) {
         console.log('AuthContext - Super user detected, ensuring all profiles are enabled:', userData.email);
         const allProfiles = Object.values(Profile);
-        if (!userData.access_profiles) {
-          userData.access_profiles = {};
-          needsUpdate = true;
-        }
-        allProfiles.forEach(p => {
-          if (userData.access_profiles && !userData.access_profiles[p]) {
-            userData.access_profiles[p] = true;
+        if (!userData.profiles || userData.profiles.length < allProfiles.length) {
+            userData.profiles = allProfiles;
             needsUpdate = true;
-          }
-        });
+        }
       }
       if (needsUpdate) {
         await setDoc(userDocRef, userData);
@@ -125,11 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: firebaseUser.uid,
             name: firebaseUser.displayName || oldUserData.name || userEmail.split('@')[0],
             avatar: firebaseUser.photoURL || oldUserData.avatar,
-            // DO NOT change workspaceId if already set, keep what admin entered,
-            // otherwise set to their own uid (which may leave them disconnected if admin didn't set a workspaceId... 
-            // Wait, actually everyone gets a workspaceId = user_id when logging in alone, 
-            // but if admin created them, workspaceId defaults to the admin's workspace if admin was building it...
-            // Let's just keep the oldUserData.workspaceId or default to their uid.
             workspaceId: oldUserData.workspaceId || firebaseUser.uid,
           };
           
@@ -146,13 +130,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: firebaseUser.displayName || userEmail.split('@')[0],
         profiles: isSuperUser 
           ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] 
-          : [Profile.TEACHER], // Default to Teacher so they appear in TeacherManager
+          : [], // Do not default to TEACHER anymore, stay in standby/activation required
         role: isSuperUser ? 'admin' : 'user',
         workspaceId: firebaseUser.uid, // Set workspaceId to UID by default
-        activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive
+        activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive/pending
         location_status: 'En el centro',
         avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
-        access_profiles: Object.values(Profile).reduce((acc, p) => ({ ...acc, [p]: true }), {})
       };
       await setDoc(userDocRef, newUser);
       return newUser;
@@ -178,6 +161,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const syncedUser = await resolveOrSyncUser(firebaseUser);
           setCurrentUser(syncedUser);
+
+          // Real-time listener for user document changes (profiles, activity_status)
+          const unsubUserListener = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnap: any) => {
+            if (docSnap.exists()) {
+              const latestData = docSnap.data() as User;
+              setCurrentUser(latestData);
+            }
+          });
           
           // --- PRESENCE SYSTEM START ---
           const setPresence = (status: 'En el centro' | 'Fuera del centro') => {
@@ -197,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           (window as any).__presenceCleanup = () => {
              setPresence('Fuera del centro');
              window.removeEventListener('beforeunload', handleBeforeUnload);
+             unsubUserListener(); // Cleanup listener too
           };
           // --- PRESENCE SYSTEM END ---
           
