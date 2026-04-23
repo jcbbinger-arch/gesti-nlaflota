@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
-import { PlusIcon, WarningIcon, DownloadIcon } from '../../components/icons';
+import { PlusIcon, WarningIcon, DownloadIcon, TrashIcon } from '../../components/icons';
 import { User, Profile, Assignment, Group, Module, getProfileDisplayName, SUPER_USER_EMAILS } from '../../types';
 import { exportToCsv } from '../../utils/export';
 
@@ -79,9 +79,15 @@ export const TeacherManager: React.FC = () => {
                                     {user.location_status === 'En el centro' ? 'Online' : 'Offline'}
                                 </span>
                             </td>
-                            <td className="px-6 py-4 text-sm font-medium space-x-4 no-print">
+                            <td className="px-6 py-4 text-sm font-medium space-x-4 no-print flex items-center">
                                 <button onClick={() => handleOpenFormModal(user)} className="text-blue-600 dark:text-blue-500 hover:underline">Ver/Editar</button>
-                                <button onClick={() => handleOpenDeleteModal(user)} className="text-red-600 dark:text-red-500 hover:underline">Eliminar</button>
+                                <button 
+                                    onClick={() => handleOpenDeleteModal(user)} 
+                                    className="p-2 text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                                    title="Eliminar usuario"
+                                >
+                                    <TrashIcon className="w-5 h-5" />
+                                </button>
                             </td>
                         </tr>
                     ))}
@@ -183,11 +189,6 @@ export const TeacherManager: React.FC = () => {
             </div>
 
             <Card title={activeTab === 'profesores' ? 'Profesores' : activeTab === 'clientes' ? 'Clientes Takeaway' : 'Alumnos'}>
-                {activeTab === 'alumnos' && (
-                    <button onClick={() => setUsers(users.filter(u => !u.profiles.includes(Profile.STUDENT)))} className="mb-4 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
-                        Reiniciar lista de alumnos
-                    </button>
-                )}
                 {activeTab === 'profesores' && renderTable(staff)}
                 {activeTab === 'clientes' && renderTable(takeawayCustomers)}
                 {activeTab === 'alumnos' && renderTable(students)}
