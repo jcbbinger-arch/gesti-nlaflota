@@ -15,16 +15,41 @@ export const OrderPortal: React.FC = () => {
     const isAlmacen = currentUser?.profiles.includes(Profile.ALMACEN);
     
     const now = new Date();
+
+    // Filter events based on authorized_teachers
+    const filteredEvents = events.filter(e => {
+        // Admins, Creators and Almacen see everything
+        const isManagement = currentUser?.profiles.includes(Profile.ADMIN) || 
+                           currentUser?.profiles.includes(Profile.CREATOR) ||
+                           currentUser?.profiles.includes(Profile.ALMACEN);
+        
+        if (isManagement) return true;
+        
+        // Regular events are for everyone
+        if (e.type === 'Regular') return true;
+        
+        // For Servicio and Extraordinario, check authorized_teachers
+        if (e.authorized_teachers && e.authorized_teachers.length > 0) {
+            return e.authorized_teachers.includes(currentUser?.id || '');
+        }
+        
+        // Extraordinario without authorized_teachers is for everyone
+        if (e.type === 'Extraordinario') return true;
+        
+        // Servicio without authorized_teachers is hidden (must be assigned)
+        return false;
+    });
     
     // Eventos que están en su rango de fechas y están activos
-    const activeEvents = events
+    const activeEvents = filteredEvents
         .filter(e => e.status === 'Activo' && new Date(e.start_date) <= now && new Date(e.end_date) >= now)
         .sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime());
     
     // Eventos programados para el futuro (activos pero aún no han empezado)
-    const futureEvents = events
+    const futureEvents = filteredEvents
         .filter(e => e.status === 'Activo' && new Date(e.start_date) > now)
-        .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+        .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+        .slice(0, 6); // Limit to next 6 events to avoid saturation
 
     const staffMealOrders = orders.filter(o => o.is_staff_meal && o.user_id === currentUser?.id);
 
@@ -95,7 +120,7 @@ export const OrderPortal: React.FC = () => {
                                     const linkSuffix = isEconomatoMode ? '&type=economato' : '';
                                     
                                     return (
-                                        <tr key={event.id} className="hover:bg-gray-50 transition-colors border-l-4" style={{ borderLeftColor: event.color || '#6b7280' }}>
+                                        <tr key={event.id} className={`hover:opacity-90 transition-colors border-l-4 ${event.type === 'Regular' ? 'bg-blue-50/30' : event.type === 'Servicio' ? 'bg-green-50/30' : 'bg-red-50/30'}`} style={{ borderLeftColor: event.color || '#6b7280' }}>
                                             <td className="px-6 py-4">
                                                 <div className="font-bold text-gray-800 flex items-center">
                                                     {event.name}
@@ -171,7 +196,7 @@ export const OrderPortal: React.FC = () => {
                 <Card title="Próximos Eventos (Pronto se abrirán)">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {futureEvents.map(event => (
-                            <div key={event.id} className="p-4 border border-l-4 rounded-lg bg-gray-50 opacity-75" style={{ borderLeftColor: event.color || '#6b7280' }}>
+                            <div key={event.id} className={`p-4 border border-l-4 rounded-lg opacity-75 ${event.type === 'Regular' ? 'bg-blue-50/20' : event.type === 'Servicio' ? 'bg-green-50/20' : 'bg-red-50/20'}`} style={{ borderLeftColor: event.color || '#6b7280' }}>
                                 <h3 className="font-bold text-gray-700">{event.name}</h3>
                                 <div className="text-xs space-y-1 mt-2 text-gray-500">
                                     <p><span className="font-medium">Se abre el:</span> {new Date(event.start_date).toLocaleString()}</p>

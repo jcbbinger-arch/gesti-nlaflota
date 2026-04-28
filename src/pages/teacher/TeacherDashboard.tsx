@@ -27,7 +27,31 @@ export const TeacherDashboard: React.FC = () => {
     const basePath = isStudent ? '/student' : '/teacher';
 
     const now = new Date();
-    const activeEvents = events.filter(e => new Date(e.start_date) <= now && new Date(e.end_date) >= now);
+    const activeEvents = events.filter(e => {
+        // Basic date check
+        if (!(new Date(e.start_date) <= now && new Date(e.end_date) >= now)) return false;
+        
+        // Admins, Creators and Almacen see everything
+        const isManagement = currentUser?.profiles.includes(Profile.ADMIN) || 
+                           currentUser?.profiles.includes(Profile.CREATOR) ||
+                           currentUser?.profiles.includes(Profile.ALMACEN);
+        
+        if (isManagement) return true;
+        
+        // Regular events are for everyone
+        if (e.type === 'Regular') return true;
+        
+        // For Servicio and Extraordinario, check authorized_teachers
+        if (e.authorized_teachers && e.authorized_teachers.length > 0) {
+            return e.authorized_teachers.includes(currentUser?.id || '');
+        }
+        
+        // Extraordinario without authorized_teachers is for everyone
+        if (e.type === 'Extraordinario') return true;
+        
+        // Servicio without authorized_teachers is hidden (must be assigned)
+        return false;
+    });
     
     const myRecentOrders = orders
         .filter(o => o.user_id === currentUser?.id)
@@ -85,7 +109,7 @@ export const TeacherDashboard: React.FC = () => {
                         {activeEvents.length > 0 ? (
                             <ul className="space-y-3">
                                 {activeEvents.map(event => (
-                                    <li key={event.id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex justify-between items-center border-l-4" style={{ borderColor: event.color || '#6b7280' }}>
+                                    <li key={event.id} className={`p-4 rounded-lg flex justify-between items-center border-l-4 ${event.type === 'Regular' ? 'bg-blue-50/50 dark:bg-blue-900/10' : event.type === 'Servicio' ? 'bg-green-50/50 dark:bg-green-900/10' : 'bg-red-50/50 dark:bg-red-900/10'}`} style={{ borderColor: event.color || '#6b7280' }}>
                                         <div>
                                             <p className="font-semibold">{event.name}</p>
                                             <p className="text-sm text-gray-500">Finaliza el {new Date(event.end_date).toLocaleDateString()}</p>

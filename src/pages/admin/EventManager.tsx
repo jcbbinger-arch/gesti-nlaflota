@@ -34,7 +34,7 @@ const getEventStatus = (event: AppEvent) => {
 }
 
 export const EventManager: React.FC = () => {
-    const { events, setEvents, users, services, setServices } = useData();
+    const { events, setEvents, users, services, setServices, service_groups } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
@@ -52,19 +52,26 @@ export const EventManager: React.FC = () => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            // 1. Sync Services (Ensure every service has an associated event)
             const serviceEventsToCreate: AppEvent[] = [];
+            const serviceEventsToUpdate: AppEvent[] = [];
             const updatedServices = [...services];
             let servicesNeededUpdate = false;
+            let eventsNeededUpdate = false;
 
             services.forEach((service, index) => {
-                // Check if an event exists for this service
-                const eventExists = events.some(e => 
+                // Find existing event
+                const existingEvent = events.find(e => 
                     (service.event_id && e.id === service.event_id) || 
                     (e.type === 'Servicio' && (e.id === service.event_id || e.name.includes(service.name)))
                 );
                 
-                if (!eventExists) {
+                // Calculate authorized teachers
+                const serviceGroup = service_groups.find(g => g.id === service.service_group_id);
+                const groupTeachers = serviceGroup ? serviceGroup.teacher_ids : [];
+                const roleTeachers = Object.values(service.roles || {}).filter(uid => !!uid) as string[];
+                const authorizedTeachers = Array.from(new Set([...groupTeachers, ...roleTeachers]));
+
+                if (!existingEvent) {
                     const eventId = service.event_id || `evt-svc-sync-${service.id}-${Date.now()}`;
                     
                     const calculateEventDates = (serviceDateStr: string) => {
@@ -75,7 +82,7 @@ export const EventManager: React.FC = () => {
                         closingDate.setDate(serviceWeekMonday.getDate() - 7);
                         closingDate.setHours(23, 59, 59, 999);
                         const openingDate = new Date(closingDate);
-                        openingDate.setDate(closingDate.getDate() - 13);
+                        openingDate.setDate(closingDate.getDate() - 5);
                         openingDate.setHours(0, 0, 0, 0);
                         return { openingDate, closingDate };
                     };
@@ -92,7 +99,7 @@ export const EventManager: React.FC = () => {
                         end_date: closingDate.toISOString(),
                         budget_per_teacher: companyInfo.default_budget || 300,
                         status: 'Activo',
-                        authorized_teachers: [],
+                        authorized_teachers: authorizedTeachers,
                         color: PRESET_COLORS[1].value // Green for Service
                     };
                     
@@ -101,6 +108,19 @@ export const EventManager: React.FC = () => {
                     if (!service.event_id) {
                         updatedServices[index] = { ...service, event_id: eventId };
                         servicesNeededUpdate = true;
+                    }
+                } else {
+                    // Check if authorized teachers match
+                    const currentAuth = existingEvent.authorized_teachers || [];
+                    const needsUpdate = authorizedTeachers.length !== currentAuth.length || 
+                                      !authorizedTeachers.every(id => currentAuth.includes(id));
+                    
+                    if (needsUpdate) {
+                        serviceEventsToUpdate.push({
+                            ...existingEvent,
+                            authorized_teachers: authorizedTeachers
+                        });
+                        eventsNeededUpdate = true;
                     }
                 }
             });
@@ -149,13 +169,17 @@ export const EventManager: React.FC = () => {
                 }
             }
 
-            if (serviceEventsToCreate.length > 0 || generatedRegularEvents.length > 0) {
-                console.log(`[EventManager] Syncing ${serviceEventsToCreate.length} service events and ${generatedRegularEvents.length} regular events`);
+            if (serviceEventsToCreate.length > 0 || serviceEventsToUpdate.length > 0 || generatedRegularEvents.length > 0) {
+                console.log(`[EventManager] Syncing ${serviceEventsToCreate.length} new, ${serviceEventsToUpdate.length} updated service events and ${generatedRegularEvents.length} regular events`);
                 setEvents((prevEvents: AppEvent[]) => {
-                    const existingIds = new Set(prevEvents.map(e => e.id));
+                    // Start with filtered previous events (remove those that are being updated)
+                    const filteredPrev = prevEvents.filter(e => !serviceEventsToUpdate.some(ue => ue.id === e.id));
+                    const existingIds = new Set(filteredPrev.map(e => e.id));
+                    
                     const newEvents = [...serviceEventsToCreate, ...generatedRegularEvents].filter(ne => !existingIds.has(ne.id));
-                    if (newEvents.length === 0) return prevEvents;
-                    return [...prevEvents, ...newEvents];
+                    
+                    if (newEvents.length === 0 && serviceEventsToUpdate.length === 0) return prevEvents;
+                    return [...filteredPrev, ...newEvents, ...serviceEventsToUpdate];
                 });
             }
             
@@ -261,6 +285,15 @@ export const EventManager: React.FC = () => {
 
     const sortedEvents = useMemo(() => [...events].sort((a,b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()), [events]);
 
+    const getRowBgColor = (type: string) => {
+        switch (type) {
+            case 'Regular': return 'bg-blue-50/50 dark:bg-blue-900/10';
+            case 'Extraordinario': return 'bg-red-50/50 dark:bg-red-900/10';
+            case 'Servicio': return 'bg-green-50/50 dark:bg-green-900/10';
+            default: return '';
+        }
+    };
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -295,8 +328,9 @@ export const EventManager: React.FC = () => {
                         <tbody>
                             {sortedEvents.map(event => {
                                 const status = getEventStatus(event);
+                                const bgClass = getRowBgColor(event.type);
                                 return (
-                                <tr key={event.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                <tr key={event.id} className={`border-b dark:border-gray-700 transition-colors ${bgClass} hover:opacity-80`}>
                                     <td className="px-4 py-2 font-medium">
                                         <div className="flex items-center">
                                             <div 
@@ -425,7 +459,7 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
                 closeDate.setHours(23, 59, 59, 999);
                 
                 const openDate = new Date(closeDate);
-                openDate.setDate(openDate.getDate() - 14);
+                openDate.setDate(openDate.getDate() - 5);
                 openDate.setHours(0, 0, 0, 0);
 
                 setFormState(prev => ({
@@ -483,7 +517,7 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
                              <input type="date" value={eventDateStr} onChange={e => setEventDateStr(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700" />
                              <button type="button" onClick={calculateDates} className="bg-blue-600 text-white px-4 py-2 rounded">Calcular</button>
                          </div>
-                         <p className="text-xs mt-1 text-blue-600">Calcula automático: Cierre el lunes de la semana anterior al evento, Apertura 2 semanas antes de apertura.</p>
+                         <p className="text-xs mt-1 text-blue-600">Calcula automático: Cierre el lunes de la semana anterior al evento, Apertura 5 días antes del cierre.</p>
                     </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
@@ -500,7 +534,7 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
                     <label>Presupuesto por Profesor (€)</label>
                     <input type="number" name="budget_per_teacher" value={formState.budget_per_teacher} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600" />
                 </div>
-                {formState.type === 'Extraordinario' && (
+                { (formState.type === 'Extraordinario' || formState.type === 'Servicio') && (
                      <div>
                         <label>Profesores Autorizados (dejar vacío para todos)</label>
                         <MultiSelectTeachers teachers={teachers} selected={formState.authorized_teachers || []} onChange={handleAuthTeacherChange} />
