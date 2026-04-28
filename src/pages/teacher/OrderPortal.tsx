@@ -10,10 +10,17 @@ import { exportToCsv } from '../../utils/export';
 export const OrderPortal: React.FC = () => {
     const { events, orders, service_groups, assignments } = useData();
     const { currentUser } = useAuth();
+    const { selectedProfile } = useAuth();
     const [searchParams] = useSearchParams();
     const isEconomatoMode = searchParams.get('type') === 'economato';
+    
     const isAlmacen = currentUser?.profiles.includes(Profile.ALMACEN);
     const isAdmin = currentUser?.profiles.includes(Profile.ADMIN);
+    
+    // Management profiles see everything
+    const isManagement = selectedProfile === Profile.ADMIN || 
+                       selectedProfile === Profile.CREATOR ||
+                       selectedProfile === Profile.ALMACEN;
     
     const now = new Date();
 
@@ -23,14 +30,9 @@ export const OrderPortal: React.FC = () => {
 
     // Filter events based on authorized_teachers
     const filteredEvents = events.filter(e => {
-        // Admins, Creators and Almacen see everything
-        const isManagement = currentUser?.profiles.includes(Profile.ADMIN) || 
-                           currentUser?.profiles.includes(Profile.CREATOR) ||
-                           currentUser?.profiles.includes(Profile.ALMACEN);
-        
         if (isManagement) return true;
         
-        // Regular events are for everyone
+        // Regular events (weekly) are for everyone
         if (e.type === 'Regular') return true;
         
         // For Servicio and Extraordinario, check authorized_teachers
@@ -38,10 +40,8 @@ export const OrderPortal: React.FC = () => {
             return e.authorized_teachers.includes(currentUser?.id || '');
         }
         
-        // Extraordinario without authorized_teachers is for everyone
-        if (e.type === 'Extraordinario') return true;
-        
-        // Servicio without authorized_teachers is hidden (must be assigned)
+        // If type is Servicio or Extraordinario, but no authorized_teachers defined, 
+        // it shouldn't show for regular teachers unless they are assigned.
         return false;
     });
     

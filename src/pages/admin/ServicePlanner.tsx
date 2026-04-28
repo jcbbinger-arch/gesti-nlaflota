@@ -298,7 +298,7 @@ const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: Us
 
 // --- SERVICE MANAGEMENT ---
 const ServiceManager: React.FC = () => {
-    const { services, setServices, service_groups, events, setEvents } = useData();
+    const { services, setServices, service_groups, events, setEvents, assignments } = useData();
     const { companyInfo } = useCompany();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -335,9 +335,14 @@ const ServiceManager: React.FC = () => {
         const { openingDate, closingDate } = calculateEventDates(serviceData.date!);
         const eventName = formatEventName(serviceData.name!, serviceData.date!);
         
-        // Find teachers for authorized_teachers
+        // Find teachers for authorized_teachers (only those with assigned roles in the group)
         const group = service_groups.find(g => g.id === (serviceData.service_group_id || selectedService?.service_group_id));
-        const teacherIds = group?.teacher_ids || [];
+        const authorizedTeacherIds = Array.from(new Set(
+            Object.values(group?.roles || {}).flat().map(id => {
+                const assignment = assignments.find(a => a.id === id);
+                return assignment ? assignment.user_id : id;
+            })
+        )).filter(id => !!id);
 
         if (selectedService) {
             // Update Service
@@ -351,7 +356,7 @@ const ServiceManager: React.FC = () => {
                     name: eventName,
                     start_date: openingDate.toISOString(),
                     end_date: closingDate.toISOString(),
-                    authorized_teachers: teacherIds
+                    authorized_teachers: authorizedTeacherIds
                 } : e));
             }
         } else {
@@ -365,7 +370,7 @@ const ServiceManager: React.FC = () => {
                 end_date: closingDate.toISOString(),
                 budget_per_teacher: companyInfo.default_budget || 300,
                 status: 'Activo',
-                authorized_teachers: teacherIds
+                authorized_teachers: authorizedTeacherIds
             };
             setEvents([...events, newEvent]);
 
