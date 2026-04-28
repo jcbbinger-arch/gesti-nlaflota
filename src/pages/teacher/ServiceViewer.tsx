@@ -8,6 +8,7 @@ import { PlusIcon, TrashIcon, PrinterIcon } from '../../components/icons';
 import { useNavigate } from 'react-router-dom';
 import { addHeaderToPdf } from '../../utils/export';
 import { useCompany } from '../../contexts/CompanyContext';
+import { ALLERGENS_LIST, ALLERGEN_ICONS } from '../../lib/allergens';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -207,6 +208,15 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
     const [recommendedMarking, setRecommendedMarking] = useState('');
     const [serviceType, setServiceType] = useState('');
     const [clientDescription, setClientDescription] = useState('');
+    const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
+
+    const toggleAllergen = (allergen: string) => {
+        setSelectedAllergens(prev => 
+            prev.includes(allergen) 
+                ? prev.filter(a => a !== allergen) 
+                : [...prev, allergen]
+        );
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -230,7 +240,8 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
             service_time: serviceTime,
             recommended_marking: recommendedMarking,
             service_type: serviceType,
-            client_description: clientDescription
+            client_description: clientDescription,
+            selected_allergens: selectedAllergens
         };
 
         onSave(newRecipe);
@@ -318,6 +329,31 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
                         rows={3}
                         placeholder="Descripción que aparecerá en la carta..."
                     />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-2">Alérgenos</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {ALLERGENS_LIST.map(allergen => {
+                            const isSelected = selectedAllergens.includes(allergen);
+                            const icon = (ALLERGEN_ICONS as any)[allergen];
+                            return (
+                                <button
+                                    key={allergen}
+                                    type="button"
+                                    onClick={() => toggleAllergen(allergen)}
+                                    className={`flex items-center space-x-2 p-2 rounded border text-left transition-colors ${
+                                        isSelected 
+                                            ? 'bg-red-50 border-red-200 text-red-700' 
+                                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <span className="text-lg">{icon}</span>
+                                    <span className="text-xs font-medium truncate">{allergen}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 <div className="flex justify-end space-x-2 pt-4">
