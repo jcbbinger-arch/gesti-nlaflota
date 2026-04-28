@@ -50,14 +50,6 @@ export const AssignmentManager: React.FC = () => {
             }
         }
     };
-
-    const handleToggleTransfer = (group_id: string, module_id: string) => {
-        setAssignments(assignments.map(a => 
-            (a.group_id === group_id && a.module_id === module_id) 
-                ? { ...a, allow_transfers: !a.allow_transfers } 
-                : a
-        ));
-    };
     
     const toggleGroupModule = (group_id: string, module_id: string) => {
         setGroups(groups.map(g => {
@@ -229,18 +221,6 @@ export const AssignmentManager: React.FC = () => {
                                                                         </select>
                                                                     </div>
                                                                     
-                                                                    {assignmentsMap.has(`${group.id}|${module.id}`) && (
-                                                                        <label className="no-print flex items-center space-x-1.5 px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded border border-indigo-100 dark:border-indigo-800 cursor-pointer transition-colors hover:bg-indigo-100" title="Marcar como módulo de producción para asignar costes a otros servicios">
-                                                                            <input 
-                                                                                type="checkbox"
-                                                                                checked={assignments.find(a => a.group_id === group.id && a.module_id === module.id)?.allow_transfers || false}
-                                                                                onChange={() => handleToggleTransfer(group.id, module.id)}
-                                                                                className="h-3.5 w-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-                                                                            />
-                                                                            <span className="text-[10px] font-bold uppercase tracking-wider">Traspasos</span>
-                                                                        </label>
-                                                                    )}
-
                                                                     <span className="print-only font-bold text-primary-600">
                                                                         {teachers.find(t => t.id === assignmentsMap.get(`${group.id}|${module.id}`))?.name || '-- Sin Profesor --'}
                                                                     </span>

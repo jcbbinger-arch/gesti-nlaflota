@@ -106,12 +106,18 @@ const ServiceGroupManager: React.FC = () => {
 };
 
 const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: User[]; onClose: () => void; onSave: (data: Partial<ServiceGroup>) => void; }> = ({ group, teachers, onClose, onSave }) => {
-    const { assignments, groups, modules } = useData();
+    const { assignments, setAssignments, groups, modules } = useData();
     const [name, setName] = useState(group?.name || '');
     const [teacher_ids, setTeacherIds] = useState<string[]>(group?.teacher_ids || []);
     const [roles, setRoles] = useState<Partial<Record<ServiceRole, string[]>>>(group?.roles || {});
     
     const teachersInGroup = useMemo(() => teachers.filter(t => teacher_ids.includes(t.id)), [teachers, teacher_ids]);
+
+    const handleToggleTransfer = (assignmentId: string) => {
+        setAssignments(prev => prev.map(a => 
+            a.id === assignmentId ? { ...a, allow_transfers: !a.allow_transfers } : a
+        ));
+    };
 
     const getTeacherAssignments = (userId: string) => {
         return assignments.filter(a => a.user_id === userId);
@@ -229,24 +235,38 @@ const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: Us
                                                     </label>
                                                     
                                                     {isSelected && teacherAssignments.length > 0 && (
-                                                        <select 
-                                                            value={selectedAssignmentId} 
-                                                            onChange={(e) => {
-                                                                const oldVal = selectedAssignmentId || t.id;
-                                                                const newVal = e.target.value;
-                                                                
-                                                                setRoles(prev => {
-                                                                    const currentRoleSelection = prev[role] || [];
-                                                                    const newRoleSelection = currentRoleSelection.map(v => v === oldVal ? newVal : v);
-                                                                    return { ...prev, [role]: newRoleSelection };
-                                                                });
-                                                            }}
-                                                            className="text-xs p-1 border rounded bg-white dark:bg-gray-700 w-full sm:w-auto"
-                                                        >
-                                                            {teacherAssignments.map(a => (
-                                                                <option key={a.id} value={a.id}>{getAssignmentLabel(a.id)}</option>
-                                                            ))}
-                                                        </select>
+                                                        <div className="flex items-center space-x-2">
+                                                            <select 
+                                                                value={selectedAssignmentId} 
+                                                                onChange={(e) => {
+                                                                    const oldVal = selectedAssignmentId || t.id;
+                                                                    const newVal = e.target.value;
+                                                                    
+                                                                    setRoles(prev => {
+                                                                        const currentRoleSelection = prev[role] || [];
+                                                                        const newRoleSelection = currentRoleSelection.map(v => v === oldVal ? newVal : v);
+                                                                        return { ...prev, [role]: newRoleSelection };
+                                                                    });
+                                                                }}
+                                                                className="text-xs p-1 border rounded bg-white dark:bg-gray-700 w-full sm:w-auto"
+                                                            >
+                                                                {teacherAssignments.map(a => (
+                                                                    <option key={a.id} value={a.id}>{getAssignmentLabel(a.id)}</option>
+                                                                ))}
+                                                            </select>
+                                                            
+                                                            {selectedAssignmentId && (
+                                                                <label className="flex items-center space-x-1 px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded border border-indigo-100 dark:border-indigo-800 cursor-pointer hover:bg-indigo-100 transition-colors" title="Marcar como módulo de producción para realizar traspasos">
+                                                                    <input 
+                                                                        type="checkbox"
+                                                                        checked={assignments.find(a => a.id === selectedAssignmentId)?.allow_transfers || false}
+                                                                        onChange={() => handleToggleTransfer(selectedAssignmentId)}
+                                                                        className="h-3 w-3 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+                                                                    />
+                                                                    <span className="text-[9px] font-bold uppercase">Traspasos</span>
+                                                                </label>
+                                                            )}
+                                                        </div>
                                                     )}
                                                     
                                                     {isSelected && teacherAssignments.length === 0 && (
