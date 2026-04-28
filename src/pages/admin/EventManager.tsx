@@ -34,12 +34,12 @@ export const EventManager: React.FC = () => {
     
     // Automatic event generation and Service sync logic
     useEffect(() => {
-        if (services.length === 0 && events.length > 0) return; // Wait for initial data
+        // Wait for data to be loaded
+        if (services.length === 0 && events.length === 0) return;
 
-        const syncAndGenerateEvents = () => {
+        const syncAndGenerateEvents = async () => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const generatedRegularEvents: AppEvent[] = [];
             
             // 1. Sync Services (Ensure every service has an associated event)
             const serviceEventsToCreate: AppEvent[] = [];
@@ -47,13 +47,14 @@ export const EventManager: React.FC = () => {
             let servicesNeededUpdate = false;
 
             services.forEach((service, index) => {
+                // Check if an event exists for this service
                 const eventExists = events.some(e => 
                     (service.event_id && e.id === service.event_id) || 
-                    (e.type === 'Servicio' && e.name.includes(service.name) && Math.abs(new Date(service.date).getTime() - new Date(e.end_date).getTime() - (7 * 24 * 60 * 60 * 1000)) < 24 * 60 * 60 * 1000)
+                    (e.type === 'Servicio' && (e.id === service.event_id || e.name.includes(service.name)))
                 );
                 
                 if (!eventExists) {
-                    const eventId = service.event_id || `evt-svc-sync-${Date.now()}-${index}`;
+                    const eventId = service.event_id || `evt-svc-sync-${service.id}-${Date.now()}`;
                     
                     const calculateEventDates = (serviceDateStr: string) => {
                         const serviceDate = new Date(serviceDateStr);
@@ -93,6 +94,7 @@ export const EventManager: React.FC = () => {
             });
 
             // 2. Generate Regular Weekly Events (Next 8 weeks)
+            const generatedRegularEvents: AppEvent[] = [];
             for (let i = 0; i < 8; i++) {
                 const targetDate = new Date(today);
                 targetDate.setDate(today.getDate() + (i * 7));
@@ -104,8 +106,11 @@ export const EventManager: React.FC = () => {
                 const year = targetDate.getFullYear();
                 const weekOfYear = Math.ceil((((targetDate.getTime() - new Date(year, 0, 1).getTime()) / 86400000) + new Date(year, 0, 1).getDay() + 1) / 7);
 
-                const eventExists = events.some(e => e.name === eventName && e.type === 'Regular') || 
-                                  generatedRegularEvents.some(e => e.name === eventName && e.type === 'Regular');
+                // Use a more inclusive check for regular events to avoid duplicates
+                const eventExists = events.some(e => 
+                    (e.type === 'Regular' && e.name.toLowerCase().includes(`${monthName.toLowerCase()}`) && e.name.toLowerCase().includes(`semana ${weekOfMonth}`)) ||
+                    (e.id === `evt-auto-${year}-${weekOfYear}`)
+                );
 
                 if (!eventExists) {
                     const eventWeekMonday = new Date(targetDate);
@@ -132,17 +137,29 @@ export const EventManager: React.FC = () => {
             }
 
             if (serviceEventsToCreate.length > 0 || generatedRegularEvents.length > 0) {
-                setEvents([...events, ...serviceEventsToCreate, ...generatedRegularEvents]);
+                console.log(`[EventManager] Syncing ${serviceEventsToCreate.length} service events and ${generatedRegularEvents.length} regular events`);
+                setEvents((prevEvents: AppEvent[]) => {
+                    const existingIds = new Set(prevEvents.map(e => e.id));
+                    const newEvents = [...serviceEventsToCreate, ...generatedRegularEvents].filter(ne => !existingIds.has(ne.id));
+                    if (newEvents.length === 0) return prevEvents;
+                    return [...prevEvents, ...newEvents];
+                });
             }
             
             if (servicesNeededUpdate) {
-                setServices(updatedServices);
+                console.log('[EventManager] Updating services with linked event IDs');
+                setServices((prevServices: Service[]) => {
+                    return prevServices.map(ps => {
+                        const updated = updatedServices.find(us => us.id === ps.id);
+                        return updated || ps;
+                    });
+                });
             }
         };
 
         syncAndGenerateEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [services.length, events.length === 0]); // Re-run if services length changes or if events are cleared
+    }, [services.length, events.length]); 
 
 
     const handleOpenModal = (event: AppEvent | null = null) => {
@@ -229,7 +246,7 @@ export const EventManager: React.FC = () => {
         exportToCsv('eventos.csv', dataToExport);
     }
 
-    const sortedEvents = useMemo(() => [...events].sort((a,b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()), [events]);
+    const sortedEvents = useMemo(() => [...events].sort((a,b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()), [events]);
 
     return (
         <div>

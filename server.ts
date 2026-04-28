@@ -13,6 +13,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let projectIdStr = process.env.FIREBASE_PROJECT_ID;
+let databaseIdStr = process.env.FIREBASE_DATABASE_ID; // Allow env override
+
 try {
   const configPath = path.resolve(__dirname, 'firebase-applet-config.json');
   if (fs.existsSync(configPath)) {
@@ -20,6 +22,9 @@ try {
     const config = JSON.parse(fileContent);
     if (config.projectId) {
       projectIdStr = config.projectId;
+    }
+    if (config.firestoreDatabaseId) {
+      databaseIdStr = config.firestoreDatabaseId;
     }
   }
 } catch (e) {
@@ -30,7 +35,9 @@ admin.initializeApp({
   credential: admin.credential.applicationDefault(),
   projectId: projectIdStr
 });
-const db = admin.firestore();
+
+// Use the specific database ID if provided
+const db = databaseIdStr ? admin.firestore(databaseIdStr) : admin.firestore();
 
 async function startServer() {
   const app = express();
