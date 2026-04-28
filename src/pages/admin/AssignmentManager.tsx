@@ -44,10 +44,19 @@ export const AssignmentManager: React.FC = () => {
                     id: `asg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
                     group_id, 
                     module_id, 
-                    user_id 
+                    user_id,
+                    allow_transfers: false
                 }]);
             }
         }
+    };
+
+    const handleToggleTransfer = (group_id: string, module_id: string) => {
+        setAssignments(assignments.map(a => 
+            (a.group_id === group_id && a.module_id === module_id) 
+                ? { ...a, allow_transfers: !a.allow_transfers } 
+                : a
+        ));
     };
     
     const toggleGroupModule = (group_id: string, module_id: string) => {
@@ -206,17 +215,32 @@ export const AssignmentManager: React.FC = () => {
                                                         <div className="flex items-center space-x-2">
                                                             <button onClick={() => setDeleteTarget({item: module, type: 'module'})} className="p-1 text-gray-500 hover:text-red-600"><TrashIcon className="w-4 h-4"/></button>
                                                             {isSelected && (
-                                                                <div className="flex items-center space-x-2">
-                                                                    <select
-                                                                        value={assignmentsMap.get(`${group.id}|${module.id}`) || ''}
-                                                                        onChange={(e) => handleAssignmentChange(group.id, module.id, e.target.value)}
-                                                                        className="text-sm p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 no-print min-w-[180px]"
-                                                                    >
-                                                                        <option value="">-- Sin Profesor --</option>
-                                                                        {teachers.map(teacher => (
-                                                                            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                                                                        ))}
-                                                                    </select>
+                                                                <div className="flex items-center space-x-3">
+                                                                    <div className="flex items-center">
+                                                                        <select
+                                                                            value={assignmentsMap.get(`${group.id}|${module.id}`) || ''}
+                                                                            onChange={(e) => handleAssignmentChange(group.id, module.id, e.target.value)}
+                                                                            className="text-sm p-1 border rounded-md dark:bg-gray-700 dark:border-gray-600 no-print min-w-[150px]"
+                                                                        >
+                                                                            <option value="">-- Sin Profesor --</option>
+                                                                            {teachers.map(teacher => (
+                                                                                <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                    
+                                                                    {assignmentsMap.has(`${group.id}|${module.id}`) && (
+                                                                        <label className="no-print flex items-center space-x-1.5 px-2 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded border border-indigo-100 dark:border-indigo-800 cursor-pointer transition-colors hover:bg-indigo-100" title="Marcar como módulo de producción para asignar costes a otros servicios">
+                                                                            <input 
+                                                                                type="checkbox"
+                                                                                checked={assignments.find(a => a.group_id === group.id && a.module_id === module.id)?.allow_transfers || false}
+                                                                                onChange={() => handleToggleTransfer(group.id, module.id)}
+                                                                                className="h-3.5 w-3.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+                                                                            />
+                                                                            <span className="text-[10px] font-bold uppercase tracking-wider">Traspasos</span>
+                                                                        </label>
+                                                                    )}
+
                                                                     <span className="print-only font-bold text-primary-600">
                                                                         {teachers.find(t => t.id === assignmentsMap.get(`${group.id}|${module.id}`))?.name || '-- Sin Profesor --'}
                                                                     </span>

@@ -63,6 +63,7 @@ export const Support: React.FC = () => {
             classroom_orders: data.classroom_orders,
             service_groups: data.service_groups,
             services: data.services,
+            transfers: data.transfers,
             sale_items: data.sale_items,
             reservations: data.reservations,
             dining_services: data.dining_services,

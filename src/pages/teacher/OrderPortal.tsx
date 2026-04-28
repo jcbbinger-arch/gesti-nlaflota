@@ -4,17 +4,22 @@ import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { AppEvent, Profile } from '../../types';
-import { DownloadIcon } from '../../components/icons';
+import { DownloadIcon, ArrowRightLeftIcon } from '../../components/icons';
 import { exportToCsv } from '../../utils/export';
 
 export const OrderPortal: React.FC = () => {
-    const { events, orders } = useData();
+    const { events, orders, service_groups, assignments } = useData();
     const { currentUser } = useAuth();
     const [searchParams] = useSearchParams();
     const isEconomatoMode = searchParams.get('type') === 'economato';
     const isAlmacen = currentUser?.profiles.includes(Profile.ALMACEN);
+    const isAdmin = currentUser?.profiles.includes(Profile.ADMIN);
     
     const now = new Date();
+
+    const isTransferSource = isAdmin || isAlmacen || assignments.some(a => 
+        a.user_id === currentUser?.id && a.allow_transfers
+    );
 
     // Filter events based on authorized_teachers
     const filteredEvents = events.filter(e => {
@@ -250,6 +255,29 @@ export const OrderPortal: React.FC = () => {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                </Card>
+            )}
+
+            {isTransferSource && (
+                <Card title="Gestión de Traspasos (Costes Indirectos)" className="mt-6 border-l-4 border-indigo-500">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-start space-x-3">
+                            <div className="p-3 bg-indigo-100 rounded-lg text-indigo-600">
+                                <ArrowRightLeftIcon className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-800 dark:text-gray-200 uppercase text-sm">Módulo de Producción</h3>
+                                <p className="text-xs text-gray-500 mt-1 max-w-md">Como responsable de un módulo de producción (ej: Panadería), puedes asignar costes de tus elaboraciones a los servicios de comedor activos.</p>
+                            </div>
+                        </div>
+                        <Link 
+                            to="/teacher/order-portal/transfers"
+                            className="bg-indigo-600 text-white px-6 py-2 rounded-md font-bold hover:bg-indigo-700 shadow-sm text-center flex items-center justify-center transition-colors"
+                        >
+                            <ArrowRightLeftIcon className="w-4 h-4 mr-2" />
+                            Ir a Traspasos
+                        </Link>
                     </div>
                 </Card>
             )}

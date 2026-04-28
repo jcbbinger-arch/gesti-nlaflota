@@ -16,7 +16,7 @@ const StatCard: React.FC<{ title: string; value: string; }> = ({ title, value })
 );
 
 export const ExpenseManager: React.FC = () => {
-    const { orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock } = useData();
+    const { orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock, transfers, events } = useData();
 
     const analysisData = useMemo(() => {
         const teachers = users.filter(u => 
@@ -26,6 +26,47 @@ export const ExpenseManager: React.FC = () => {
         );
         const completedOrders = orders.filter(o => o.status === 'Completado');
         
+        // Data by Teacher
+        const dataByTeacher = teachers.map(teacher => {
+            const teacherOrders = completedOrders.filter(o => o.user_id === teacher.id);
+            const teacherSales = sales.filter(s => s.teacher_id === teacher.id);
+            
+            // Transfers received by this teacher (as responsible for an event)
+            // This is tricky: we need to find events this teacher is responsible for.
+            // Simplified: if a transfer is to an event, and the order for that event is by this teacher, 
+            // then this teacher "received" the transfer.
+            const teacherEventIds = teacherOrders.filter(o => o.order_type === 'service').map(o => o.event_id);
+            const receivedTransfers = transfers.filter(t => teacherEventIds.includes(t.to_event_id));
+            const receivedTransfersCost = receivedTransfers.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+            // Transfers sent by this teacher
+            const sentTransfers = transfers.filter(t => t.from_user_id === teacher.id);
+            const sentTransfersCost = sentTransfers.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+            const weeklySpend = teacherOrders
+                .filter(o => o.order_type === 'weekly' || !o.order_type)
+                .reduce((sum, o) => sum + (o.cost || 0), 0);
+            const serviceSpend = teacherOrders
+                .filter(o => o.order_type === 'service')
+                .reduce((sum, o) => sum + (o.cost || 0), 0) + receivedTransfersCost; // Add received transfers to service cost
+                
+            const sharedSpend = 0; // Will be calculated after processing all teachers for stats
+            const totalSpend = weeklySpend + serviceSpend; // sharedSpend added later
+            const totalSales = teacherSales.reduce((sum, s) => sum + s.amount, 0);
+            
+            return {
+                id: teacher.id,
+                name: teacher.name,
+                orderCount: teacherOrders.length,
+                weeklySpend,
+                serviceSpend,
+                receivedTransfersCost,
+                sentTransfersCost,
+                totalSpend,
+                totalSales,
+            };
+        });
+
         // Gasto Compartido Mini-Economato
         const economatoOrders = completedOrders.filter(o => o.user_id === 'mini-economato');
         let totalSharedEconomatoCost = 0;
@@ -39,6 +80,19 @@ export const ExpenseManager: React.FC = () => {
         });
 
         const sharedCostPerTeacher = teachers.length > 0 ? totalSharedEconomatoCost / teachers.length : 0;
+
+        const dataByTeacherWithShared = dataByTeacher.map(t => {
+            const sharedSpend = sharedCostPerTeacher;
+            const totalSpend = t.totalSpend + sharedSpend;
+            const teacherResponsibility = t.weeklySpend + sharedSpend; // Costs under their direct control
+            
+            return {
+                ...t,
+                sharedSpend,
+                totalSpend,
+                balance: t.totalSales - teacherResponsibility,
+            };
+        });
 
         const gastoTotal = completedOrders.reduce((sum, order) => {
             if (order.user_id === 'mini-economato') {
@@ -60,41 +114,9 @@ export const ExpenseManager: React.FC = () => {
         const teachersWithOrders = new Set(completedOrders.filter(o => o.user_id !== 'mini-economato').map(o => o.user_id));
         const gastoMedioPorProfesor = teachersWithOrders.size > 0 ? gastoTotal / teachersWithOrders.size : 0;
         
-        // Data by Teacher
-        const dataByTeacher = teachers.map(teacher => {
-            const teacherOrders = completedOrders.filter(o => o.user_id === teacher.id);
-            const teacherSales = sales.filter(s => s.teacher_id === teacher.id);
-            
-            const weeklySpend = teacherOrders
-                .filter(o => o.order_type === 'weekly' || !o.order_type)
-                .reduce((sum, o) => sum + (o.cost || 0), 0);
-            const serviceSpend = teacherOrders
-                .filter(o => o.order_type === 'service')
-                .reduce((sum, o) => sum + (o.cost || 0), 0);
-                
-            const sharedSpend = sharedCostPerTeacher;
-            const totalSpend = weeklySpend + serviceSpend + sharedSpend;
-            const totalSales = teacherSales.reduce((sum, s) => sum + s.amount, 0);
-            
-            // Balance: Teacher responsibility (Weekly + Shared) vs Sales
-            const teacherResponsibility = weeklySpend + sharedSpend;
-            
-            return {
-                id: teacher.id,
-                name: teacher.name,
-                orderCount: teacherOrders.length,
-                weeklySpend,
-                serviceSpend,
-                sharedSpend,
-                totalSpend,
-                totalSales,
-                balance: totalSales - teacherResponsibility,
-            };
-        });
+        const top5Teachers = [...dataByTeacherWithShared].sort((a,b) => b.totalSpend - a.totalSpend).slice(0, 5);
 
-        const top5Teachers = [...dataByTeacher].sort((a,b) => b.totalSpend - a.totalSpend).slice(0, 5);
-
-        // Academic breakdown
+        // Academic breakdown (including transfers)
         const costByTeacher: { [key: string]: number } = {};
         completedOrders.forEach(order => { costByTeacher[order.user_id] = (costByTeacher[order.user_id] || 0) + (order.cost || 0); });
         
@@ -109,6 +131,26 @@ export const ExpenseManager: React.FC = () => {
                     costByGroup[a.group_id] = (costByGroup[a.group_id] || 0) + costPerAssignment; 
                     costByModule[a.module_id] = (costByModule[a.module_id] || 0) + costPerAssignment;
                 });
+            }
+        });
+        
+        // Add transfers to academic breakdown
+        transfers.forEach(transfer => {
+            const event = events.find(e => e.id === transfer.to_event_id);
+            if (event && event.type === 'Servicio') {
+                // If we know it's a service event, we can find the group/module responsible
+                const ordersForEvent = completedOrders.filter(o => o.event_id === event.id && o.order_type === 'service');
+                if (ordersForEvent.length > 0) {
+                    const responsibleUserId = ordersForEvent[0].user_id;
+                    const teacherAssignments = assignments.filter(a => a.user_id === responsibleUserId);
+                    if (teacherAssignments.length > 0) {
+                        const costPerAssignment = transfer.amount / teacherAssignments.length;
+                        teacherAssignments.forEach(a => {
+                            costByGroup[a.group_id] = (costByGroup[a.group_id] || 0) + costPerAssignment;
+                            costByModule[a.module_id] = (costByModule[a.module_id] || 0) + costPerAssignment;
+                        });
+                    }
+                }
             }
         });
 
@@ -131,10 +173,10 @@ export const ExpenseManager: React.FC = () => {
         return {
             gastoTotal, ingresosTotales, balanceGeneral, gastoMedioPorProfesor,
             totalSharedEconomatoCost, sharedCostPerTeacher,
-            top5Teachers, dataByTeacher,
+            top5Teachers, dataByTeacher: dataByTeacherWithShared,
             costByCycle, costByModule, costByGroup, costBySupplier
         };
-    }, [orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock]);
+    }, [orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock, transfers, events]);
 
     return (
         <div>
@@ -214,6 +256,7 @@ export const ExpenseManager: React.FC = () => {
                                    <th className="p-2 text-center">Nº Pedidos</th>
                                    <th className="p-2 text-right text-amber-700">Gasto Semanal</th>
                                    <th className="p-2 text-right text-primary-700">Gasto Servicio</th>
+                                   <th className="p-2 text-right text-indigo-700">Traspasos Recib.</th>
                                    <th className="p-2 text-right">Gasto Comp.</th>
                                    <th className="p-2 text-right">Ventas</th>
                                    <th className="p-2 text-right">Balance Personal</th>
@@ -226,6 +269,9 @@ export const ExpenseManager: React.FC = () => {
                                        <td className="p-2 text-center">{t.orderCount}</td>
                                        <td className="p-2 text-right font-medium text-amber-700">{formatCurrency(t.weeklySpend)}</td>
                                        <td className="p-2 text-right font-medium text-primary-700">{formatCurrency(t.serviceSpend)}</td>
+                                       <td className="p-2 text-right text-indigo-600 font-medium cursor-help" title={`Ha enviado traspsasos por valor de ${formatCurrency(t.sentTransfersCost)}`}>
+                                           {formatCurrency(t.receivedTransfersCost)}
+                                       </td>
                                        <td className="p-2 text-right text-blue-600">{formatCurrency(t.sharedSpend)}</td>
                                        <td className="p-2 text-right text-green-600">{formatCurrency(t.totalSales)}</td>
                                        <td className={`p-2 text-right font-bold ${t.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.balance)}</td>

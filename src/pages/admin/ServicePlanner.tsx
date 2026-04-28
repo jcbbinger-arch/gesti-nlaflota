@@ -315,6 +315,10 @@ const ServiceManager: React.FC = () => {
         const { openingDate, closingDate } = calculateEventDates(serviceData.date!);
         const eventName = formatEventName(serviceData.name!, serviceData.date!);
         
+        // Find teachers for authorized_teachers
+        const group = service_groups.find(g => g.id === (serviceData.service_group_id || selectedService?.service_group_id));
+        const teacherIds = group?.teacher_ids || [];
+
         if (selectedService) {
             // Update Service
             const updatedService = { ...selectedService, ...serviceData } as Service;
@@ -326,7 +330,8 @@ const ServiceManager: React.FC = () => {
                     ...e,
                     name: eventName,
                     start_date: openingDate.toISOString(),
-                    end_date: closingDate.toISOString()
+                    end_date: closingDate.toISOString(),
+                    authorized_teachers: teacherIds
                 } : e));
             }
         } else {
@@ -340,7 +345,7 @@ const ServiceManager: React.FC = () => {
                 end_date: closingDate.toISOString(),
                 budget_per_teacher: companyInfo.default_budget || 300,
                 status: 'Activo',
-                authorized_teachers: []
+                authorized_teachers: teacherIds
             };
             setEvents([...events, newEvent]);
 

@@ -56,6 +56,7 @@ import { NotificationManager } from './pages/teacher/NotificationManager';
 import { RecipeManager } from './pages/teacher/RecipeManager';
 import { RecipeForm } from './pages/teacher/RecipeForm';
 import { ServiceViewer } from './pages/teacher/ServiceViewer';
+import { TransferPortal } from './pages/teacher/TransferPortal';
 
 import { ClassroomList } from './pages/teacher/classroom/ClassroomList';
 
@@ -171,6 +172,7 @@ const AppContent: React.FC = () => {
               <Route path="dashboard" element={<TeacherDashboard />} />
               <Route path="service-planner" element={<ServiceViewer />} />
               <Route path="order-portal" element={<OrderPortal />} />
+              <Route path="order-portal/transfers" element={<TransferPortal />} />
               <Route path="order-portal/new/:eventId" element={<OrderForm />} />
               <Route path="order-portal/edit/:orderId" element={<OrderForm />} />
               <Route path="order-history" element={<TeacherOrderHistory />} />

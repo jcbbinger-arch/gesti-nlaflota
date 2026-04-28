@@ -10,7 +10,7 @@ import {
     TrainingCycle, Module, Group, Assignment, Recipe, StockItem, Sale, Message,
     Classroom, ClassroomProduct, ClassroomSupplier, ClassroomEvent, ClassroomOrder,
     ServiceGroup, Service, WorkspaceSettings, SaleItem, Reservation,
-    DiningService, DiningReservation, StockReception
+    DiningService, DiningReservation, StockReception, Transfer
 } from '../types';
 import { logAudit } from '../utils/auditLogger';
 
@@ -38,6 +38,7 @@ export interface DataContextType {
     classroom_orders: ClassroomOrder[];
     service_groups: ServiceGroup[];
     services: Service[];
+    transfers: Transfer[];
     dining_services: DiningService[];
     dining_reservations: DiningReservation[];
     stock_receptions: StockReception[];
@@ -65,6 +66,7 @@ export interface DataContextType {
     setClassroomOrders: (data: ClassroomOrder[] | ((prev: ClassroomOrder[]) => ClassroomOrder[])) => void;
     setServiceGroups: (data: ServiceGroup[] | ((prev: ServiceGroup[]) => ServiceGroup[])) => void;
     setServices: (data: Service[] | ((prev: Service[]) => Service[])) => void;
+    setTransfers: (data: Transfer[] | ((prev: Transfer[]) => Transfer[])) => void;
     setDiningServices: (data: DiningService[] | ((prev: DiningService[]) => DiningService[])) => void;
     setDiningReservations: (data: DiningReservation[] | ((prev: DiningReservation[]) => DiningReservation[])) => void;
     setStockReceptions: (data: StockReception[] | ((prev: StockReception[]) => StockReception[])) => void;
@@ -99,6 +101,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [classroom_orders, setClassroomOrdersState] = useState<ClassroomOrder[]>([]);
     const [service_groups, setServiceGroupsState] = useState<ServiceGroup[]>([]);
     const [services, setServicesState] = useState<Service[]>([]);
+    const [transfers, setTransfersState] = useState<Transfer[]>([]);
     const [dining_services, setDiningServicesState] = useState<DiningService[]>([]);
     const [dining_reservations, setDiningReservationsState] = useState<DiningReservation[]>([]);
     const [stock_receptions, setStockReceptionsState] = useState<StockReception[]>([]);
@@ -152,6 +155,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             { name: 'classroom_orders', setter: setClassroomOrdersState },
             { name: 'service_groups', setter: setServiceGroupsState },
             { name: 'services', setter: setServicesState },
+            { name: 'transfers', setter: setTransfersState },
             { name: 'dining_services', setter: setDiningServicesState },
             { name: 'dining_reservations', setter: setDiningReservationsState },
             { name: 'stock_receptions', setter: setStockReceptionsState },
@@ -271,6 +275,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const setClassroomOrders = (data: any) => updateCollection('classroom_orders', data, classroom_orders);
     const setServiceGroups = (data: any) => updateCollection('service_groups', data, service_groups);
     const setServices = (data: any) => updateCollection('services', data, services);
+    const setTransfers = (data: any) => updateCollection('transfers', data, transfers);
     const setDiningServices = (data: any) => updateCollection('dining_services', data, dining_services);
     const setDiningReservations = (data: any) => updateCollection('dining_reservations', data, dining_reservations);
     const setStockReceptions = (data: any) => updateCollection('stock_receptions', data, stock_receptions);
@@ -312,21 +317,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         users: filteredUsers, products, suppliers, events, orders, incidents, 
         training_cycles, modules, groups, assignments, recipes, sales, mini_economato_stock, messages,
         classrooms, classroom_products, classroom_suppliers, classroom_events, classroom_orders,
-        service_groups, services, workspaceSettings, sale_items, reservations,
+        service_groups, services, transfers, workspaceSettings, sale_items, reservations,
         dining_services, dining_reservations, stock_receptions,
         setUsers, setProducts, setSuppliers, setEvents, setOrders, setIncidents,
         setTrainingCycles, setModules, setGroups, setAssignments, setRecipes, setSales,
         setSaleItems, setReservations,
         setMiniEconomatoStock, setMessages, setClassrooms, setClassroomProducts,
         setClassroomSuppliers, setClassroomEvents, setClassroomOrders,
-        setServiceGroups, setServices, setDiningServices, setDiningReservations, 
+        setServiceGroups, setServices, setTransfers, setDiningServices, setDiningReservations, 
         setStockReceptions, setWorkspaceSettings,
         loadDemoData, seedInitialData
     }), [
         filteredUsers, products, suppliers, events, orders, incidents, 
         training_cycles, modules, groups, assignments, recipes, sales, mini_economato_stock, messages,
         classrooms, classroom_products, classroom_suppliers, classroom_events, classroom_orders,
-        service_groups, services, workspaceSettings, sale_items, reservations,
+        service_groups, services, transfers, workspaceSettings, sale_items, reservations,
         dining_services, dining_reservations, stock_receptions
     ]);
 

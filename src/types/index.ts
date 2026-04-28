@@ -226,6 +226,7 @@ export interface Assignment {
     user_id: string;
     group_id: string;
     module_id: string;
+    allow_transfers?: boolean;
 }
 
 export interface RecipeIngredient {
@@ -440,6 +441,19 @@ export interface DiningReservation {
   created_at: string;
 }
 
+export interface Transfer {
+  id: string;
+  from_user_id: string;
+  from_assignment_id?: string;
+  to_event_id: string;
+  amount: number;
+  concept: string;
+  units?: number;
+  price_per_unit?: number;
+  date: string; // ISO string
+  status: 'Completado' | 'Pendiente';
+}
+
 export interface AppData {
     users: User[];
     products: Product[];
@@ -465,6 +479,7 @@ export interface AppData {
     classroom_orders: ClassroomOrder[];
     service_groups: ServiceGroup[];
     services: Service[];
+    transfers: Transfer[];
     dining_services: DiningService[];
     dining_reservations: DiningReservation[];
 }

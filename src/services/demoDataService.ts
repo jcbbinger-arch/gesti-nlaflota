@@ -166,6 +166,7 @@ export const demoData: AppData = {
     ],
     service_groups: demoServiceGroups,
     services: demoServices,
+    transfers: [],
     dining_services: [],
     dining_reservations: [],
     stock_receptions: []
