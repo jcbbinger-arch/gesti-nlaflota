@@ -23,7 +23,7 @@ const getEventStatus = (event: AppEvent) => {
 }
 
 export const EventManager: React.FC = () => {
-    const { events, setEvents, users } = useData();
+    const { events, setEvents, users, services, setServices } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
@@ -97,6 +97,23 @@ export const EventManager: React.FC = () => {
     const handleSaveEvent = (event: AppEvent) => {
         if (selectedEvent) {
             setEvents(events.map(e => (e.id === event.id ? event : e)));
+            
+            // If it's a Service event, update the linked service name/date if needed
+            if (event.type === 'Servicio') {
+                const linkedService = services.find(s => s.event_id === event.id);
+                if (linkedService) {
+                    // Extract name before the " - date" part if possible, or just keep it synced
+                    // Actually, the user wants the name to be "ServiceName - Date"
+                    // If they edited the name in EventManager, we might want to update the Service name
+                    // But simpler is to keep the dates in sync.
+                    const dateVal = new Date(event.end_date); 
+                    // Note: Event end_date for Services is the closing date of orders.
+                    // The actual service date is usually a week later.
+                    // This might be confusing if edited here. 
+                    // For now, let's just sync the collection.
+                    setServices(services.map(s => s.event_id === event.id ? { ...s, name: event.name.split(' - ')[0] } : s));
+                }
+            }
         } else {
             setEvents([...events, { ...event, id: `evt-${Date.now()}` }]);
         }
@@ -112,6 +129,10 @@ export const EventManager: React.FC = () => {
 
     const handleDeleteEvent = () => {
         if (selectedEvent) {
+            // If it's a Service event, delete the linked service
+            if (selectedEvent.type === 'Servicio') {
+                setServices(services.filter(s => s.event_id !== selectedEvent.id));
+            }
             setEvents(events.filter(e => e.id !== selectedEvent.id));
         }
         setIsDeleteModalOpen(false);
@@ -332,6 +353,7 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
                         <select name="type" value={formState.type} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600">
                             <option value="Regular">Regular</option>
                             <option value="Extraordinario">Extraordinario</option>
+                            <option value="Servicio">Servicio</option>
                         </select>
                     </div>
                      <div>

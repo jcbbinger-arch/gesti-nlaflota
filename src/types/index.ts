@@ -147,7 +147,7 @@ export interface Supplier {
 export interface AppEvent {
     id: string;
     name: string;
-    type: 'Regular' | 'Extraordinario';
+    type: 'Regular' | 'Extraordinario' | 'Servicio';
     start_date: string; // ISO string
     end_date: string; // ISO string
     budget_per_teacher: number;
@@ -369,6 +369,7 @@ export interface Service {
     menu: ServiceMenuItem[];
     roles: Partial<Record<ServiceRole, string>>; // string is userId
     status: 'Planificación' | 'Confirmado' | 'Completado';
+    event_id?: string;
 }
 
 export interface SaleItem {

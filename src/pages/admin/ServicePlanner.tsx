@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useCompany } from '../../contexts/CompanyContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { PlusIcon, TrashIcon, PencilIcon, UsersIcon, EventIcon } from '../../components/icons';
-import { ServiceGroup, Service, User, Profile, ServiceRole } from '../../types';
+import { ServiceGroup, Service, User, Profile, ServiceRole, AppEvent } from '../../types';
 
 const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', 'Cafetería', 'Pan del servicio', 'Mignardises'];
 
@@ -277,24 +278,97 @@ const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: Us
 
 // --- SERVICE MANAGEMENT ---
 const ServiceManager: React.FC = () => {
-    const { services, setServices, service_groups } = useData();
+    const { services, setServices, service_groups, events, setEvents } = useData();
+    const { companyInfo } = useCompany();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [confirmDeleteServiceId, setConfirmDeleteServiceId] = useState<string | null>(null);
 
     const serviceGroupsMap = useMemo(() => new Map(service_groups.map((g: ServiceGroup) => [g.id, g.name])), [service_groups]);
 
+    const calculateEventDates = (serviceDateStr: string) => {
+        const serviceDate = new Date(serviceDateStr);
+        // Monday of the week of the service
+        const serviceWeekMonday = new Date(serviceDate);
+        serviceWeekMonday.setDate(serviceDate.getDate() - (serviceDate.getDay() + 6) % 7);
+
+        // Closing date: Monday of the previous week at 23:59:59
+        const closingDate = new Date(serviceWeekMonday);
+        closingDate.setDate(serviceWeekMonday.getDate() - 7);
+        closingDate.setHours(23, 59, 59, 999);
+
+        // Opening date: Tuesday of the week two weeks before the closing date
+        const openingDate = new Date(closingDate);
+        openingDate.setDate(closingDate.getDate() - 13);
+        openingDate.setHours(0, 0, 0, 0);
+
+        return { openingDate, closingDate };
+    };
+
+    const formatEventName = (serviceName: string, dateStr: string) => {
+        const date = new Date(dateStr);
+        const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+        return `${serviceName} - ${date.toLocaleDateString('es-ES', options)}`;
+    };
+
     const handleSave = (serviceData: Partial<Service>) => {
+        const { openingDate, closingDate } = calculateEventDates(serviceData.date!);
+        const eventName = formatEventName(serviceData.name!, serviceData.date!);
+        
         if (selectedService) {
-            setServices(services.map((s: Service) => s.id === selectedService.id ? { ...s, ...serviceData } as Service : s));
+            // Update Service
+            const updatedService = { ...selectedService, ...serviceData } as Service;
+            setServices(services.map((s: Service) => s.id === selectedService.id ? updatedService : s));
+
+            // Update associated Event if it exists
+            if (updatedService.event_id) {
+                setEvents(events.map(e => e.id === updatedService.event_id ? {
+                    ...e,
+                    name: eventName,
+                    start_date: openingDate.toISOString(),
+                    end_date: closingDate.toISOString()
+                } : e));
+            }
         } else {
-            const newService: Service = { id: `svc-${Date.now()}`, name: serviceData.name!, date: serviceData.date!, service_group_id: serviceData.service_group_id!, menu: [], roles: {}, status: 'Planificación' };
+            // Create new Event
+            const eventId = `evt-svc-${Date.now()}`;
+            const newEvent: AppEvent = {
+                id: eventId,
+                name: eventName,
+                type: 'Servicio',
+                start_date: openingDate.toISOString(),
+                end_date: closingDate.toISOString(),
+                budget_per_teacher: companyInfo.default_budget || 300,
+                status: 'Activo',
+                authorized_teachers: []
+            };
+            setEvents([...events, newEvent]);
+
+            // Create new Service
+            const newService: Service = { 
+                id: `svc-${Date.now()}`, 
+                name: serviceData.name!, 
+                date: serviceData.date!, 
+                service_group_id: serviceData.service_group_id!, 
+                menu: [], 
+                roles: {}, 
+                status: 'Planificación',
+                event_id: eventId
+            };
             setServices([...services, newService]);
         }
         setIsModalOpen(false);
     };
 
     const handleDelete = (serviceId: string) => {
+        const serviceToDelete = services.find(s => s.id === serviceId);
+        
+        // Remove associated event
+        if (serviceToDelete?.event_id) {
+            setEvents(events.filter(e => e.id !== serviceToDelete.event_id));
+        }
+        
+        // Remove service
         setServices(services.filter((s: Service) => s.id !== serviceId));
         setConfirmDeleteServiceId(null);
     };
