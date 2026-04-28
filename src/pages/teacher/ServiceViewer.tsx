@@ -15,9 +15,10 @@ const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', '
 
 // --- DETAIL VIEW COMPONENT ---
 const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({ service, onBack }) => {
-    const { services, setServices, service_groups, users, recipes, products, setOrders, events } = useData();
+    const { services, setServices, service_groups, users, recipes, setRecipes, products, setOrders, events } = useData();
     const { companyInfo } = useCompany();
-    const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
+    const { currentUser } = useAuth();
+    const [addStep, setAddStep] = useState<null | 'choice' | 'database' | 'manual'>(null);
     const navigate = useNavigate();
 
     const usersMap = useMemo(() => new Map<string, User>(users.map((u: any) => [u.id, u])), [users]);
@@ -36,6 +37,14 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         if (service.menu.some(item => item.recipe_id === recipe_id)) return;
         const updatedService = { ...service, menu: [...service.menu, { recipe_id }] };
         setServices(services.map(s => s.id === service.id ? updatedService : s));
+        setAddStep(null);
+    };
+
+    const handleAddManualRecipe = (newRecipe: Recipe) => {
+        setRecipes([...recipes, newRecipe]);
+        const updatedService = { ...service, menu: [...service.menu, { recipe_id: newRecipe.id }] };
+        setServices(services.map(s => s.id === service.id ? updatedService : s));
+        setAddStep(null);
     };
 
     const handleRemoveRecipe = (recipe_id: string) => {
@@ -129,7 +138,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
             <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-6">
                     <Card title="Menú del Servicio">
-                        <button onClick={() => setIsRecipeModalOpen(true)} className="bg-blue-500 text-white px-3 py-1 rounded mb-4">Añadir Plato</button>
+                        <button onClick={() => setAddStep('choice')} className="bg-blue-500 text-white px-3 py-1 rounded mb-4">Añadir Plato</button>
                         {service.menu.map(item => {
                             const recipe = recipesMap.get(item.recipe_id);
                             if (!recipe) return null;
@@ -148,8 +157,175 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                     </Card>
                 </div>
             </div>
-            {isRecipeModalOpen && <RecipeSelectorModal recipes={recipes} onSelect={handleAddRecipe} onClose={() => setIsRecipeModalOpen(false)} />}
+            
+            {addStep === 'choice' && (
+                <Modal isOpen={true} onClose={() => setAddStep(null)} title="Añadir Plato">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+                        <button 
+                            onClick={() => setAddStep('database')}
+                            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all group"
+                        >
+                            <div className="w-12 h-12 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mb-3 group-hover:bg-primary-600 group-hover:text-white transition-colors">
+                                <PlusIcon className="w-6 h-6" />
+                            </div>
+                            <span className="font-bold text-gray-700">Base de Datos</span>
+                            <p className="text-xs text-gray-500 text-center mt-1">Elegir una ficha existente</p>
+                        </button>
+                        
+                        <button 
+                            onClick={() => setAddStep('manual')}
+                            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
+                        >
+                            <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-3 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                <PlusIcon className="w-6 h-6" />
+                            </div>
+                            <span className="font-bold text-gray-700">Ficha Manual</span>
+                            <p className="text-xs text-gray-500 text-center mt-1">Introducir datos a mano</p>
+                        </button>
+                    </div>
+                </Modal>
+            )}
+
+            {addStep === 'database' && <RecipeSelectorModal recipes={recipes} onSelect={handleAddRecipe} onClose={() => setAddStep('choice')} />}
+            
+            {addStep === 'manual' && (
+                <ManualRecipeModal 
+                    onSave={handleAddManualRecipe} 
+                    onClose={() => setAddStep('choice')} 
+                    authorId={currentUser?.id || ''}
+                />
+            )}
         </div>
+    );
+};
+
+const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: () => void, authorId: string }> = ({ onSave, onClose, authorId }) => {
+    const [name, setName] = useState('');
+    const [presentation, setPresentation] = useState('');
+    const [temperature, setTemperature] = useState<'Caliente' | 'Frio' | 'Ambiente'>('Caliente');
+    const [serviceTime, setServiceTime] = useState('');
+    const [recommendedMarking, setRecommendedMarking] = useState('');
+    const [serviceType, setServiceType] = useState('');
+    const [clientDescription, setClientDescription] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name) return;
+
+        const newRecipe: Recipe = {
+            id: `rec-manual-${Date.now()}`,
+            name,
+            description: clientDescription,
+            author_id: authorId,
+            yield_amount: 1,
+            yield_unit: 'Pase',
+            category: 'Manual',
+            ingredients: [],
+            preparation_steps: 'Añadido manualmente al servicio',
+            is_public: false,
+            cost: 0,
+            price: 0,
+            presentation,
+            temperature,
+            service_time: serviceTime,
+            recommended_marking: recommendedMarking,
+            service_type: serviceType,
+            client_description: clientDescription
+        };
+
+        onSave(newRecipe);
+    };
+
+    return (
+        <Modal isOpen={true} onClose={onClose} title="Crear Ficha Manual">
+            <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto p-1">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Nombre del Plato *</label>
+                    <input 
+                        type="text" 
+                        required 
+                        value={name} 
+                        onChange={e => setName(e.target.value)} 
+                        className="w-full p-2 border rounded dark:bg-gray-700" 
+                        placeholder="Ej: Lubina a la sal"
+                    />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Temperatura</label>
+                        <select 
+                            value={temperature} 
+                            onChange={e => setTemperature(e.target.value as any)} 
+                            className="w-full p-2 border rounded dark:bg-gray-700"
+                        >
+                            <option value="Caliente">Caliente</option>
+                            <option value="Frio">Frío</option>
+                            <option value="Ambiente">Ambiente</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Temp / Pase</label>
+                        <input 
+                            type="text" 
+                            value={serviceTime} 
+                            onChange={e => setServiceTime(e.target.value)} 
+                            className="w-full p-2 border rounded dark:bg-gray-700" 
+                            placeholder="Ej: 65°C / 13:30"
+                        />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Presentación / Vajilla</label>
+                    <input 
+                        type="text" 
+                        value={presentation} 
+                        onChange={e => setPresentation(e.target.value)} 
+                        className="w-full p-2 border rounded dark:bg-gray-700" 
+                        placeholder="Ej: Plato trinchero blanco"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Marcaje recomendado</label>
+                    <input 
+                        type="text" 
+                        value={recommendedMarking} 
+                        onChange={e => setRecommendedMarking(e.target.value)} 
+                        className="w-full p-2 border rounded dark:bg-gray-700" 
+                        placeholder="Ej: Cuchara sopera"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Tipo de Servicio</label>
+                    <input 
+                        type="text" 
+                        value={serviceType} 
+                        onChange={e => setServiceType(e.target.value)} 
+                        className="w-full p-2 border rounded dark:bg-gray-700" 
+                        placeholder="Ej: Emplatado"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Descripción para el Cliente (Carta)</label>
+                    <textarea 
+                        value={clientDescription} 
+                        onChange={e => setClientDescription(e.target.value)} 
+                        className="w-full p-2 border rounded dark:bg-gray-700" 
+                        rows={3}
+                        placeholder="Descripción que aparecerá en la carta..."
+                    />
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4">
+                    <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancelar</button>
+                    <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700">Guardar e Insertar</button>
+                </div>
+            </form>
+        </Modal>
     );
 };
 
