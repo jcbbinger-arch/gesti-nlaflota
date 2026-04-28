@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, TrashIcon, WarningIcon, DownloadIcon } from '../../components/icons';
-import { AppEvent, User, Profile } from '../../types';
+import { AppEvent, User, Profile, Service } from '../../types';
 import { exportToCsv, printPage } from '../../utils/export';
 // Fix: Added missing import for useCompany hook.
 import { useCompany } from '../../contexts/CompanyContext';
@@ -32,14 +32,67 @@ export const EventManager: React.FC = () => {
 
     const teachers = useMemo(() => users.filter(u => u.profiles.includes(Profile.TEACHER)), [users]);
     
-    // Automatic event generation logic
+    // Automatic event generation and Service sync logic
     useEffect(() => {
-        const generateAutomaticEvents = () => {
+        if (services.length === 0 && events.length > 0) return; // Wait for initial data
+
+        const syncAndGenerateEvents = () => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const generatedEvents: AppEvent[] = [];
+            const generatedRegularEvents: AppEvent[] = [];
             
-            // Generate for the next 8 weeks
+            // 1. Sync Services (Ensure every service has an associated event)
+            const serviceEventsToCreate: AppEvent[] = [];
+            const updatedServices = [...services];
+            let servicesNeededUpdate = false;
+
+            services.forEach((service, index) => {
+                const eventExists = events.some(e => 
+                    (service.event_id && e.id === service.event_id) || 
+                    (e.type === 'Servicio' && e.name.includes(service.name) && Math.abs(new Date(service.date).getTime() - new Date(e.end_date).getTime() - (7 * 24 * 60 * 60 * 1000)) < 24 * 60 * 60 * 1000)
+                );
+                
+                if (!eventExists) {
+                    const eventId = service.event_id || `evt-svc-sync-${Date.now()}-${index}`;
+                    
+                    const calculateEventDates = (serviceDateStr: string) => {
+                        const serviceDate = new Date(serviceDateStr);
+                        const serviceWeekMonday = new Date(serviceDate);
+                        serviceWeekMonday.setDate(serviceDate.getDate() - (serviceDate.getDay() + 6) % 7);
+                        const closingDate = new Date(serviceWeekMonday);
+                        closingDate.setDate(serviceWeekMonday.getDate() - 7);
+                        closingDate.setHours(23, 59, 59, 999);
+                        const openingDate = new Date(closingDate);
+                        openingDate.setDate(closingDate.getDate() - 13);
+                        openingDate.setHours(0, 0, 0, 0);
+                        return { openingDate, closingDate };
+                    };
+
+                    const { openingDate, closingDate } = calculateEventDates(service.date);
+                    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+                    const eventName = `${service.name} - ${new Date(service.date).toLocaleDateString('es-ES', options)}`;
+
+                    const newEvent: AppEvent = {
+                        id: eventId,
+                        name: eventName,
+                        type: 'Servicio',
+                        start_date: openingDate.toISOString(),
+                        end_date: closingDate.toISOString(),
+                        budget_per_teacher: companyInfo.default_budget || 300,
+                        status: 'Activo',
+                        authorized_teachers: []
+                    };
+                    
+                    serviceEventsToCreate.push(newEvent);
+                    
+                    if (!service.event_id) {
+                        updatedServices[index] = { ...service, event_id: eventId };
+                        servicesNeededUpdate = true;
+                    }
+                }
+            });
+
+            // 2. Generate Regular Weekly Events (Next 8 weeks)
             for (let i = 0; i < 8; i++) {
                 const targetDate = new Date(today);
                 targetDate.setDate(today.getDate() + (i * 7));
@@ -51,21 +104,21 @@ export const EventManager: React.FC = () => {
                 const year = targetDate.getFullYear();
                 const weekOfYear = Math.ceil((((targetDate.getTime() - new Date(year, 0, 1).getTime()) / 86400000) + new Date(year, 0, 1).getDay() + 1) / 7);
 
-                // Check if an event with this name already exists
-                const eventExists = events.some(e => e.name === eventName && e.type === 'Regular');
+                const eventExists = events.some(e => e.name === eventName && e.type === 'Regular') || 
+                                  generatedRegularEvents.some(e => e.name === eventName && e.type === 'Regular');
 
                 if (!eventExists) {
                     const eventWeekMonday = new Date(targetDate);
                     eventWeekMonday.setDate(targetDate.getDate() - (targetDate.getDay() + 6) % 7);
                     
                     const orderCloseDate = new Date(eventWeekMonday);
-                    orderCloseDate.setDate(eventWeekMonday.getDate() - 7); // Monday of the previous week
+                    orderCloseDate.setDate(eventWeekMonday.getDate() - 7);
                     orderCloseDate.setHours(23, 59, 59, 999);
 
                     const orderOpenDate = new Date(orderCloseDate);
-                    orderOpenDate.setDate(orderCloseDate.getDate() - 5); // Wednesday before that
+                    orderOpenDate.setDate(orderCloseDate.getDate() - 5);
 
-                    const newEvent: AppEvent = {
+                    generatedRegularEvents.push({
                         id: `evt-auto-${year}-${weekOfYear}`,
                         name: eventName,
                         type: 'Regular',
@@ -74,19 +127,22 @@ export const EventManager: React.FC = () => {
                         budget_per_teacher: companyInfo.default_budget || 300,
                         status: 'Activo',
                         authorized_teachers: [],
-                    };
-                    generatedEvents.push(newEvent);
+                    });
                 }
             }
 
-            if (generatedEvents.length > 0) {
-                setEvents(prevEvents => [...prevEvents, ...generatedEvents]);
+            if (serviceEventsToCreate.length > 0 || generatedRegularEvents.length > 0) {
+                setEvents([...events, ...serviceEventsToCreate, ...generatedRegularEvents]);
+            }
+            
+            if (servicesNeededUpdate) {
+                setServices(updatedServices);
             }
         };
 
-        generateAutomaticEvents();
+        syncAndGenerateEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Run only once on component mount
+    }, [services.length, events.length === 0]); // Re-run if services length changes or if events are cleared
 
 
     const handleOpenModal = (event: AppEvent | null = null) => {
@@ -115,7 +171,23 @@ export const EventManager: React.FC = () => {
                 }
             }
         } else {
-            setEvents([...events, { ...event, id: `evt-${Date.now()}` }]);
+            const eventId = `evt-${Date.now()}`;
+            setEvents([...events, { ...event, id: eventId }]);
+
+            // If a Service event is created manually, create a linked Service
+            if (event.type === 'Servicio') {
+                const newService: Service = {
+                    id: `svc-${Date.now()}`,
+                    name: event.name.split(' - ')[0],
+                    date: new Date(new Date(event.end_date).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Default to 1 week after closing
+                    service_group_id: '', // Admin will need to assign a group later
+                    menu: [],
+                    roles: {},
+                    status: 'Planificación',
+                    event_id: eventId
+                };
+                setServices([...services, newService]);
+            }
         }
         setIsModalOpen(false);
         setSelectedEvent(null);
