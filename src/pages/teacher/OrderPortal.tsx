@@ -95,9 +95,11 @@ export const OrderPortal: React.FC = () => {
                                     const linkSuffix = isEconomatoMode ? '&type=economato' : '';
                                     
                                     return (
-                                        <tr key={event.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={event.id} className="hover:bg-gray-50 transition-colors border-l-4" style={{ borderLeftColor: event.color || '#6b7280' }}>
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-gray-800">{event.name}</div>
+                                                <div className="font-bold text-gray-800 flex items-center">
+                                                    {event.name}
+                                                </div>
                                                 <div className="text-xs text-gray-500 italic">Abierto hasta: {new Date(event.end_date).toLocaleString()}</div>
                                             </td>
                                             
@@ -169,7 +171,7 @@ export const OrderPortal: React.FC = () => {
                 <Card title="Próximos Eventos (Pronto se abrirán)">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {futureEvents.map(event => (
-                            <div key={event.id} className="p-4 border rounded-lg bg-gray-50 opacity-75">
+                            <div key={event.id} className="p-4 border border-l-4 rounded-lg bg-gray-50 opacity-75" style={{ borderLeftColor: event.color || '#6b7280' }}>
                                 <h3 className="font-bold text-gray-700">{event.name}</h3>
                                 <div className="text-xs space-y-1 mt-2 text-gray-500">
                                     <p><span className="font-medium">Se abre el:</span> {new Date(event.start_date).toLocaleString()}</p>

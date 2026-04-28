@@ -10,6 +10,17 @@ import { useCompany } from '../../contexts/CompanyContext';
 
 const spanishMonths = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
+const PRESET_COLORS = [
+    { name: 'Azul', value: '#3b82f6' },
+    { name: 'Verde', value: '#22c55e' },
+    { name: 'Naranja', value: '#f97316' },
+    { name: 'Rojo', value: '#ef4444' },
+    { name: 'Púrpura', value: '#a855f7' },
+    { name: 'Rosa', value: '#ec4899' },
+    { name: 'Amarillo', value: '#eab308' },
+    { name: 'Gris', value: '#6b7280' }
+];
+
 const getEventStatus = (event: AppEvent) => {
     const now = new Date();
     const startDate = new Date(event.start_date);
@@ -81,7 +92,8 @@ export const EventManager: React.FC = () => {
                         end_date: closingDate.toISOString(),
                         budget_per_teacher: companyInfo.default_budget || 300,
                         status: 'Activo',
-                        authorized_teachers: []
+                        authorized_teachers: [],
+                        color: PRESET_COLORS[1].value // Green for Service
                     };
                     
                     serviceEventsToCreate.push(newEvent);
@@ -132,6 +144,7 @@ export const EventManager: React.FC = () => {
                         budget_per_teacher: companyInfo.default_budget || 300,
                         status: 'Activo',
                         authorized_teachers: [],
+                        color: PRESET_COLORS[0].value // Blue for Regular
                     });
                 }
             }
@@ -283,8 +296,16 @@ export const EventManager: React.FC = () => {
                             {sortedEvents.map(event => {
                                 const status = getEventStatus(event);
                                 return (
-                                <tr key={event.id} className="border-b dark:border-gray-700">
-                                    <td className="px-4 py-2 font-medium">{event.name}</td>
+                                <tr key={event.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                    <td className="px-4 py-2 font-medium">
+                                        <div className="flex items-center">
+                                            <div 
+                                                className="w-3 h-3 rounded-full mr-3 shadow-sm border border-black/5" 
+                                                style={{ backgroundColor: event.color || '#6b7280' }}
+                                            />
+                                            {event.name}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-2">{event.type}</td>
                                     <td className="px-4 py-2">{new Date(event.start_date).toLocaleString()}</td>
                                     <td className="px-4 py-2">{new Date(event.end_date).toLocaleString()}</td>
@@ -387,7 +408,8 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
         end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), 
         budget_per_teacher: companyInfo.default_budget || 300, 
         authorized_teachers: [],
-        status: 'Activo'
+        status: 'Activo',
+        color: PRESET_COLORS[0].value
     });
 
     const [eventDateStr, setEventDateStr] = useState<string>('');
@@ -484,6 +506,22 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
                         <MultiSelectTeachers teachers={teachers} selected={formState.authorized_teachers || []} onChange={handleAuthTeacherChange} />
                     </div>
                 )}
+                
+                <div>
+                    <label className="block text-sm font-medium mb-1">Color del Evento</label>
+                    <div className="flex flex-wrap gap-2">
+                        {PRESET_COLORS.map(color => (
+                            <button
+                                key={color.value}
+                                type="button"
+                                onClick={() => setFormState({ ...formState, color: color.value })}
+                                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${formState.color === color.value ? 'border-primary-600 scale-110 shadow-md' : 'border-transparent'}`}
+                                style={{ backgroundColor: color.value }}
+                                title={color.name}
+                            />
+                        ))}
+                    </div>
+                </div>
                 
                 <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-gray-600 px-4 py-2 rounded-md">Cancelar</button>

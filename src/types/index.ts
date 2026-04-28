@@ -153,6 +153,7 @@ export interface AppEvent {
     budget_per_teacher: number;
     authorized_teachers?: string[]; // user IDs
     status: 'Activo' | 'Inactivo';
+    color?: string;
 }
 
 export interface OrderItem {

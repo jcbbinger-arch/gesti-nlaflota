@@ -85,7 +85,7 @@ export const TeacherDashboard: React.FC = () => {
                         {activeEvents.length > 0 ? (
                             <ul className="space-y-3">
                                 {activeEvents.map(event => (
-                                    <li key={event.id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex justify-between items-center">
+                                    <li key={event.id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex justify-between items-center border-l-4" style={{ borderColor: event.color || '#6b7280' }}>
                                         <div>
                                             <p className="font-semibold">{event.name}</p>
                                             <p className="text-sm text-gray-500">Finaliza el {new Date(event.end_date).toLocaleDateString()}</p>
