@@ -124,6 +124,10 @@ export const OrderPortal: React.FC = () => {
                                     const serviceOrder = getMyOrderForEvent(event, 'service');
                                     const linkSuffix = isEconomatoMode ? '&type=economato' : '';
                                     
+                                    // Determinar qué botones mostrar
+                                    const showServiceButton = event.type === 'Servicio' || event.type === 'Extraordinario';
+                                    const showWeeklyButton = event.type === 'Regular' || (event.type === 'Extraordinario' && !isEconomatoMode);
+
                                     return (
                                         <tr key={event.id} className={`hover:opacity-90 transition-colors border-l-4 ${event.type === 'Regular' ? 'bg-blue-50/30' : event.type === 'Servicio' ? 'bg-green-50/30' : 'bg-red-50/30'}`} style={{ borderLeftColor: event.color || '#6b7280' }}>
                                             <td className="px-6 py-4">
@@ -135,53 +139,61 @@ export const OrderPortal: React.FC = () => {
                                             
                                             {/* Pedido de Servicio */}
                                             <td className="px-6 py-4 text-center">
-                                                {serviceOrder ? (
-                                                    <div className="flex flex-col items-center">
-                                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full mb-1 ${
-                                                            serviceOrder.status === 'Procesado' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                                                        }`}>
-                                                            {serviceOrder.status}
-                                                        </span>
+                                                {showServiceButton ? (
+                                                    serviceOrder ? (
+                                                        <div className="flex flex-col items-center">
+                                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full mb-1 ${
+                                                                serviceOrder.status === 'Procesado' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                                                            }`}>
+                                                                {serviceOrder.status}
+                                                            </span>
+                                                            <Link 
+                                                                to={`/teacher/order-portal/edit/${serviceOrder.id}?order_type=service${linkSuffix}`} 
+                                                                className="text-primary-600 hover:text-primary-800 text-sm font-bold"
+                                                            >
+                                                                {serviceOrder.status === 'Procesado' ? 'Ver' : 'Modificar'}
+                                                            </Link>
+                                                        </div>
+                                                    ) : (
                                                         <Link 
-                                                            to={`/teacher/order-portal/edit/${serviceOrder.id}?order_type=service${linkSuffix}`} 
-                                                            className="text-primary-600 hover:text-primary-800 text-sm font-bold"
+                                                            to={`/teacher/order-portal/new/${event.id}?order_type=service${linkSuffix}`} 
+                                                            className="inline-block bg-primary-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-primary-700 shadow-sm"
                                                         >
-                                                            {serviceOrder.status === 'Procesado' ? 'Ver' : 'Modificar'}
+                                                            Crear Servicio
                                                         </Link>
-                                                    </div>
+                                                    )
                                                 ) : (
-                                                    <Link 
-                                                        to={`/teacher/order-portal/new/${event.id}?order_type=service${linkSuffix}`} 
-                                                        className="inline-block bg-primary-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-primary-700 shadow-sm"
-                                                    >
-                                                        Crear Servicio
-                                                    </Link>
+                                                    <span className="text-gray-400 text-xs">-</span>
                                                 )}
                                             </td>
                                             
                                             {/* Pedido Semanal */}
                                             <td className="px-6 py-4 text-center">
-                                                {weeklyOrder ? (
-                                                    <div className="flex flex-col items-center">
-                                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full mb-1 ${
-                                                            weeklyOrder.status === 'Procesado' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                                                        }`}>
-                                                            {weeklyOrder.status}
-                                                        </span>
+                                                {showWeeklyButton ? (
+                                                    weeklyOrder ? (
+                                                        <div className="flex flex-col items-center">
+                                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full mb-1 ${
+                                                                weeklyOrder.status === 'Procesado' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                                            }`}>
+                                                                {weeklyOrder.status}
+                                                            </span>
+                                                            <Link 
+                                                                to={`/teacher/order-portal/edit/${weeklyOrder.id}?order_type=weekly${linkSuffix}`} 
+                                                                className="text-primary-600 hover:text-primary-800 text-sm font-bold"
+                                                            >
+                                                                {weeklyOrder.status === 'Procesado' ? 'Ver' : 'Modificar'}
+                                                            </Link>
+                                                        </div>
+                                                    ) : (
                                                         <Link 
-                                                            to={`/teacher/order-portal/edit/${weeklyOrder.id}?order_type=weekly${linkSuffix}`} 
-                                                            className="text-primary-600 hover:text-primary-800 text-sm font-bold"
+                                                            to={`/teacher/order-portal/new/${event.id}?order_type=weekly${linkSuffix}`} 
+                                                            className="inline-block border border-primary-600 text-primary-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-primary-50 transition-colors"
                                                         >
-                                                            {weeklyOrder.status === 'Procesado' ? 'Ver' : 'Modificar'}
+                                                            Crear Semanal
                                                         </Link>
-                                                    </div>
+                                                    )
                                                 ) : (
-                                                    <Link 
-                                                        to={`/teacher/order-portal/new/${event.id}?order_type=weekly${linkSuffix}`} 
-                                                        className="inline-block border border-primary-600 text-primary-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-primary-50 transition-colors"
-                                                    >
-                                                        Crear Semanal
-                                                    </Link>
+                                                    <span className="text-gray-400 text-xs">-</span>
                                                 )}
                                             </td>
                                         </tr>

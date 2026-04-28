@@ -126,8 +126,8 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     return (
         <div>
             <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-4">&larr; Volver a mis servicios</button>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-6">
                     <Card title="Menú del Servicio">
                         <button onClick={() => setIsRecipeModalOpen(true)} className="bg-blue-500 text-white px-3 py-1 rounded mb-4">Añadir Plato</button>
                         {service.menu.map(item => {
@@ -145,19 +145,6 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                     </Card>
                     <Card title="Generación de Pedido">
                          <button onClick={generateDraftOrder} className="bg-green-600 text-white py-2 px-4 rounded-md">Generar Borrador de Pedido</button>
-                    </Card>
-                </div>
-                <div>
-                    <Card title="Asignación de Roles para este Servicio">
-                        {SERVICE_ROLES.map(role => (
-                            <div key={role} className="mb-2">
-                                <label className="text-sm font-semibold">{role}</label>
-                                <select value={service.roles[role] || ''} onChange={e => handleRoleChange(role, e.target.value)} className="w-full p-1 border rounded dark:bg-gray-700">
-                                    <option value="">-- Sin Asignar --</option>
-                                    {teachersInGroup.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                </select>
-                            </div>
-                        ))}
                     </Card>
                 </div>
             </div>
