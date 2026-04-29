@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
@@ -34,7 +35,8 @@ const getEventStatus = (event: AppEvent) => {
 }
 
 export const EventManager: React.FC = () => {
-    const { events, setEvents, users, services, setServices, service_groups, academic_years, selectedYearId } = useData();
+    const { events, setEvents, users, services, setServices, service_groups, academic_years, selectedYearId, dining_services } = useData();
+    const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
@@ -414,6 +416,22 @@ export const EventManager: React.FC = () => {
                                     </td>
                                     <td className="px-4 py-3 no-print text-right">
                                         <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {event.type === 'Servicio' && (
+                                                <button 
+                                                    onClick={() => {
+                                                        const linkedService = services.find(s => s.event_id === event.id);
+                                                        const ds = dining_services.find(d => d.service_id === linkedService?.id);
+                                                        if (ds) {
+                                                            navigate(`/teacher/order/STAFF_MEAL_EVENT/staff-${ds.id}`);
+                                                        } else {
+                                                            alert('Este servicio de planificación aún no tiene un servicio de comedor configurado.');
+                                                        }
+                                                    }}
+                                                    className="text-indigo-600 hover:text-indigo-800 font-bold text-xs uppercase underline"
+                                                >
+                                                    Comida Familia
+                                                </button>
+                                            )}
                                             <button onClick={() => handleOpenModal(event)} className="text-primary-600 hover:text-primary-800 font-bold text-xs uppercase underline">Editar</button>
                                             <button onClick={() => handleOpenDeleteModal(event)} className="text-red-600 hover:text-red-800 font-bold text-xs uppercase underline">Eliminar</button>
                                         </div>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
@@ -12,6 +13,7 @@ import { db } from '../../firebase';
 export const DiningServiceManager: React.FC = () => {
     const { dining_services, services, service_groups, users } = useData();
     const { currentUser } = useAuth();
+    const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Partial<DiningService> | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -219,24 +221,33 @@ export const DiningServiceManager: React.FC = () => {
                                 </span>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-2 border-t pt-4 dark:border-gray-700">
-                            <button
-                                onClick={() => handleOpenModal(service)}
-                                className={`flex-1 flex justify-center items-center py-2 rounded-md font-bold text-xs transition-colors ${isPending ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-100 text-blue-600 hover:bg-blue-200'}`}
-                                title={isPending ? "Configurar Servicio" : "Editar"}
-                            >
-                                {isPending ? 'NUEVO SERVICIO' : <><Edit className="w-4 h-4 mr-2" /> EDITAR</>}
-                            </button>
-                            {!isPending && (
+                            <div className="flex justify-end gap-2 border-t pt-4 dark:border-gray-700">
+                                {!isPending && (
+                                    <button
+                                        onClick={() => navigate(`/teacher/order/STAFF_MEAL_EVENT/staff-${service.id}`)}
+                                        className="flex-1 flex justify-center items-center py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-bold text-[10px] transition-colors border border-indigo-100 uppercase tracking-tighter"
+                                        title="Gestionar Pedido Comida Familia"
+                                    >
+                                        <Users className="w-3.5 h-3.5 mr-1" /> Comida Familia
+                                    </button>
+                                )}
                                 <button
-                                    onClick={() => setConfirmDeleteId(service.id)}
-                                    className="p-2 text-red-600 hover:bg-red-50 rounded-md border border-red-100"
-                                    title="Eliminar"
+                                    onClick={() => handleOpenModal(service)}
+                                    className={`flex-1 flex justify-center items-center py-2 rounded-md font-bold text-[10px] transition-colors ${isPending ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-100 text-blue-600 hover:bg-blue-200'}`}
+                                    title={isPending ? "Configurar Servicio" : "Editar"}
                                 >
-                                    <Trash2 className="w-4 h-4" />
+                                    {isPending ? 'NUEVO SERVICIO' : <><Edit className="w-3.5 h-3.5 mr-1" /> EDITAR</>}
                                 </button>
-                            )}
-                        </div>
+                                {!isPending && (
+                                    <button
+                                        onClick={() => setConfirmDeleteId(service.id)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-md border border-red-100"
+                                        title="Eliminar"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
                     </Card>
                 );
             })}

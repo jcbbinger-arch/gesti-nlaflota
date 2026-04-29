@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { Card } from '../../components/Card';
@@ -298,7 +299,8 @@ const ServiceGroupFormModal: React.FC<{ group: ServiceGroup | null; teachers: Us
 
 // --- SERVICE MANAGEMENT ---
 const ServiceManager: React.FC = () => {
-    const { services, setServices, service_groups, events, setEvents, assignments } = useData();
+    const { services, setServices, service_groups, events, setEvents, assignments, dining_services } = useData();
+    const navigate = useNavigate();
     const { companyInfo } = useCompany();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -417,8 +419,23 @@ const ServiceManager: React.FC = () => {
                             <td className="p-2">{new Date(service.date).toLocaleDateString()}</td>
                             <td className="p-2">{serviceGroupsMap.get(service.service_group_id) || 'N/A'}</td>
                             <td className="p-2 space-x-2">
-                                <button onClick={() => { setSelectedService(service); setIsModalOpen(true); }}><PencilIcon className="w-4 h-4 text-gray-500"/></button>
-                                <button onClick={() => setConfirmDeleteServiceId(service.id)}><TrashIcon className="w-4 h-4 text-red-500"/></button>
+                                <button onClick={() => { setSelectedService(service); setIsModalOpen(true); }} title="Editar"><PencilIcon className="w-4 h-4 text-gray-500 hover:text-blue-500"/></button>
+                                {(() => {
+                                    const ds = dining_services.find(d => d.service_id === service.id);
+                                    if (ds) {
+                                        return (
+                                            <button 
+                                                onClick={() => navigate(`/teacher/order/STAFF_MEAL_EVENT/staff-${ds.id}`)}
+                                                className="inline-flex items-center text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 uppercase"
+                                                title="Gestionar Comida de Familia"
+                                            >
+                                                <UsersIcon className="w-3 h-3 mr-1" /> Familia
+                                            </button>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+                                <button onClick={() => setConfirmDeleteServiceId(service.id)} title="Eliminar"><TrashIcon className="w-4 h-4 text-red-500 hover:text-red-700"/></button>
                             </td>
                         </tr>
                     ))}
