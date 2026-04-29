@@ -4,7 +4,7 @@ import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { useAuth } from '../../contexts/AuthContext';
 import { Product, User, Profile, Order, StockItem, OrderItem } from '../../types';
-import { Download, Plus, Pencil, Scan, Search, AlertCircle, ShoppingCart, X } from 'lucide-react';
+import { Download, Plus, Pencil, Scan, Search, AlertCircle, ShoppingCart, X, RefreshCcw } from 'lucide-react';
 import { printPage } from '../../utils/export';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -223,6 +223,7 @@ export const MiniEconomato: React.FC = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isReceptionModalOpen, setIsReceptionModalOpen] = useState(false);
+    const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
     const [productToAssign, setProductToAssign] = useState<Product | null>(null);
     const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
 
@@ -296,16 +297,37 @@ export const MiniEconomato: React.FC = () => {
         setIsAssignModalOpen(true);
     };
 
+    const getClosestEvent = () => {
+        const now = new Date();
+        const regularEvents = events.filter(e => e.type === 'Regular');
+        if (regularEvents.length === 0) return events[0]; // absolute fallback
+        
+        const active = regularEvents.find(e => new Date(e.start_date) <= now && new Date(e.end_date) >= now);
+        if (active) return active;
+        
+        // Find closest past or future regular event
+        return regularEvents.reduce((closest, event) => {
+            const currentDiff = Math.min(
+                Math.abs(now.getTime() - new Date(event.start_date).getTime()),
+                Math.abs(now.getTime() - new Date(event.end_date).getTime())
+            );
+            const closestDiff = Math.min(
+                Math.abs(now.getTime() - new Date(closest.start_date).getTime()),
+                Math.abs(now.getTime() - new Date(closest.end_date).getTime())
+            );
+            return currentDiff < closestDiff ? event : closest;
+        }, regularEvents[0]);
+    };
+
     const handleAssignExpense = (teacherId: string, quantity: number) => {
         if (!productToAssign || !teacherId || !quantity || quantity <= 0) {
             alert("Por favor, completa todos los campos.");
             return;
         }
         
-        const now = new Date();
-        const activeEvent = events.find(e => e.type === 'Regular' && new Date(e.start_date) <= now && new Date(e.end_date) >= now);
-        if (!activeEvent) {
-            alert("No hay un evento de pedido 'Regular' activo en este momento para imputar el gasto.");
+        const targetEvent = getClosestEvent();
+        if (!targetEvent) {
+            alert("No hay ningún evento (ni activo ni pasado) al que imputar el gasto. Por favor, crea un evento primero.");
             return;
         }
 
@@ -329,14 +351,14 @@ export const MiniEconomato: React.FC = () => {
         };
 
         const newOrder: Order = {
-            id: `ord-eco-${Date.now()}`,
+            id: `ord-eco-assign-${Date.now()}`,
             user_id: teacherId,
             date: new Date().toISOString(),
             status: 'Completado',
-            event_id: activeEvent.id,
+            event_id: targetEvent.id,
             items: [newItem],
             cost: (newItem.price * newItem.quantity) * (1 + newItem.tax / 100),
-            notes: `Asignado desde Mini-Economato.`
+            notes: `Asignado desde Mini-Economato (Fuera de ciclo).`
         };
         setOrders(prev => [...prev, newOrder]);
 
@@ -344,9 +366,68 @@ export const MiniEconomato: React.FC = () => {
             item.id === productToAssign.id ? { ...item, stock: item.stock - quantity } : item
         ));
 
-        alert(`Producto ${productToAssign.name} asignado al profesor.`);
+        alert(`Producto ${productToAssign.name} asignado al profesor y cargado al evento ${targetEvent.name}.`);
         setIsAssignModalOpen(false);
         setProductToAssign(null);
+    };
+
+    const handleReturnExpense = (teacherId: string, productId: string, quantity: number) => {
+        if (!productId || !teacherId || !quantity || quantity <= 0) {
+            alert("Por favor, completa todos los campos.");
+            return;
+        }
+
+        const targetEvent = getClosestEvent();
+        if (!targetEvent) {
+            alert("No hay ningún evento registrado para imputar la devolución.");
+            return;
+        }
+
+        const returnedProduct = productsMap.get(productId);
+        if (!returnedProduct) {
+            alert("No se encontró el producto.");
+            return;
+        }
+
+        const priceInfo = returnedProduct.suppliers.sort((a,b) => a.price - b.price)[0];
+        if (!priceInfo) {
+            alert("El producto no tiene un proveedor/precio definido para calcular el abono.");
+            return;
+        }
+
+        const newItem: OrderItem = {
+            product_id: returnedProduct.id,
+            quantity: -quantity, // Negative quantity
+            price: priceInfo.price,
+            tax: returnedProduct.tax
+        };
+
+        const refundOrder: Order = {
+            id: `ord-eco-return-${Date.now()}`,
+            user_id: teacherId,
+            date: new Date().toISOString(),
+            status: 'Completado',
+            event_id: targetEvent.id,
+            items: [newItem],
+            cost: (newItem.price * newItem.quantity) * (1 + newItem.tax / 100), // Negative cost
+            notes: `Devolución al Mini-Economato.`
+        };
+        
+        setOrders(prev => [...prev, refundOrder]);
+
+        setMiniEconomatoStock(prevStock => {
+            const hasStock = prevStock.some(s => s.id === productId);
+            if (hasStock) {
+                return prevStock.map(item => 
+                    item.id === productId ? { ...item, stock: item.stock + quantity } : item
+                );
+            } else {
+                return [...prevStock, { id: productId, stock: quantity, min_stock: 0, max_stock: 0, is_shared: false }];
+            }
+        });
+
+        alert(`Devolución de ${quantity} ${returnedProduct.unit} de ${returnedProduct.name} procesada. Saldo a favor imputado al evento ${targetEvent.name}.`);
+        setIsReturnModalOpen(false);
     };
     
     const handleAddProduct = (productId: string, stock: number, min_stock: number, max_stock: number, is_shared: boolean) => {
@@ -437,6 +518,9 @@ export const MiniEconomato: React.FC = () => {
                             </button>
                             <button onClick={() => setIsAddModalOpen(true)} className="no-print bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center shadow-sm">
                                 <Plus className="w-5 h-5 mr-2" /> Stock Manual
+                            </button>
+                            <button onClick={() => setIsReturnModalOpen(true)} className="no-print bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 flex items-center shadow-sm">
+                                <RefreshCcw className="w-5 h-5 mr-2" /> Devolución Prof.
                             </button>
                         </>
                     )}
@@ -739,6 +823,109 @@ export const MiniEconomato: React.FC = () => {
                     onSave={handleEditStock}
                 />
             )}
+
+            {isReturnModalOpen && (
+                <ReturnExpenseModal
+                    products={products}
+                    teachers={users.filter(u => u.profiles.includes(Profile.TEACHER) && u.activity_status === 'Activo')}
+                    onClose={() => setIsReturnModalOpen(false)}
+                    onReturn={handleReturnExpense}
+                />
+            )}
         </div>
+    );
+};
+
+const ReturnExpenseModal: React.FC<{ 
+    products: Product[],
+    teachers: User[], 
+    onClose: () => void, 
+    onReturn: (teacherId: string, productId: string, quantity: number) => void 
+}> = ({ products, teachers, onClose, onReturn }) => {
+    const [teacherId, setTeacherId] = useState('');
+    const [productId, setProductId] = useState('');
+    const [quantity, setQuantity] = useState<string>('');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredProducts = useMemo(() => {
+        return products.filter(p => 
+            p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            p.reference.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [products, searchTerm]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onReturn(teacherId, productId, parseFloat(quantity));
+    };
+
+    return (
+        <Modal isOpen={true} onClose={onClose} title={`Devolución de Profesor al Economato`}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="bg-purple-50 p-3 rounded-md text-sm text-purple-800 border border-purple-200">
+                    Registra la devolución de un producto que un profesor ya no necesita. Su coste se descontará de los gastos del profesor y el producto se sumará al Mini-Economato.
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Profesor que devuelve</label>
+                    <select
+                        value={teacherId}
+                        onChange={(e) => setTeacherId(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                        required
+                    >
+                        <option value="">-- Seleccionar Profesor --</option>
+                        {teachers.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                    </select>
+                </div>
+                
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Buscar Producto</label>
+                    <input 
+                        type="text" 
+                        placeholder="Buscar por nombre o referencia..." 
+                        className="mt-1 w-full p-2 border rounded"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Producto a Devolver</label>
+                    <select
+                        value={productId}
+                        onChange={(e) => setProductId(e.target.value)}
+                        className="mt-1 w-full p-2 border rounded max-h-40 overflow-y-auto"
+                        required
+                        size={4}
+                    >
+                        {filteredProducts.slice(0, 50).map(p => (
+                            <option key={p.id} value={p.id}>{p.name} ({p.reference})</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Cantidad (Volumen devuelto)</label>
+                    <div className="mt-1 flex items-center">
+                        <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                            required
+                        />
+                    </div>
+                </div>
+
+                <div className="flex justify-end pt-4 space-x-2">
+                    <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded">Cancelar</button>
+                    <button type="submit" className="bg-purple-600 text-white px-4 py-2 rounded">Aceptar Devolución</button>
+                </div>
+            </form>
+        </Modal>
     );
 };
