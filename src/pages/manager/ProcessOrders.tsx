@@ -98,7 +98,7 @@ export const ProcessOrders: React.FC = () => {
 // Detail view component
 const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
     const navigate = useNavigate();
-    const { orders, setOrders, events, products, suppliers, users, setMessages } = useData();
+    const { orders, setOrders, events, products, suppliers, users, setMessages, mini_economato_stock } = useData();
     const { companyInfo } = useCompany();
     const { currentUser } = useAuth();
     const { creatorInfo } = useCreator();
@@ -361,6 +361,70 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                 </button>
             </div>
 
+            {viewMode === 'Global' && (
+                <div className="space-y-6">
+                    <Card title="Resumen Global de Requerimientos">
+                        <div className="bg-white/50 p-4 border-b text-sm text-gray-600">
+                            Revisa las cantidades totales de cada producto. Si hay existencias en el <strong>minieconomato</strong>, aparecerá un aviso para que puedas aprovechar ese stock interno en lugar de pedirlo al proveedor externo.
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 border-b">
+                                    <tr>
+                                        <th className="px-3 py-2 text-left">Referencia</th>
+                                        <th className="px-3 py-2 text-left">Producto</th>
+                                        <th className="px-3 py-2 text-center">Cantidad Total</th>
+                                        <th className="px-3 py-2 text-left">Proveedor Asignado</th>
+                                        <th className="px-3 py-2 text-right">Coste Estimado</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {aggregatedProducts.map(agg => {
+                                        const totalQty = agg.orders.reduce((sum, detail) => sum + (editedQuantities[`${detail.order.id}-${agg.product.id}`] ?? detail.item.quantity), 0);
+                                        if (totalQty <= 0) return null;
+                                        
+                                        const assignedSupplierId = selectedSuppliers[agg.product.id];
+                                        const priceInfo = agg.product.suppliers.find(s => s.supplier_id === assignedSupplierId);
+                                        
+                                        const miniStock = mini_economato_stock.find(s => s.id === agg.product.id);
+                                        const hasStock = miniStock && miniStock.stock > 0;
+
+                                        return (
+                                            <tr key={agg.product.id} className="hover:bg-gray-50">
+                                                <td className="px-3 py-2 text-gray-500 font-mono text-xs">{agg.product.reference}</td>
+                                                <td className="px-3 py-2">
+                                                    <div className="font-medium">{agg.product.name}</div>
+                                                    {hasStock && (
+                                                        <div className="mt-1 inline-flex items-center text-[10px] font-bold text-orange-700 bg-orange-100 border border-orange-300 px-2 py-0.5 rounded-full">
+                                                            ⚠️ ¡Hay {miniStock.stock} {agg.product.unit} en minieconomato!
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-3 py-2 text-center font-bold text-primary-700">{totalQty} {agg.product.unit}</td>
+                                                <td className="px-3 py-2">
+                                                    <select 
+                                                        value={assignedSupplierId || ''}
+                                                        onChange={e => setSelectedSuppliers(prev => ({ ...prev, [agg.product.id]: e.target.value }))}
+                                                        className="w-full text-xs p-1.5 border border-gray-300 rounded shadow-sm focus:ring focus:ring-primary-200"
+                                                    >
+                                                        {agg.product.suppliers.map(s => {
+                                                            const sup = suppliersMap.get(s.supplier_id);
+                                                            if (sup?.status !== 'Activo') return null;
+                                                            return <option key={s.supplier_id} value={s.supplier_id}>{sup.name} ({s.price.toFixed(2)}€)</option>;
+                                                        })}
+                                                    </select>
+                                                </td>
+                                                <td className="px-3 py-2 text-right">{(totalQty * (priceInfo?.price || 0)).toFixed(2)}€</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                </div>
+            )}
+
             {viewMode === 'Teacher' && (
                 <div className="space-y-6">
                     <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 text-sm text-blue-700">
@@ -499,7 +563,20 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                                                             const editedQty = editedQuantities[`${order.id}-${item.product_id}`] ?? item.quantity;
                                                             return (
                                                                 <tr key={item.product_id} className="border-b border-gray-100">
-                                                                    <td className="py-2">{p?.name}</td>
+                                                                    <td className="py-2">
+                                                                        <span className="block">{p?.name}</span>
+                                                                        {(() => {
+                                                                            const mStock = mini_economato_stock.find(m => m.id === item.product_id);
+                                                                            if (mStock && mStock.stock > 0) {
+                                                                                return (
+                                                                                    <div className="mt-1 inline-flex items-center text-[9px] font-bold text-orange-700 bg-orange-100 border border-orange-300 px-1.5 py-0.5 rounded">
+                                                                                        ⚠️ ¡Hay {mStock.stock} {p?.unit} en minieconomato!
+                                                                                    </div>
+                                                                                );
+                                                                            }
+                                                                            return null;
+                                                                        })()}
+                                                                    </td>
                                                                     <td className="py-2 text-center">
                                                                         <input 
                                                                             type="number" 
