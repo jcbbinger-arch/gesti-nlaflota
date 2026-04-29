@@ -10,7 +10,8 @@ import {
     TrainingCycle, Module, Group, Assignment, Recipe, StockItem, Sale, Message,
     Classroom, ClassroomProduct, ClassroomSupplier, ClassroomEvent, ClassroomOrder,
     ServiceGroup, Service, WorkspaceSettings, SaleItem, Reservation,
-    DiningService, DiningReservation, StockReception, Transfer, SUPER_USER_EMAILS
+    DiningService, DiningReservation, StockReception, Transfer, SUPER_USER_EMAILS,
+    AcademicYear
 } from '../types';
 import { logAudit } from '../utils/auditLogger';
 
@@ -42,6 +43,10 @@ export interface DataContextType {
     dining_services: DiningService[];
     dining_reservations: DiningReservation[];
     stock_receptions: StockReception[];
+    academic_years: AcademicYear[];
+    selectedYearId: string | null;
+    setSelectedYearId: (id: string | null) => void;
+    isPastYear: boolean;
     workspaceSettings: WorkspaceSettings | null;
     setUsers: (data: User[] | ((prev: User[]) => User[])) => void;
     setProducts: (data: Product[] | ((prev: Product[]) => Product[])) => void;
@@ -70,6 +75,7 @@ export interface DataContextType {
     setDiningServices: (data: DiningService[] | ((prev: DiningService[]) => DiningService[])) => void;
     setDiningReservations: (data: DiningReservation[] | ((prev: DiningReservation[]) => DiningReservation[])) => void;
     setStockReceptions: (data: StockReception[] | ((prev: StockReception[]) => StockReception[])) => void;
+    setAcademicYears: (data: AcademicYear[] | ((prev: AcademicYear[]) => AcademicYear[])) => void;
     setWorkspaceSettings: (settings: WorkspaceSettings) => void;
     loadDemoData: () => Promise<void>;
     seedInitialData: () => Promise<void>;
@@ -105,6 +111,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [dining_services, setDiningServicesState] = useState<DiningService[]>([]);
     const [dining_reservations, setDiningReservationsState] = useState<DiningReservation[]>([]);
     const [stock_receptions, setStockReceptionsState] = useState<StockReception[]>([]);
+    const [academic_years, setAcademicYearsState] = useState<AcademicYear[]>([]);
+    const [selectedYearId, setSelectedYearId] = useState<string | null>(null);
     const [workspaceSettings, setWorkspaceSettingsState] = useState<WorkspaceSettings | null>(null);
     const { currentUser } = useAuth();
 
@@ -159,6 +167,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             { name: 'dining_services', setter: setDiningServicesState },
             { name: 'dining_reservations', setter: setDiningReservationsState },
             { name: 'stock_receptions', setter: setStockReceptionsState },
+            { name: 'academic_years', setter: setAcademicYearsState },
         ];
 
         const unsubscribes = collections.map(col => {
@@ -279,6 +288,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const setDiningServices = (data: any) => updateCollection('dining_services', data, dining_services);
     const setDiningReservations = (data: any) => updateCollection('dining_reservations', data, dining_reservations);
     const setStockReceptions = (data: any) => updateCollection('stock_receptions', data, stock_receptions);
+    const setAcademicYears = (data: any) => updateCollection('academic_years', data, academic_years);
 
     const setWorkspaceSettings = async (settings: WorkspaceSettings) => {
         if (!currentUser?.workspaceId) return;
@@ -313,26 +323,78 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const filteredUsers = useMemo(() => users.filter(u => !SUPER_USER_EMAILS.includes(u.email)), [users]);
 
+    const activeYearId = useMemo(() => {
+        if (selectedYearId) return selectedYearId;
+        return academic_years.find(y => y.is_active)?.id || null;
+    }, [selectedYearId, academic_years]);
+
+    // Update selectedYearId when active year is found if not set
+    useEffect(() => {
+        if (!selectedYearId && academic_years.length > 0) {
+            const active = academic_years.find(y => y.is_active);
+            if (active) setSelectedYearId(active.id);
+        }
+    }, [academic_years, selectedYearId]);
+
+    const filteredEvents = useMemo(() => 
+        events.filter(e => !activeYearId || e.academic_year_id === activeYearId),
+    [events, activeYearId]);
+
+    const filteredOrders = useMemo(() => 
+        orders.filter(o => !activeYearId || o.academic_year_id === activeYearId),
+    [orders, activeYearId]);
+
+    const filteredReservations = useMemo(() => 
+        reservations.filter(r => !activeYearId || r.academic_year_id === activeYearId),
+    [reservations, activeYearId]);
+
+    const filteredDiningServices = useMemo(() => 
+        dining_services.filter(s => !activeYearId || s.academic_year_id === activeYearId),
+    [dining_services, activeYearId]);
+
+    const filteredSales = useMemo(() => 
+        sales.filter(s => !activeYearId || s.academic_year_id === activeYearId),
+    [sales, activeYearId]);
+
+    const filteredSaleItems = useMemo(() => 
+        sale_items.filter(s => !activeYearId || s.academic_year_id === activeYearId),
+    [sale_items, activeYearId]);
+
+    const isPastYear = useMemo(() => {
+        if (!selectedYearId) return false;
+        const year = academic_years.find(y => y.id === selectedYearId);
+        return year ? !year.is_active : false;
+    }, [selectedYearId, academic_years]);
+
     const value: DataContextType = useMemo(() => ({
-        users: filteredUsers, products, suppliers, events, orders, incidents, 
-        training_cycles, modules, groups, assignments, recipes, sales, mini_economato_stock, messages,
+        users: filteredUsers, products, suppliers, 
+        events: filteredEvents, 
+        orders: filteredOrders, 
+        incidents, 
+        training_cycles, modules, groups, assignments, recipes, 
+        sales: filteredSales, 
+        mini_economato_stock, messages,
         classrooms, classroom_products, classroom_suppliers, classroom_events, classroom_orders,
-        service_groups, services, transfers, workspaceSettings, sale_items, reservations,
-        dining_services, dining_reservations, stock_receptions,
+        service_groups, services, transfers, workspaceSettings, 
+        sale_items: filteredSaleItems, 
+        reservations: filteredReservations,
+        dining_services: filteredDiningServices, 
+        dining_reservations, stock_receptions,
+        academic_years, selectedYearId, setSelectedYearId, isPastYear,
         setUsers, setProducts, setSuppliers, setEvents, setOrders, setIncidents,
         setTrainingCycles, setModules, setGroups, setAssignments, setRecipes, setSales,
         setSaleItems, setReservations,
         setMiniEconomatoStock, setMessages, setClassrooms, setClassroomProducts,
         setClassroomSuppliers, setClassroomEvents, setClassroomOrders,
         setServiceGroups, setServices, setTransfers, setDiningServices, setDiningReservations, 
-        setStockReceptions, setWorkspaceSettings,
+        setStockReceptions, setAcademicYears, setWorkspaceSettings,
         loadDemoData, seedInitialData
     }), [
-        filteredUsers, products, suppliers, events, orders, incidents, 
-        training_cycles, modules, groups, assignments, recipes, sales, mini_economato_stock, messages,
+        filteredUsers, products, suppliers, filteredEvents, filteredOrders, incidents, 
+        training_cycles, modules, groups, assignments, recipes, filteredSales, mini_economato_stock, messages,
         classrooms, classroom_products, classroom_suppliers, classroom_events, classroom_orders,
-        service_groups, services, transfers, workspaceSettings, sale_items, reservations,
-        dining_services, dining_reservations, stock_receptions
+        service_groups, services, transfers, workspaceSettings, filteredSaleItems, filteredReservations,
+        filteredDiningServices, dining_reservations, stock_receptions, academic_years, selectedYearId, isPastYear
     ]);
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

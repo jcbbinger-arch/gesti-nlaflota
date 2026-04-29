@@ -1,25 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
-import { ChevronDownIcon, LogoutIcon, ProfileIcon, MessageIcon } from './icons';
+import { ChevronDownIcon, LogoutIcon, ProfileIcon, MessageIcon, LockIcon } from './icons';
 import { useNavigation } from '../contexts/NavigationContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Avatar } from './Avatar';
 import { getProfileDisplayName, Profile } from '../types';
 import { useCompany } from '../contexts/CompanyContext';
 
-const getCurrentAcademicYear = () => {
-    return `Curso 2025/26`;
-};
-
-
 export const Header: React.FC = () => {
   const { currentUser, selectedProfile, logout, selectProfile } = useAuth();
-  const { messages } = useData();
+  const { messages, academic_years, selectedYearId, setSelectedYearId } = useData();
   const { companyInfo } = useCompany();
   const { toggleMobileSidebar } = useNavigation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isProfileSwitcherOpen, setIsProfileSwitcherOpen] = useState(false);
+  const [isYearSwitcherOpen, setIsYearSwitcherOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const navigate = useNavigate();
   
@@ -42,7 +38,11 @@ export const Header: React.FC = () => {
     ).length;
   }, [messages, currentUser, selectedProfile]);
 
-  const academicYear = getCurrentAcademicYear();
+  const currentYear = useMemo(() => {
+    return academic_years.find(y => y.id === selectedYearId) || academic_years.find(y => y.is_active);
+  }, [academic_years, selectedYearId]);
+
+  const academicYearLabel = currentYear ? currentYear.name : 'Cargando...';
 
   if (!currentUser) return null;
 
@@ -56,6 +56,12 @@ export const Header: React.FC = () => {
               </svg>
           </button>
 
+          {currentYear && !currentYear.is_active && (
+            <div className="flex items-center bg-amber-100 text-amber-800 px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter border border-amber-200 animate-pulse">
+              <LockIcon className="w-3 h-3 mr-1" /> Solo Lectura (Histórico)
+            </div>
+          )}
+
           {/* Network Status Dot - Always show, but shrink text */}
           <div className="flex items-center px-1.5 py-1 rounded-full bg-gray-100 dark:bg-gray-700 space-x-1 border dark:border-gray-600 group relative cursor-help">
             <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${isOnline ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`} />
@@ -65,8 +71,32 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
-              <div className="hidden lg:flex bg-indigo-600 text-white font-bold text-sm py-2 px-4 rounded-lg shadow">
-                  <span>{academicYear}</span>
+              <div className="relative">
+                <button 
+                  onClick={() => setIsYearSwitcherOpen(!isYearSwitcherOpen)}
+                  className="hidden lg:flex items-center bg-indigo-600 text-white font-bold text-sm py-2 px-4 rounded-lg shadow hover:bg-indigo-500 transition-colors"
+                >
+                    <span>{academicYearLabel}</span>
+                    {academic_years.length > 1 && <ChevronDownIcon className="w-4 h-4 ml-2" />}
+                </button>
+
+                {isYearSwitcherOpen && academic_years.length > 1 && (
+                  <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-600">
+                    <div className="px-4 py-2 text-[10px] uppercase font-bold text-gray-400 border-b dark:border-gray-600">Historial de Cursos</div>
+                    {academic_years.map((year) => (
+                      <button
+                        key={year.id}
+                        onClick={() => { setSelectedYearId(year.id); setIsYearSwitcherOpen(false); }}
+                        className={`block w-full text-left px-4 py-2 text-xs font-semibold ${selectedYearId === year.id ? 'bg-indigo-600 text-white' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>{year.name}</span>
+                          {year.is_active && <span className="text-[8px] bg-green-100 text-green-800 px-1 rounded uppercase font-black">Actual</span>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex items-center space-x-2 bg-indigo-600 text-white font-bold text-sm py-2 px-3 rounded-lg shadow overflow-hidden max-w-[150px] sm:max-w-[200px]">
                   {currentUser.instituteLogo ? (

@@ -33,6 +33,7 @@ import { ExpenseDetailByTeacher } from './pages/admin/ExpenseDetailByTeacher';
 import { CompanyData } from './pages/admin/CompanyData';
 import { ClassroomManager } from './pages/admin/ClassroomManager';
 import { ServicePlanner } from './pages/admin/ServicePlanner';
+import { AcademicYearManager } from './pages/admin/AcademicYearManager';
 
 import { ManagerLayout } from './pages/layouts/ManagerLayout';
 import { ManagerDashboard } from './pages/manager/ManagerDashboard';
@@ -138,6 +139,7 @@ const AppContent: React.FC = () => {
             <Route path="expenses/:teacher_id" element={<ExpenseDetailByTeacher />} />
             <Route path="company" element={<CompanyData />} />
             <Route path="classrooms" element={<ClassroomManager />} />
+            <Route path="academic-years" element={<AcademicYearManager />} />
             <Route path="support" element={<SupportMaintenance />} />
             <Route path="dining-services" element={<DiningServiceManager />} />
             <Route path="dining-view" element={<DiningServiceView />} />

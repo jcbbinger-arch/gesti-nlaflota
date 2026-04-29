@@ -5,14 +5,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { AppEvent, Order, OrderItem, Product, NewProductRequest, Profile } from '../../types';
 import { BlockedAccess } from '../shared/BlockedAccess';
-import { TrashIcon, PlusIcon, MinusIcon } from '../../components/icons';
+import { TrashIcon, PlusIcon, MinusIcon, LockIcon } from '../../components/icons';
 
 export const OrderForm: React.FC = () => {
     const { eventId, orderId } = useParams<{ eventId?: string; orderId?: string }>();
     const [searchParams] = useSearchParams();
     const isEconomatoOrder = searchParams.get('type') === 'economato';
     const navigate = useNavigate();
-    const { events, products, orders, setOrders, mini_economato_stock, setMiniEconomatoStock } = useData();
+    const { events, products, orders, setOrders, mini_economato_stock, setMiniEconomatoStock, isPastYear } = useData();
     const { currentUser, isOwner, effectiveUserId } = useAuth();
     
     const [orderType, setOrderType] = useState<'weekly' | 'service'>(
@@ -53,6 +53,7 @@ export const OrderForm: React.FC = () => {
     }, [events, eventId, orderId, orders, isEconomatoOrder, existingOrder]);
 
     const isEditable = useMemo(() => {
+        if (isPastYear) return false;
         if (!existingOrder) return true; // New order
         if (existingOrder.status === 'Procesado' || existingOrder.status === 'Cerrado' || existingOrder.status === 'Recibido OK') return false;
         return isOwner(existingOrder.user_id) || isAlmacen;
@@ -192,7 +193,8 @@ export const OrderForm: React.FC = () => {
                 new_product_requests: new_requests,
                 cost: calculateTotalCost,
                 notes: notes,
-                is_economato_order: !!isEconomatoOrder
+                is_economato_order: !!isEconomatoOrder,
+                academic_year_id: event.academic_year_id || existingOrder?.academic_year_id
             };
 
             // Add optional fields only if they exist to avoid Firestore undefined error
@@ -464,6 +466,11 @@ export const OrderForm: React.FC = () => {
                                 {isSubmitting ? 'Cerrando...' : 'Cerrar Pedido'}
                             </button>
                         )}
+                    </div>
+                )}
+                {isPastYear && (
+                    <div className="mt-6 bg-amber-50 text-amber-800 p-4 rounded-md border border-amber-200 font-bold text-center flex items-center justify-center">
+                        <LockIcon className="w-5 h-5 mr-2" /> MODO HISTÓRICO: Este pedido pertenece a un curso cerrado y no se puede modificar.
                     </div>
                 )}
             </Card>

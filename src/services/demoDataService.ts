@@ -51,6 +51,7 @@ export const demoData: AppData = {
     users: demoUsers,
     products: demoProducts,
     suppliers: demoSuppliers,
+    academic_years: [],
     events: demoEvents,
     orders: demoOrders,
     incidents: demoIncidents,

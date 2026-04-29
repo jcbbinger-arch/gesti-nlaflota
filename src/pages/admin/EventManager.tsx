@@ -34,7 +34,7 @@ const getEventStatus = (event: AppEvent) => {
 }
 
 export const EventManager: React.FC = () => {
-    const { events, setEvents, users, services, setServices, service_groups } = useData();
+    const { events, setEvents, users, services, setServices, service_groups, academic_years, selectedYearId } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
@@ -50,7 +50,10 @@ export const EventManager: React.FC = () => {
         // Wait for data to be loaded
         if (services.length === 0 && events.length === 0) return;
 
+        const activeYearId = academic_years.find(y => y.is_active)?.id;
+
         const syncAndGenerateEvents = async () => {
+            if (!activeYearId) return;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
@@ -102,7 +105,8 @@ export const EventManager: React.FC = () => {
                         budget_per_teacher: companyInfo.default_budget || 300,
                         status: 'Activo',
                         authorized_teachers: authorizedTeachers,
-                        color: PRESET_COLORS[1].value // Green for Service
+                        color: PRESET_COLORS[1].value, // Green for Service
+                        academic_year_id: activeYearId
                     };
                     
                     serviceEventsToCreate.push(newEvent);
@@ -166,7 +170,8 @@ export const EventManager: React.FC = () => {
                         budget_per_teacher: companyInfo.default_budget || 300,
                         status: 'Activo',
                         authorized_teachers: [],
-                        color: PRESET_COLORS[0].value // Blue for Regular
+                        color: PRESET_COLORS[0].value, // Blue for Regular
+                        academic_year_id: activeYearId
                     });
                 }
             }
@@ -501,6 +506,7 @@ const MultiSelectTeachers: React.FC<{ teachers: User[], selected: string[], onCh
 
 const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; onSave: (event: AppEvent) => void; teachers: User[] }> = ({ event, onClose, onSave, teachers }) => {
     const { companyInfo } = useCompany();
+    const { academic_years, selectedYearId } = useData();
     const [formState, setFormState] = useState<AppEvent>(event || { 
         id: '', name: '', type: 'Regular', 
         start_date: new Date().toISOString(), 
@@ -508,7 +514,8 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
         budget_per_teacher: companyInfo.default_budget || 300, 
         authorized_teachers: [],
         status: 'Activo',
-        color: PRESET_COLORS[0].value
+        color: PRESET_COLORS[0].value,
+        academic_year_id: selectedYearId || academic_years.find(y => y.is_active)?.id || ''
     });
 
     const [eventDateStr, setEventDateStr] = useState<string>('');
@@ -559,14 +566,14 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label>Tipo</label>
-                        <select name="type" value={formState.type} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600">
-                            <option value="Regular">Regular</option>
-                            <option value="Extraordinario">Extraordinario</option>
-                            <option value="Servicio">Servicio</option>
+                        <label>Curso Académico</label>
+                        <select name="academic_year_id" value={formState.academic_year_id} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                            {academic_years.map(y => (
+                                <option key={y.id} value={y.id}>{y.name}</option>
+                            ))}
                         </select>
                     </div>
-                     <div>
+                    <div>
                         <label>Estado</label>
                         <select name="status" value={formState.status} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600">
                             <option value="Activo">Activo</option>

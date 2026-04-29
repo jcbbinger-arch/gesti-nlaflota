@@ -58,6 +58,7 @@ export const initialData: AppData = {
   users,
   products,
   suppliers,
+  academic_years: [],
   events,
   orders,
   incidents,

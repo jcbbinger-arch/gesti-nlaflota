@@ -45,6 +45,7 @@ export const Support: React.FC = () => {
             users: data.users,
             products: data.products,
             suppliers: data.suppliers,
+            academic_years: data.academic_years,
             events: data.events,
             orders: data.orders,
             incidents: data.incidents,

@@ -36,6 +36,7 @@ const adminNav = [
   { name: 'Análisis de Gastos', href: '/admin/expenses', icon: <MagnifyingGlassIcon /> },
   { name: 'Datos Empresa', href: '/admin/company', icon: <CompanyIcon /> },
   { name: 'Aulas de Práctica', href: '/admin/classrooms', icon: <BookIcon /> },
+  { name: 'Cursos Académicos', href: '/admin/academic-years', icon: <ArchiveBoxIcon /> },
   { name: 'Gestión de Comedor', href: '/admin/dining-services', icon: <ClipboardDocumentListIcon /> },
   { name: 'Vista Comedor', href: '/admin/dining-view', icon: <UserGroupIcon /> },
   { name: 'Mi Perfil', href: '/admin/profile', icon: <ProfileIcon /> },

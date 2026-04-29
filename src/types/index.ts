@@ -39,6 +39,14 @@ export interface CategoryConfig {
   colors: string[]; // Up to 3 colors
 }
 
+export interface AcademicYear {
+    id: string;
+    name: string; // e.g. "Curso 2025/26"
+    start_date: string;
+    end_date: string;
+    is_active: boolean;
+}
+
 export interface WorkspaceSettings {
   workspaceId: string;
   categories: string[];
@@ -98,6 +106,7 @@ export interface Company {
   email: string;
   default_budget: number;
   manager_user_id?: string;
+  current_academic_year_id?: string;
 }
 
 export interface Creator {
@@ -155,6 +164,7 @@ export interface AppEvent {
     authorized_teachers?: string[]; // user IDs
     status: 'Activo' | 'Inactivo';
     color?: string;
+    academic_year_id?: string;
 }
 
 export interface OrderItem {
@@ -185,6 +195,7 @@ export interface Order {
   is_economato_order?: boolean;
   is_staff_meal?: boolean;
   dining_service_id?: string;
+  academic_year_id?: string;
 }
 
 export interface Incident {
@@ -293,6 +304,7 @@ export interface Sale {
     amount: number;
     category: string;
     description?: string;
+    academic_year_id?: string;
 }
 
 export interface Message {
@@ -394,6 +406,7 @@ export interface SaleItem {
     teacher_name?: string;
     group_name?: string;
     event_id?: string;
+    academic_year_id?: string;
 }
 
 export interface Reservation {
@@ -408,6 +421,7 @@ export interface Reservation {
     notes?: string;
     status: 'pendiente' | 'recogido' | 'cancelado';
     created_at: string; // ISO string
+    academic_year_id?: string;
 }
 
 export type DiningServiceStatus = 'borrador' | 'abierto' | 'cerrado';
@@ -427,6 +441,7 @@ export interface DiningService {
   status: DiningServiceStatus;
   created_by: string;
   created_at: string;
+  academic_year_id?: string;
 }
 
 export interface DiningReservation {
@@ -461,6 +476,7 @@ export interface AppData {
     users: User[];
     products: Product[];
     suppliers: Supplier[];
+    academic_years: AcademicYear[];
     events: AppEvent[];
     orders: Order[];
     incidents: Incident[];
