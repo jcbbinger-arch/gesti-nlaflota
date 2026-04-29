@@ -3,10 +3,10 @@ import React, { useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompany } from '../../contexts/CompanyContext';
-import { Profile } from '../../types';
+import { Profile, Order, Product } from '../../types';
 import { Card } from '../../components/Card';
-import { DownloadIcon } from '../../components/icons';
-import { printPage } from '../../utils/export';
+import { DownloadIcon, PrinterIcon } from '../../components/icons';
+import { printPage, exportIndividualOrderPdf } from '../../utils/export';
 import { PrintHeader } from '../../components/PrintHeader';
 
 export const TeacherOrderHistory: React.FC = () => {
@@ -14,7 +14,7 @@ export const TeacherOrderHistory: React.FC = () => {
     const { currentUser } = useAuth();
     const { companyInfo } = useCompany();
     
-    const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
+    const productsMap = useMemo(() => new Map<string, Product>(products.map(p => [p.id, p])), [products]);
     const eventsMap = useMemo(() => new Map(events.map(e => [e.id, e.name])), [events]);
 
     const isAlmacen = currentUser?.profiles.includes(Profile.ALMACEN);
@@ -28,7 +28,24 @@ export const TeacherOrderHistory: React.FC = () => {
                 const dateB = b.date ? new Date(b.date).getTime() : 0;
                 return dateB - dateA;
             });
-    }, [orders, currentUser]);
+    }, [orders, currentUser, isAlmacen]);
+
+    const handlePrintOrder = (e: React.MouseEvent, order: Order) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!companyInfo) return;
+        
+        const eventName = eventsMap.get(order.event_id) || 'Evento Desconocido';
+        
+        exportIndividualOrderPdf(
+            order,
+            eventName,
+            productsMap,
+            companyInfo,
+            currentUser?.name || 'Usuario',
+            'Manager Pro'
+        );
+    };
 
     return (
         <div>
@@ -61,7 +78,16 @@ export const TeacherOrderHistory: React.FC = () => {
                                             <span className="bg-primary-100 text-primary-700 text-[10px] px-2 py-0.5 rounded-full border border-primary-200 uppercase font-bold">SERVICIO</span>
                                         )}
                                     </div>
-                                    <span className="font-mono text-sm">{order.status} - {order.cost?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
+                                    <div className="flex items-center gap-4">
+                                        <span className="font-mono text-sm">{order.status} - {order.cost?.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
+                                        <button 
+                                            onClick={(e) => handlePrintOrder(e, order)}
+                                            className="no-print p-1.5 bg-indigo-50 text-indigo-600 rounded-md hover:bg-indigo-100 transition-colors"
+                                            title="Descargar PDF de este pedido"
+                                        >
+                                            <PrinterIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </summary>
                                 <div className="mt-4 pt-4 border-t dark:border-gray-600">
                                     <h4 className="font-bold">Artículos del Pedido:</h4>

@@ -28,6 +28,30 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
 
     const group = useMemo(() => service_groups.find((g: any) => g.id === service.service_group_id), [service_groups, service.service_group_id]);
     const teachersInGroup = useMemo(() => group?.teacher_ids.map(id => usersMap.get(id)).filter((u): u is User => !!u) || [], [group, usersMap]);
+    const { orders: allOrders, transfers: allTransfers } = useData();
+
+    const serviceCosts = useMemo(() => {
+        // Associated original event (AppEvent)
+        const event = events.find(e => {
+            // Find event that matches the service name and date approximately or by ID if stored
+            // Wait, services should probably have an event_id if they were planned
+            return e.name === service.name && new Date(e.start_date).toDateString() === new Date(service.date).toDateString();
+        });
+
+        if (!event) return { orders: 0, transfers: 0, total: 0 };
+
+        const serviceOrders = allOrders.filter(o => o.event_id === event.id && o.status === 'Completado');
+        const serviceTransfers = allTransfers.filter(t => t.to_event_id === event.id);
+
+        const ordersCost = serviceOrders.reduce((sum, o) => sum + (o.cost || 0), 0);
+        const transfersCost = serviceTransfers.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+        return {
+            orders: ordersCost,
+            transfers: transfersCost,
+            total: ordersCost + transfersCost
+        };
+    }, [service, allOrders, allTransfers, events]);
 
     const handleRoleChange = (role: ServiceRole, userId: string) => {
         const updatedService = { ...service, roles: { ...service.roles, [role]: userId } };
@@ -155,6 +179,28 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                     </Card>
                     <Card title="Generación de Pedido">
                          <button onClick={generateDraftOrder} className="bg-green-600 text-white py-2 px-4 rounded-md">Generar Borrador de Pedido</button>
+                    </Card>
+                    
+                    <Card title="Resumen de Costes del Servicio">
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600">Pedidos (Material):</span>
+                                <span className="font-mono font-bold text-amber-700">{serviceCosts.orders.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600">Traspasos (Producción propia):</span>
+                                <span className="font-mono font-bold text-indigo-700">{serviceCosts.transfers.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
+                            </div>
+                            <div className="pt-2 border-t flex justify-between items-center">
+                                <span className="font-bold text-gray-800">COSTE TOTAL:</span>
+                                <span className="font-mono font-bold text-xl text-primary-600 underline">
+                                    {serviceCosts.total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-gray-500 italic">
+                                * Los costes de pedidos solo incluyen aquellos marcados como "Completado".
+                            </p>
+                        </div>
                     </Card>
                 </div>
             </div>

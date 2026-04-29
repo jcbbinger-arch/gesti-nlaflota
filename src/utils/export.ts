@@ -254,3 +254,101 @@ export const generateReceptionSheetPdf = (
 
     doc.save(`recepcion_${event.name.replace(/\s/g, '_')}.pdf`);
 };
+
+/**
+ * Generates a individual teacher order PDF.
+ */
+export const exportIndividualOrderPdf = (
+    order: Order,
+    eventName: string,
+    productsMap: Map<string, Product>,
+    companyInfo: Company,
+    userName: string,
+    appName?: string
+) => {
+    const doc = new jsPDF();
+    const date = new Date(order.date).toLocaleDateString();
+
+    const startY = addHeaderToPdf(doc, companyInfo, 'HOJA DE PEDIDO DE MATERIAL', `Evento: ${eventName}`, userName);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`INFORMACIÓN DEL PEDIDO:`, 14, startY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Fecha: ${date}`, 14, startY + 5);
+    doc.text(`Estado: ${order.status}`, 14, startY + 10);
+    if (order.is_economato_order) {
+        doc.text(`Tipo: PEDIDO A ECONOMATO`, 14, startY + 15);
+    } else {
+        doc.text(`Tipo: ${order.order_type === 'service' ? 'PEDIDO DE SERVICIO' : 'PEDIDO SEMANAL'}`, 14, startY + 15);
+    }
+
+    // Items Table
+    const body = order.items.map(item => {
+        const product = productsMap.get(item.product_id);
+        return [
+            product?.reference || 'N/A',
+            product?.name.toUpperCase() || 'DESCONOCIDO',
+            item.quantity,
+            product?.unit || 'uds',
+            item.price.toFixed(2) + ' €',
+            (item.quantity * item.price).toFixed(2) + ' €'
+        ];
+    });
+
+    if (order.cost) {
+        body.push(['', '', '', '', 'TOTAL', order.cost.toFixed(2) + ' €']);
+    }
+
+    (doc as any).autoTable({
+        startY: startY + 25,
+        head: [['Ref.', 'Producto', 'Cant.', 'Ud.', 'Precio', 'Subtotal']],
+        body: body,
+        theme: 'grid',
+        headStyles: { fillStyle: 'F', fillColor: [59, 130, 246] }
+    });
+
+    let finalY = (doc as any).lastAutoTable.finalY + 10;
+
+    // New Product Requests
+    if (order.new_product_requests && order.new_product_requests.length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SOLICITUDES DE NUEVOS PRODUCTOS', 14, finalY);
+        
+        const reqBody = order.new_product_requests.map(req => [
+            req.product_name.toUpperCase(),
+            req.quantity,
+            req.unit,
+            req.notes
+        ]);
+
+        (doc as any).autoTable({
+            startY: finalY + 5,
+            head: [['Producto Solicitado', 'Cant.', 'Ud.', 'Notas']],
+            body: reqBody,
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229] }
+        });
+        finalY = (doc as any).lastAutoTable.finalY + 10;
+    }
+
+    if (order.notes) {
+        if (finalY > 260) { doc.addPage(); finalY = 20; }
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('NOTAS DEL PEDIDO:', 14, finalY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(order.notes, 14, finalY + 5, { maxWidth: 180 });
+    }
+
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for(let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        const footerText = `${appName || 'Manager Pro'} - ${new Date().toLocaleString()} - Pág. ${i} de ${pageCount}`;
+        doc.setFontSize(8);
+        doc.text(footerText, 14, doc.internal.pageSize.height - 10);
+    }
+
+    doc.save(`pedido_${eventName.replace(/\s/g, '_')}_${order.id.slice(-6)}.pdf`);
+};

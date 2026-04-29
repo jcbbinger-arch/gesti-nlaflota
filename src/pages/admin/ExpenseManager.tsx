@@ -17,6 +17,8 @@ const StatCard: React.FC<{ title: string; value: string; }> = ({ title, value })
 
 export const ExpenseManager: React.FC = () => {
     const { orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock, transfers, events } = useData();
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [eventTypeFilter, setEventTypeFilter] = React.useState<'all' | 'Servicio' | 'Extraordinario'>('all');
 
     const analysisData = useMemo(() => {
         const teachers = users.filter(u => 
@@ -122,7 +124,28 @@ export const ExpenseManager: React.FC = () => {
         
         const costByGroup: { [key: string]: number } = {};
         const costByModule: { [key: string]: number } = {};
+        const costByEvent: { [key: string]: { orders: number, transfers: number, total: number, name: string, date: string } } = {};
         
+        // Initialize events data
+        events.forEach(e => {
+            costByEvent[e.id] = { orders: 0, transfers: 0, total: 0, name: e.name, date: e.start_date };
+        });
+
+        completedOrders.forEach(order => { 
+            costByTeacher[order.user_id] = (costByTeacher[order.user_id] || 0) + (order.cost || 0); 
+            if (order.event_id && costByEvent[order.event_id]) {
+                costByEvent[order.event_id].orders += (order.cost || 0);
+                costByEvent[order.event_id].total += (order.cost || 0);
+            }
+        });
+        
+        transfers.forEach(transfer => {
+            if (transfer.to_event_id && costByEvent[transfer.to_event_id]) {
+                costByEvent[transfer.to_event_id].transfers += (transfer.amount || 0);
+                costByEvent[transfer.to_event_id].total += (transfer.amount || 0);
+            }
+        });
+
         Object.keys(costByTeacher).forEach(teacherId => {
             const teacherAssignments = assignments.filter(a => a.user_id === teacherId);
             if (teacherAssignments.length > 0) {
@@ -174,9 +197,18 @@ export const ExpenseManager: React.FC = () => {
             gastoTotal, ingresosTotales, balanceGeneral, gastoMedioPorProfesor,
             totalSharedEconomatoCost, sharedCostPerTeacher,
             top5Teachers, dataByTeacher: dataByTeacherWithShared,
-            costByCycle, costByModule, costByGroup, costBySupplier
+            costByCycle, costByModule, costByGroup, costBySupplier,
+            costByEvent: Object.values(costByEvent)
+                .filter(e => e.total > 0)
+                .filter(e => {
+                    const matchesSearch = e.name.toLowerCase().includes(searchTerm.toLowerCase());
+                    const eventObj = events.find(ev => ev.id === Object.keys(costByEvent).find(key => costByEvent[key].name === e.name));
+                    const matchesType = eventTypeFilter === 'all' || (eventObj?.type === eventTypeFilter);
+                    return matchesSearch && matchesType;
+                })
+                .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         };
-    }, [orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock, transfers, events]);
+    }, [orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock, transfers, events, searchTerm, eventTypeFilter]);
 
     return (
         <div>
@@ -246,6 +278,63 @@ export const ExpenseManager: React.FC = () => {
 
             {/* Detailed Tables */}
             <div className="space-y-6">
+                <Card title="Gasto por Evento (Servicios / Extraordinarios)">
+                    <div className="no-print flex flex-col md:flex-row gap-4 mb-4 items-end">
+                        <div className="flex-1">
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Buscar Evento</label>
+                            <input 
+                                type="text"
+                                placeholder="Ej: Nombre del servicio..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm"
+                            />
+                        </div>
+                        <div className="w-full md:w-48">
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Tipo de Evento</label>
+                            <select 
+                                value={eventTypeFilter}
+                                onChange={e => setEventTypeFilter(e.target.value as any)}
+                                className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 text-sm"
+                            >
+                                <option value="all">Todos los tipos</option>
+                                <option value="Servicio">Servicios</option>
+                                <option value="Extraordinario">Extraordinarios</option>
+                            </select>
+                        </div>
+                        <button onClick={() => exportToCsv('gasto_por_evento.csv', analysisData.costByEvent)} className="bg-blue-500 text-white text-xs py-2 px-4 rounded hover:bg-blue-600">Exportar CSV</button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                                <tr>
+                                    <th className="p-2 text-left">Evento</th>
+                                    <th className="p-2 text-center">Fecha</th>
+                                    <th className="p-2 text-right">Coste Pedidos</th>
+                                    <th className="p-2 text-right">Coste Traspasos</th>
+                                    <th className="p-2 text-right font-bold">Coste Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {analysisData.costByEvent.map((e, idx) => (
+                                    <tr key={idx} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                        <td className="p-2 font-medium">{e.name}</td>
+                                        <td className="p-2 text-center">{new Date(e.date).toLocaleDateString()}</td>
+                                        <td className="p-2 text-right text-amber-600">{formatCurrency(e.orders)}</td>
+                                        <td className="p-2 text-right text-indigo-600">{formatCurrency(e.transfers)}</td>
+                                        <td className="p-2 text-right font-bold text-primary-600">{formatCurrency(e.total)}</td>
+                                    </tr>
+                                ))}
+                                {analysisData.costByEvent.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="p-4 text-center text-gray-500 italic">No hay eventos con gastos registrados.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+
                 <Card title="Gasto por Profesor/a">
                     <button onClick={() => exportToCsv('gasto_por_profesor.csv', analysisData.dataByTeacher)} className="no-print mb-4 bg-blue-500 text-white text-xs py-1 px-3 rounded">Descargar CSV</button>
                     <div className="overflow-x-auto">

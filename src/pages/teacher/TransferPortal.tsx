@@ -8,7 +8,7 @@ import { AppEvent, Transfer, Profile } from '../../types';
 import { PlusIcon, TrashIcon, ArrowRightLeftIcon } from '../../components/icons';
 
 export const TransferPortal: React.FC = () => {
-    const { events, transfers, setTransfers, assignments } = useData();
+    const { events, transfers, setTransfers, assignments, users } = useData();
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,16 +32,22 @@ export const TransferPortal: React.FC = () => {
         ), 
     [events]);
 
-    const myTransfers = useMemo(() => 
-        transfers.filter(t => t.from_user_id === currentUser?.id)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [transfers, currentUser]);
+    const myTransfers = useMemo(() => {
+        const isManagement = currentUser?.profiles.includes(Profile.ADMIN) || 
+                           currentUser?.profiles.includes(Profile.ALMACEN);
+        
+        const filtered = isManagement 
+            ? transfers 
+            : transfers.filter(t => t.from_user_id === currentUser?.id);
+
+        return [...filtered].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [transfers, currentUser]);
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         
         const newTransfer: Transfer = {
-            id: `tr-${Date.now()}`,
+            id: `tr-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             from_user_id: currentUser?.id || '',
             to_event_id: formState.to_event_id,
             concept: formState.concept,
@@ -52,14 +58,14 @@ export const TransferPortal: React.FC = () => {
             status: 'Completado'
         };
 
-        setTransfers([...transfers, newTransfer]);
+        setTransfers(prev => [...prev, newTransfer]);
         setIsModalOpen(false);
         setFormState({ to_event_id: '', concept: '', amount: 0, units: 0, price_per_unit: 0 });
     };
 
     const handleDelete = (id: string) => {
         if (window.confirm('¿Seguro que quieres eliminar este traspaso?')) {
-            setTransfers(transfers.filter(t => t.id !== id));
+            setTransfers(prev => prev.filter(t => t.id !== id));
         }
     };
 
@@ -89,6 +95,9 @@ export const TransferPortal: React.FC = () => {
                             <tr>
                                 <th className="px-6 py-3">Fecha</th>
                                 <th className="px-6 py-3">Concepto</th>
+                                { (currentUser?.profiles.includes(Profile.ADMIN) || currentUser?.profiles.includes(Profile.ALMACEN)) && (
+                                    <th className="px-6 py-3">Origen</th>
+                                )}
                                 <th className="px-6 py-3">Destino (Servicio)</th>
                                 <th className="px-6 py-3 text-right">Importe</th>
                                 <th className="px-6 py-3 text-center">Acciones</th>
@@ -98,6 +107,7 @@ export const TransferPortal: React.FC = () => {
                             {myTransfers.length > 0 ? (
                                 myTransfers.map(transfer => {
                                     const event = events.find(e => e.id === transfer.to_event_id);
+                                    const fromUser = users.find(u => u.id === transfer.from_user_id);
                                     return (
                                         <tr key={transfer.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                             <td className="px-6 py-4">{new Date(transfer.date).toLocaleDateString()}</td>
@@ -107,6 +117,11 @@ export const TransferPortal: React.FC = () => {
                                                     <div className="text-[10px] text-gray-500">{transfer.units} uds x {transfer.price_per_unit.toFixed(2)}€</div>
                                                 )}
                                             </td>
+                                            { (currentUser?.profiles.includes(Profile.ADMIN) || currentUser?.profiles.includes(Profile.ALMACEN)) && (
+                                                <td className="px-6 py-4 italic text-gray-500">
+                                                    {fromUser?.name || 'Desconocido'}
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4">
                                                 <span className="text-indigo-600 dark:text-indigo-400 font-medium">
                                                     {event?.name || 'Evento Desconocido'}
