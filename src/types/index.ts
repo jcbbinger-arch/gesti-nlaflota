@@ -391,6 +391,7 @@ export interface SaleItem {
     end_time: string;
     teacher_name?: string;
     group_name?: string;
+    event_id?: string;
 }
 
 export interface Reservation {

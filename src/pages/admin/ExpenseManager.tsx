@@ -21,6 +21,7 @@ export const ExpenseManager: React.FC = () => {
     const [eventTypeFilter, setEventTypeFilter] = React.useState<'all' | 'Servicio' | 'Extraordinario'>('all');
 
     const analysisData = useMemo(() => {
+        const { sale_items, reservations, dining_reservations, dining_services, services: allServices } = useData();
         const teachers = users.filter(u => 
             u.profiles.includes(Profile.TEACHER) && 
             !u.profiles.includes(Profile.ALMACEN) &&
@@ -124,26 +125,58 @@ export const ExpenseManager: React.FC = () => {
         
         const costByGroup: { [key: string]: number } = {};
         const costByModule: { [key: string]: number } = {};
-        const costByEvent: { [key: string]: { orders: number, transfers: number, total: number, name: string, date: string } } = {};
+        const costByEvent: { [key: string]: { 
+            orders: number, 
+            transfers: number, 
+            takeaway_revenue: number,
+            dining_revenue: number,
+            total: number, 
+            name: string, 
+            date: string 
+        } } = {};
         
         // Initialize events data
         events.forEach(e => {
-            costByEvent[e.id] = { orders: 0, transfers: 0, total: 0, name: e.name, date: e.start_date };
+            costByEvent[e.id] = { orders: 0, transfers: 0, takeaway_revenue: 0, dining_revenue: 0, total: 0, name: e.name, date: e.start_date };
         });
 
         completedOrders.forEach(order => { 
             costByTeacher[order.user_id] = (costByTeacher[order.user_id] || 0) + (order.cost || 0); 
             if (order.event_id && costByEvent[order.event_id]) {
                 costByEvent[order.event_id].orders += (order.cost || 0);
-                costByEvent[order.event_id].total += (order.cost || 0);
             }
         });
         
         transfers.forEach(transfer => {
             if (transfer.to_event_id && costByEvent[transfer.to_event_id]) {
                 costByEvent[transfer.to_event_id].transfers += (transfer.amount || 0);
-                costByEvent[transfer.to_event_id].total += (transfer.amount || 0);
             }
+        });
+
+        // Add Takeaway Revenues
+        reservations.filter(r => r.status === 'recogido').forEach(res => {
+            const item = sale_items.find(si => si.id === res.sale_item_id);
+            if (item && item.event_id && costByEvent[item.event_id]) {
+                costByEvent[item.event_id].takeaway_revenue += (res.quantity * item.price);
+            }
+        });
+
+        // Add Dining Revenues
+        dining_reservations.forEach(res => {
+            const dService = dining_services.find(ds => ds.id === res.service_id);
+            if (dService && dService.service_id) {
+                const planningService = allServices.find(ps => ps.id === dService.service_id);
+                if (planningService && planningService.event_id && costByEvent[planningService.event_id]) {
+                    costByEvent[planningService.event_id].dining_revenue += (res.total_price || 0);
+                }
+            }
+        });
+
+        // Calculate Totals per Event
+        Object.keys(costByEvent).forEach(eventId => {
+            const e = costByEvent[eventId];
+            // Real cost is Expenses - Revenues
+            e.total = (e.orders + e.transfers) - (e.takeaway_revenue + e.dining_revenue);
         });
 
         Object.keys(costByTeacher).forEach(teacherId => {
@@ -312,17 +345,23 @@ export const ExpenseManager: React.FC = () => {
                                     <th className="p-2 text-center">Fecha</th>
                                     <th className="p-2 text-right">Coste Pedidos</th>
                                     <th className="p-2 text-right">Coste Traspasos</th>
-                                    <th className="p-2 text-right font-bold">Coste Total</th>
+                                    <th className="p-2 text-right text-green-600">Ventas TakeAway</th>
+                                    <th className="p-2 text-right text-green-600">Ventas Comedor</th>
+                                    <th className="p-2 text-right font-bold underline">COSTE NETO</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {analysisData.costByEvent.map((e, idx) => (
-                                    <tr key={idx} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                    <tr key={idx} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-[13px]">
                                         <td className="p-2 font-medium">{e.name}</td>
                                         <td className="p-2 text-center">{new Date(e.date).toLocaleDateString()}</td>
                                         <td className="p-2 text-right text-amber-600">{formatCurrency(e.orders)}</td>
                                         <td className="p-2 text-right text-indigo-600">{formatCurrency(e.transfers)}</td>
-                                        <td className="p-2 text-right font-bold text-primary-600">{formatCurrency(e.total)}</td>
+                                        <td className="p-2 text-right text-green-600">+{formatCurrency(e.takeaway_revenue)}</td>
+                                        <td className="p-2 text-right text-green-600">+{formatCurrency(e.dining_revenue)}</td>
+                                        <td className={`p-2 text-right font-bold ${e.total > 0 ? 'text-primary-600' : 'text-green-700 bg-green-50'}`}>
+                                            {formatCurrency(e.total)}
+                                        </td>
                                     </tr>
                                 ))}
                                 {analysisData.costByEvent.length === 0 && (

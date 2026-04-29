@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
@@ -8,10 +8,11 @@ import { SaleItem } from '../../types';
 import { AllergenSelector } from './RecipeForm'; // Importar desde RecipeForm
 
 const SaleItemFormModal: React.FC<{ saleItem: SaleItem | null; onSave: (item: Partial<SaleItem>) => void; onClose: () => void; }> = ({ saleItem, onSave, onClose }) => {
-    const { recipes } = useData();
+    const { recipes, events } = useData();
     const { currentUser } = useAuth();
     const [formState, setFormState] = useState({
         recipe_id: saleItem?.recipe_id || '',
+        event_id: saleItem?.event_id || '',
         name: saleItem?.name || '',
         description: saleItem?.description || '',
         price: saleItem?.price || 0,
@@ -25,6 +26,8 @@ const SaleItemFormModal: React.FC<{ saleItem: SaleItem | null; onSave: (item: Pa
         teacher_name: saleItem?.teacher_name || currentUser?.teacherName || currentUser?.name || '',
         group_name: saleItem?.group_name || '',
     });
+
+    const activeEvents = useMemo(() => events.filter(e => e.status === 'Activo'), [events]);
 
     const handleRecipeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const recipe = recipes.find(r => r.id === e.target.value);
@@ -81,6 +84,19 @@ const SaleItemFormModal: React.FC<{ saleItem: SaleItem | null; onSave: (item: Pa
                         <option value="Activo">Activo (A la venta)</option>
                         <option value="Inactivo">Inactivo</option>
                     </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Asociar a Servicio/Evento (Opcional)</label>
+                    <select 
+                        name="event_id" 
+                        value={formState.event_id} 
+                        onChange={handleChange} 
+                        className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 italic text-indigo-600"
+                    >
+                        <option value="">No asociado (Venta general)</option>
+                        {activeEvents.map(e => <option key={e.id} value={e.id}>{e.name} ({new Date(e.start_date).toLocaleDateString()})</option>)}
+                    </select>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Si este plato se elaboró para un servicio específico y se vende el sobrante, selecciónalo aquí para imputar ingresos y costes correctamente.</p>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>

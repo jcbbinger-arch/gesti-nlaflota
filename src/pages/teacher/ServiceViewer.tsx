@@ -28,20 +28,37 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
 
     const group = useMemo(() => service_groups.find((g: any) => g.id === service.service_group_id), [service_groups, service.service_group_id]);
     const teachersInGroup = useMemo(() => group?.teacher_ids.map(id => usersMap.get(id)).filter((u): u is User => !!u) || [], [group, usersMap]);
-    const { orders: allOrders, transfers: allTransfers } = useData();
+    const { orders: allOrders, transfers: allTransfers, reservations: allReservations, sale_items: allSaleItems, dining_reservations: allDiningReservations, dining_services: allDiningServices } = useData();
 
     const serviceCosts = useMemo(() => {
-        // Associated original event (AppEvent)
         const event = events.find(e => {
-            // Find event that matches the service name and date approximately or by ID if stored
-            // Wait, services should probably have an event_id if they were planned
             return e.name === service.name && new Date(e.start_date).toDateString() === new Date(service.date).toDateString();
         });
 
-        if (!event) return { orders: 0, transfers: 0, total: 0 };
+        if (!event) return { orders: 0, transfers: 0, takeaway_rev: 0, dining_rev: 0, total: 0 };
 
         const serviceOrders = allOrders.filter(o => o.event_id === event.id && o.status === 'Completado');
         const serviceTransfers = allTransfers.filter(t => t.to_event_id === event.id);
+        
+        // Takeaway Revenue
+        const takeawayRev = allReservations
+            .filter(r => r.status === 'recogido')
+            .reduce((sum, res) => {
+                const item = allSaleItems.find(si => si.id === res.sale_item_id);
+                if (item && item.event_id === event.id) {
+                    return sum + (res.quantity * item.price);
+                }
+                return sum;
+            }, 0);
+
+        // Dining Revenue
+        const diningRev = allDiningReservations.reduce((sum, res) => {
+            const dService = allDiningServices.find(ds => ds.id === res.service_id);
+            if (dService && dService.service_id === service.id) {
+                return sum + (res.total_price || 0);
+            }
+            return sum;
+        }, 0);
 
         const ordersCost = serviceOrders.reduce((sum, o) => sum + (o.cost || 0), 0);
         const transfersCost = serviceTransfers.reduce((sum, t) => sum + (t.amount || 0), 0);
@@ -49,9 +66,11 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         return {
             orders: ordersCost,
             transfers: transfersCost,
-            total: ordersCost + transfersCost
+            takeaway_rev: takeawayRev,
+            dining_rev: diningRev,
+            total: (ordersCost + transfersCost) - (takeawayRev + diningRev)
         };
-    }, [service, allOrders, allTransfers, events]);
+    }, [service, allOrders, allTransfers, allReservations, allSaleItems, allDiningReservations, allDiningServices, events]);
 
     const handleRoleChange = (role: ServiceRole, userId: string) => {
         const updatedService = { ...service, roles: { ...service.roles, [role]: userId } };
@@ -191,14 +210,30 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                 <span className="text-gray-600">Traspasos (Producción propia):</span>
                                 <span className="font-mono font-bold text-indigo-700">{serviceCosts.transfers.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
                             </div>
+                            {(serviceCosts.takeaway_rev > 0 || serviceCosts.dining_rev > 0) && (
+                                <div className="pt-2 border-t space-y-2">
+                                    {serviceCosts.takeaway_rev > 0 && (
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-600">Ingresos Take-Away:</span>
+                                            <span className="font-mono font-bold text-green-600">+{serviceCosts.takeaway_rev.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
+                                        </div>
+                                    )}
+                                    {serviceCosts.dining_rev > 0 && (
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-600">Ingresos Comedor:</span>
+                                            <span className="font-mono font-bold text-green-600">+{serviceCosts.dining_rev.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div className="pt-2 border-t flex justify-between items-center">
-                                <span className="font-bold text-gray-800">COSTE TOTAL:</span>
-                                <span className="font-mono font-bold text-xl text-primary-600 underline">
+                                <span className="font-bold text-gray-800 uppercase tracking-tighter">Neto Real:</span>
+                                <span className={`font-mono font-bold text-xl ${serviceCosts.total > 0 ? 'text-primary-600' : 'text-green-600'}`}>
                                     {serviceCosts.total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
                                 </span>
                             </div>
                             <p className="text-[10px] text-gray-500 italic">
-                                * Los costes de pedidos solo incluyen aquellos marcados como "Completado".
+                                * Los costes de pedidos solo incluyen aquellos marcados como "Completado". Los ingresos Take-Away solo incluyen raciones marcadas como "recogidas".
                             </p>
                         </div>
                     </Card>
