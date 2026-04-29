@@ -86,13 +86,25 @@ export const OrderPortal: React.FC = () => {
         exportToCsv('eventos_pedidos.csv', dataToExport);
     }
 
+    const currentDateString = new Date().toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    }).toUpperCase();
+
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-                    {isEconomatoMode ? 'Portal de Pedidos: Mini-Economato' : 'Portal de Pedidos'}
-                </h1>
-                 <button onClick={handleExport} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center shadow-sm transition-colors">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                <div className="flex flex-col">
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
+                        {isEconomatoMode ? 'Portal de Pedidos: Mini-Economato' : 'Portal de Pedidos'}
+                    </h1>
+                    <span className="text-xs font-bold text-primary-600 tracking-widest mt-1">
+                        {currentDateString}
+                    </span>
+                </div>
+                <button onClick={handleExport} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center shadow-sm transition-colors">
                     <DownloadIcon className="w-5 h-5 mr-2" />
                     Exportar a CSV
                 </button>

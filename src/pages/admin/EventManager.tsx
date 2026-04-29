@@ -41,6 +41,8 @@ export const EventManager: React.FC = () => {
     const [deleteStep, setDeleteStep] = useState(1);
     const { companyInfo } = useCompany();
 
+    const [activeTab, setActiveTab] = useState<'active' | 'past'>('active');
+
     const teachers = useMemo(() => users.filter(u => u.profiles.includes(Profile.TEACHER)), [users]);
     
     // Automatic event generation and Service sync logic
@@ -283,7 +285,27 @@ export const EventManager: React.FC = () => {
         exportToCsv('eventos.csv', dataToExport);
     }
 
-    const sortedEvents = useMemo(() => [...events].sort((a,b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()), [events]);
+    const { activeEvents, pastEvents } = useMemo(() => {
+        const now = new Date();
+        const active: AppEvent[] = [];
+        const past: AppEvent[] = [];
+
+        events.forEach(event => {
+            const endDate = new Date(event.end_date);
+            if (now > endDate && event.status !== 'Inactivo') {
+                past.push(event);
+            } else {
+                active.push(event);
+            }
+        });
+
+        return {
+            activeEvents: active.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()),
+            pastEvents: past.sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime())
+        };
+    }, [events]);
+
+    const displayEvents = activeTab === 'active' ? activeEvents : pastEvents;
 
     const getRowBgColor = (type: string) => {
         switch (type) {
@@ -294,11 +316,23 @@ export const EventManager: React.FC = () => {
         }
     };
 
+    const currentDateString = new Date().toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    }).toUpperCase();
+
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Eventos</h1>
-                <div className="no-print flex items-center space-x-2">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div className="flex items-baseline gap-4">
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Eventos</h1>
+                    <span className="text-sm font-bold text-primary-600 bg-primary-50 px-3 py-1 rounded-full border border-primary-100 hidden lg:block">
+                        HOY: {currentDateString}
+                    </span>
+                </div>
+                <div className="no-print flex flex-wrap items-center gap-2">
                      <button onClick={handleExport} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
                         <DownloadIcon className="w-5 h-5 mr-1" /> Exportar CSV
                      </button>
@@ -311,27 +345,43 @@ export const EventManager: React.FC = () => {
                 </div>
             </div>
             
-            <Card title="Listado de Eventos de Pedido">
-                <div className="overflow-x-auto">
+            <Card noPadding>
+                <div className="border-b dark:border-gray-700 no-print">
+                    <div className="flex">
+                        <button 
+                            onClick={() => setActiveTab('active')}
+                            className={`px-6 py-4 text-sm font-bold transition-colors ${activeTab === 'active' ? 'border-b-2 border-primary-600 text-primary-600 bg-primary-50/30' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            ACTIVOS / PRÓXIMOS ({activeEvents.length})
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('past')}
+                            className={`px-6 py-4 text-sm font-bold transition-colors ${activeTab === 'past' ? 'border-b-2 border-primary-600 text-primary-600 bg-primary-50/30' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            HISTORIAL / PASADOS ({pastEvents.length})
+                        </button>
+                    </div>
+                </div>
+                <div className="overflow-x-auto p-4">
                     <table className="w-full">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <thead className="text-[11px] text-gray-500 uppercase bg-gray-50/50 dark:bg-gray-800/50 sticky top-0">
                             <tr>
-                                <th className="px-4 py-2">Nombre</th>
-                                <th className="px-4 py-2">Tipo</th>
-                                <th className="px-4 py-2">Fecha Inicio</th>
-                                <th className="px-4 py-2">Fecha Fin</th>
-                                <th className="px-4 py-2">Presupuesto</th>
-                                <th className="px-4 py-2">Estado</th>
-                                <th className="px-4 py-2">Acciones</th>
+                                <th className="px-4 py-3 text-left font-bold tracking-wider">Nombre</th>
+                                <th className="px-4 py-3 text-left font-bold tracking-wider">Tipo</th>
+                                <th className="px-4 py-3 text-left font-bold tracking-wider">Fecha Apertura</th>
+                                <th className="px-4 py-3 text-left font-bold tracking-wider">Cierre Real</th>
+                                <th className="px-4 py-3 text-left font-bold tracking-wider">Presupuesto</th>
+                                <th className="px-4 py-3 text-left font-bold tracking-wider">Estado</th>
+                                <th className="px-4 py-3 text-right font-bold tracking-wider">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {sortedEvents.map(event => {
+                            {displayEvents.map(event => {
                                 const status = getEventStatus(event);
                                 const bgClass = getRowBgColor(event.type);
                                 return (
-                                <tr key={event.id} className={`border-b dark:border-gray-700 transition-colors ${bgClass} hover:opacity-80`}>
-                                    <td className="px-4 py-2 font-medium">
+                                <tr key={event.id} className={`border-b dark:border-gray-700 transition-colors ${bgClass} hover:opacity-90 group`}>
+                                    <td className="px-4 py-3 font-semibold">
                                         <div className="flex items-center">
                                             <div 
                                                 className="w-3 h-3 rounded-full mr-3 shadow-sm border border-black/5" 
@@ -340,21 +390,36 @@ export const EventManager: React.FC = () => {
                                             {event.name}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-2">{event.type}</td>
-                                    <td className="px-4 py-2">{new Date(event.start_date).toLocaleString()}</td>
-                                    <td className="px-4 py-2">{new Date(event.end_date).toLocaleString()}</td>
-                                    <td className="px-4 py-2">{event.budget_per_teacher.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
-                                    <td className="px-4 py-2">
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${status.color}`}>
+                                    <td className="px-4 py-3">
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                            event.type === 'Servicio' ? 'border-green-200 text-green-700 bg-green-50' : 
+                                            event.type === 'Regular' ? 'border-blue-200 text-blue-700 bg-blue-50' : 
+                                            'border-purple-200 text-purple-700 bg-purple-50'
+                                        }`}>
+                                            {event.type.toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm font-mono">{new Date(event.start_date).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td className="px-4 py-3 text-sm font-mono">{new Date(event.end_date).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td className="px-4 py-3 text-sm font-bold text-primary-700">{event.budget_per_teacher.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
+                                    <td className="px-4 py-3">
+                                        <span className={`px-2 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider ${status.color}`}>
                                             {status.text}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-2 no-print">
-                                        <button onClick={() => handleOpenModal(event)} className="text-primary-600 hover:underline">Editar</button>
-                                        <button onClick={() => handleOpenDeleteModal(event)} className="text-red-600 hover:underline ml-4">Eliminar</button>
+                                    <td className="px-4 py-3 no-print text-right">
+                                        <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => handleOpenModal(event)} className="text-primary-600 hover:text-primary-800 font-bold text-xs uppercase underline">Editar</button>
+                                            <button onClick={() => handleOpenDeleteModal(event)} className="text-red-600 hover:text-red-800 font-bold text-xs uppercase underline">Eliminar</button>
+                                        </div>
                                     </td>
                                 </tr>
                             )})}
+                            {displayEvents.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500 italic">No hay eventos para mostrar en esta sección.</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

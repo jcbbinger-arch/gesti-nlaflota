@@ -122,9 +122,21 @@ export const DiningReservations: React.FC = () => {
         }
     };
 
+    const currentDateString = new Date().toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    }).toUpperCase();
+
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Reservas de Comedor</h1>
+            <div className="flex flex-col">
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Reservas de Comedor</h1>
+                <span className="text-xs font-bold text-primary-600 tracking-widest mt-1">
+                    {currentDateString}
+                </span>
+            </div>
 
             <Card>
                 <div className="mb-4">

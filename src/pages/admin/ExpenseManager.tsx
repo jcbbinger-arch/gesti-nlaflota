@@ -243,10 +243,22 @@ export const ExpenseManager: React.FC = () => {
         };
     }, [orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock, transfers, events, searchTerm, eventTypeFilter]);
 
+    const currentDateString = new Date().toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    }).toUpperCase();
+
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión y Estadísticas de Gastos</h1>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div className="flex flex-col">
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión y Estadísticas de Gastos</h1>
+                    <span className="text-xs font-bold text-primary-600 tracking-widest mt-1">
+                        {currentDateString}
+                    </span>
+                </div>
                 <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
                     <DownloadIcon className="w-5 h-5 mr-2" /> Descargar/Imprimir PDF
                 </button>

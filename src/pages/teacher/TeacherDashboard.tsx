@@ -79,10 +79,22 @@ export const TeacherDashboard: React.FC = () => {
     }, 0);
     const mySharedSpend = totalSharedCost / activeTeachersCount;
 
+    const currentDateString = new Date().toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    }).toUpperCase();
+
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Bienvenido, {currentUser?.name}</h1>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div className="flex flex-col">
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Bienvenido, {currentUser?.name}</h1>
+                    <span className="text-xs font-bold text-primary-600 tracking-widest mt-1">
+                        {currentDateString}
+                    </span>
+                </div>
                 {!isStudent && (
                     <div className="flex items-center space-x-4">
                         <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg border border-blue-100 dark:border-blue-800">
@@ -108,13 +120,13 @@ export const TeacherDashboard: React.FC = () => {
                     <Card title="Eventos de Pedido Activos" icon={<EventIcon className="w-8 h-8"/>}>
                         {activeEvents.length > 0 ? (
                             <ul className="space-y-3">
-                                {activeEvents.map(event => (
-                                    <li key={event.id} className={`p-4 rounded-lg flex justify-between items-center border-l-4 ${event.type === 'Regular' ? 'bg-blue-50/50 dark:bg-blue-900/10' : event.type === 'Servicio' ? 'bg-green-50/50 dark:bg-green-900/10' : 'bg-red-50/50 dark:bg-red-900/10'}`} style={{ borderColor: event.color || '#6b7280' }}>
+                                 {activeEvents.map(event => (
+                                    <li key={event.id} className={`p-4 rounded-lg flex justify-between items-center border-l-4 shadow-sm hover:shadow-md transition-shadow ${event.type === 'Regular' ? 'bg-blue-50/50 dark:bg-blue-900/10' : event.type === 'Servicio' ? 'bg-green-50/50 dark:bg-green-900/10' : 'bg-red-50/50 dark:bg-red-900/10'}`} style={{ borderColor: event.color || '#6b7280' }}>
                                         <div>
-                                            <p className="font-semibold">{event.name}</p>
-                                            <p className="text-sm text-gray-500">Finaliza el {new Date(event.end_date).toLocaleDateString()}</p>
+                                            <p className="font-bold text-gray-800 dark:text-gray-200">{event.name}</p>
+                                            <p className="text-xs font-medium text-primary-600 uppercase tracking-tighter mt-0.5">Finaliza el {new Date(event.end_date).toLocaleDateString()} a las {new Date(event.end_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                                         </div>
-                                        <Link to={`${basePath}/order-portal/new/${event.id}`} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 no-print">
+                                        <Link to={`${basePath}/order-portal/new/${event.id}`} className="bg-primary-600 text-white py-2 px-4 rounded-md font-bold text-sm hover:bg-primary-700 no-print transition-colors">
                                             Realizar Pedido
                                         </Link>
                                     </li>
