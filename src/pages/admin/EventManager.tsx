@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
-import { PlusIcon, TrashIcon, WarningIcon, DownloadIcon } from '../../components/icons';
-import { AppEvent, User, Profile, Service } from '../../types';
+import { PlusIcon, TrashIcon, WarningIcon, DownloadIcon, UserPlusIcon } from '../../components/icons';
+import { AppEvent, User, Profile, Service, DiningService } from '../../types';
 import { exportToCsv, printPage } from '../../utils/export';
+import { FamilyMealAssignmentModal } from '../../components/FamilyMealAssignmentModal';
 // Fix: Added missing import for useCompany hook.
 import { useCompany } from '../../contexts/CompanyContext';
 
@@ -40,6 +41,7 @@ export const EventManager: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
+    const [assigningDiningService, setAssigningDiningService] = useState<DiningService | null>(null);
     const [deleteStep, setDeleteStep] = useState(1);
     const { companyInfo } = useCompany();
 
@@ -422,14 +424,14 @@ export const EventManager: React.FC = () => {
                                                         const linkedService = services.find(s => s.event_id === event.id);
                                                         const ds = dining_services.find(d => d.service_id === linkedService?.id);
                                                         if (ds) {
-                                                            navigate(`/teacher/order/STAFF_MEAL_EVENT/staff-${ds.id}`);
+                                                            setAssigningDiningService(ds);
                                                         } else {
                                                             alert('Este servicio de planificación aún no tiene un servicio de comedor configurado.');
                                                         }
                                                     }}
-                                                    className="text-indigo-600 hover:text-indigo-800 font-bold text-xs uppercase underline"
+                                                    className="text-indigo-600 hover:text-indigo-800 font-bold text-xs uppercase underline flex items-center"
                                                 >
-                                                    Comida Familia
+                                                    <UserPlusIcon className="w-3.5 h-3.5 mr-1" /> Familia
                                                 </button>
                                             )}
                                             <button onClick={() => handleOpenModal(event)} className="text-primary-600 hover:text-primary-800 font-bold text-xs uppercase underline">Editar</button>
@@ -472,6 +474,14 @@ export const EventManager: React.FC = () => {
                     </div>
                 )}
             </Modal>
+            
+            {assigningDiningService && (
+                <FamilyMealAssignmentModal 
+                    isOpen={!!assigningDiningService} 
+                    onClose={() => setAssigningDiningService(null)} 
+                    diningService={assigningDiningService} 
+                />
+            )}
         </div>
     );
 };

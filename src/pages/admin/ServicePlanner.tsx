@@ -5,8 +5,9 @@ import { useCompany } from '../../contexts/CompanyContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { PlusIcon, TrashIcon, PencilIcon, UsersIcon, EventIcon } from '../../components/icons';
-import { ServiceGroup, Service, User, Profile, ServiceRole, AppEvent } from '../../types';
+import { PlusIcon, TrashIcon, PencilIcon, UsersIcon, EventIcon, UserPlusIcon } from '../../components/icons';
+import { ServiceGroup, Service, User, Profile, ServiceRole, AppEvent, DiningService } from '../../types';
+import { FamilyMealAssignmentModal } from '../../components/FamilyMealAssignmentModal';
 
 const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', 'Cafetería', 'Pan del servicio', 'Mignardises'];
 
@@ -304,6 +305,7 @@ const ServiceManager: React.FC = () => {
     const { companyInfo } = useCompany();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
+    const [assigningDiningService, setAssigningDiningService] = useState<DiningService | null>(null);
     const [confirmDeleteServiceId, setConfirmDeleteServiceId] = useState<string | null>(null);
 
     const serviceGroupsMap = useMemo(() => new Map(service_groups.map((g: ServiceGroup) => [g.id, g.name])), [service_groups]);
@@ -425,11 +427,11 @@ const ServiceManager: React.FC = () => {
                                     if (ds) {
                                         return (
                                             <button 
-                                                onClick={() => navigate(`/teacher/order/STAFF_MEAL_EVENT/staff-${ds.id}`)}
+                                                onClick={() => setAssigningDiningService(ds)}
                                                 className="inline-flex items-center text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 uppercase"
-                                                title="Gestionar Comida de Familia"
+                                                title="Asignar Responsables Comida de Familia"
                                             >
-                                                <UsersIcon className="w-3 h-3 mr-1" /> Familia
+                                                <UserPlusIcon className="w-3 h-3 mr-1" /> Familia
                                             </button>
                                         );
                                     }
@@ -451,6 +453,14 @@ const ServiceManager: React.FC = () => {
                 message="¿Seguro que quieres eliminar este servicio?"
                 type="danger"
             />
+            
+            {assigningDiningService && (
+                <FamilyMealAssignmentModal 
+                    isOpen={!!assigningDiningService} 
+                    onClose={() => setAssigningDiningService(null)} 
+                    diningService={assigningDiningService} 
+                />
+            )}
         </div>
     );
 };

@@ -11,9 +11,23 @@ export const OrderForm: React.FC = () => {
     const { eventId, orderId } = useParams<{ eventId?: string; orderId?: string }>();
     const [searchParams] = useSearchParams();
     const isEconomatoOrder = searchParams.get('type') === 'economato';
+    const isFamilyMeal = searchParams.get('is_family_meal') === 'true';
+    const ds_id = searchParams.get('ds_id');
     const navigate = useNavigate();
-    const { events, products, orders, setOrders, mini_economato_stock, setMiniEconomatoStock, isPastYear } = useData();
+    const { events, products, orders, setOrders, mini_economato_stock, setMiniEconomatoStock, isPastYear, dining_services } = useData();
     const { currentUser, isOwner, effectiveUserId } = useAuth();
+    
+    const diningService = useMemo(() => {
+        if (ds_id) return dining_services.find(d => d.id === ds_id);
+        if (isFamilyMeal && eventId) return dining_services.find(d => d.service_id === eventId);
+        return null;
+    }, [ds_id, isFamilyMeal, eventId, dining_services]);
+
+    const isAuthorizedForFamilyMeal = useMemo(() => {
+        if (!isFamilyMeal) return true;
+        if (!diningService) return false;
+        return diningService.family_meal_authorized_teachers?.includes(currentUser?.id || '') || false;
+    }, [isFamilyMeal, diningService, currentUser]);
     
     const [orderType, setOrderType] = useState<'weekly' | 'service'>(
         (searchParams.get('order_type') as 'weekly' | 'service') || 'weekly'
@@ -163,6 +177,14 @@ export const OrderForm: React.FC = () => {
 
     const isOverBudget = event ? calculateTotalCost > event.budget_per_teacher : false;
 
+    if (isFamilyMeal && !isAuthorizedForFamilyMeal) {
+        return (
+            <BlockedAccess 
+                message="No tienes autorización para realizar pedidos de Comida de Familia para este servicio. Por favor, contacta con el administrador si crees que esto es un error."
+            />
+        );
+    }
+
     if (!event) return <Card title="Error">Evento no encontrado.</Card>;
 
     const handleSubmit = async (status: 'Enviado' | 'Cerrado') => {
@@ -194,6 +216,8 @@ export const OrderForm: React.FC = () => {
                 cost: calculateTotalCost,
                 notes: notes,
                 is_economato_order: !!isEconomatoOrder,
+                is_family_meal: !!isFamilyMeal || existingOrder?.is_family_meal,
+                dining_service_id: isFamilyMeal ? (ds_id || diningService?.id) : (existingOrder?.dining_service_id),
                 academic_year_id: event.academic_year_id || existingOrder?.academic_year_id
             };
 
@@ -228,12 +252,13 @@ export const OrderForm: React.FC = () => {
             <div className="mb-6">
                 <div className="flex items-center gap-3">
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-                        Pedido para: {event.name}
+                        {isFamilyMeal ? 'Pedido: Comida de Familia' : `Pedido para: ${event.name}`}
                     </h1>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        isFamilyMeal ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' :
                         orderType === 'service' ? 'bg-primary-100 text-primary-700 border border-primary-200' : 'bg-amber-100 text-amber-700 border border-amber-200'
                     }`}>
-                        {orderType === 'service' ? 'Práctica de Servicio' : 'Reposición Semanal'}
+                        {isFamilyMeal ? 'Gestión Familia' : (orderType === 'service' ? 'Práctica de Servicio' : 'Reposición Semanal')}
                     </span>
                 </div>
                 <p className="mt-2 text-red-600 font-semibold bg-red-50 p-2 rounded border border-red-200 inline-block">

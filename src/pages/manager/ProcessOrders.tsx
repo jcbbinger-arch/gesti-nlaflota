@@ -393,6 +393,9 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                                         {teacherOrders.some(o => o.is_economato_order) && (
                                             <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-1 rounded-full border border-blue-300">ECONOMATO</span>
                                         )}
+                                        {teacherOrders.some(o => o.is_family_meal) && (
+                                            <span className="bg-indigo-100 text-indigo-800 text-[10px] px-2 py-1 rounded-full border border-indigo-300">FAMILIA</span>
+                                        )}
                                         {teacherOrders.some(o => o.order_type === 'service') && (
                                             <span className="bg-primary-100 text-primary-800 text-[10px] px-2 py-1 rounded-full border border-primary-300">SERVICIO</span>
                                         )}
@@ -425,6 +428,11 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                                                                 <td className="px-3 py-2 text-center text-gray-400 text-xs">{p?.reference}</td>
                                                                 <td className="px-3 py-2 text-right">
                                                                     <div className="flex justify-end gap-1">
+                                                                        {teacherOrders.some(o => o.is_family_meal && o.items.some(i => i.product_id === cItem.product_id)) && (
+                                                                            <span className="text-[9px] px-1.5 py-0.5 rounded border bg-indigo-50 text-indigo-600 border-indigo-200">
+                                                                                Familia
+                                                                            </span>
+                                                                        )}
                                                                         {teacherOrders.some(o => o.is_economato_order && o.items.some(i => i.product_id === cItem.product_id)) && (
                                                                             <span className="text-[9px] px-1.5 py-0.5 rounded border bg-blue-50 text-blue-600 border-blue-200">
                                                                                 Economato
@@ -467,10 +475,10 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                                             </button>
                                         </div>
                                         {teacherOrders.map(order => (
-                                            <div key={order.id} className={`p-4 rounded-lg border-l-4 ${order.order_type === 'service' ? 'border-primary-500 bg-primary-50/30' : 'border-amber-500 bg-amber-50/30'}`}>
+                                            <div key={order.id} className={`p-4 rounded-lg border-l-4 ${order.is_family_meal ? 'border-indigo-500 bg-indigo-50/30' : order.order_type === 'service' ? 'border-primary-500 bg-primary-50/30' : 'border-amber-500 bg-amber-50/30'}`}>
                                                 <div className="flex justify-between items-center mb-3">
                                                     <span className="font-bold uppercase text-xs">
-                                                        Pedido {order.order_type === 'service' ? 'de Servicio' : 'Semanal'}
+                                                        Pedido {order.is_family_meal ? 'de Comida de Familia' : order.order_type === 'service' ? 'de Servicio' : 'Semanal'}
                                                     </span>
                                                     <span className="text-xs text-gray-500">{new Date(order.date).toLocaleString()}</span>
                                                 </div>

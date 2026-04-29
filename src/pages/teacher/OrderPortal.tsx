@@ -8,7 +8,7 @@ import { DownloadIcon, ArrowRightLeftIcon } from '../../components/icons';
 import { exportToCsv } from '../../utils/export';
 
 export const OrderPortal: React.FC = () => {
-    const { events, orders, service_groups, assignments } = useData();
+    const { events, orders, service_groups, assignments, dining_services } = useData();
     const { currentUser, selectedProfile, isOwner, effectiveUserId } = useAuth();
     const [searchParams] = useSearchParams();
     const isEconomatoMode = searchParams.get('type') === 'economato';
@@ -146,6 +146,34 @@ export const OrderPortal: React.FC = () => {
                                                     {event.name}
                                                 </div>
                                                 <div className="text-xs text-gray-500 italic">Abierto hasta: {new Date(event.end_date).toLocaleString()}</div>
+                                                
+                                                {/* Botón Comida de Familia para asignados */}
+                                                {(() => {
+                                                    // Buscamos el servicio de planificación vinculado a este evento
+                                                    const linkedService = assignments.find(a => a.id === event.id) || events.find(e => e.id === event.id);
+                                                    
+                                                    // Buscamos el servicio de comedor vinculado
+                                                    const ds = dining_services.find(d => 
+                                                        d.service_id === event.id || 
+                                                        d.service_id === (linkedService as any)?.service_id
+                                                    );
+
+                                                    const isAuthorized = ds?.family_meal_authorized_teachers?.includes(currentUser?.id || '');
+
+                                                    if (isAuthorized && ds) {
+                                                        return (
+                                                            <div className="mt-2">
+                                                                <Link 
+                                                                    to={`/teacher/order/${event.id}/new?is_family_meal=true&ds_id=${ds.id}`}
+                                                                    className="inline-flex items-center px-2 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded shadow-sm hover:bg-indigo-700 transition-colors uppercase"
+                                                                >
+                                                                    Pedido Comida Familia
+                                                                </Link>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                             </td>
                                             
                                             {/* Pedido de Servicio */}

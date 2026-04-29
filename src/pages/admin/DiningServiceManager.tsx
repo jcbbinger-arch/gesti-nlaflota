@@ -5,8 +5,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { ConfirmModal } from '../../components/ConfirmModal';
-import { Plus, Edit, Trash2, Users, Calendar, DollarSign, Settings } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Calendar, DollarSign, Settings, UserPlus } from 'lucide-react';
 import { DiningService, DiningServiceStatus } from '../../types';
+import { FamilyMealAssignmentModal } from '../../components/FamilyMealAssignmentModal';
 import { doc, setDoc, deleteDoc, collection } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -16,6 +17,7 @@ export const DiningServiceManager: React.FC = () => {
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Partial<DiningService> | null>(null);
+    const [assigningService, setAssigningService] = useState<DiningService | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -224,11 +226,11 @@ export const DiningServiceManager: React.FC = () => {
                             <div className="flex justify-end gap-2 border-t pt-4 dark:border-gray-700">
                                 {!isPending && (
                                     <button
-                                        onClick={() => navigate(`/teacher/order/STAFF_MEAL_EVENT/staff-${service.id}`)}
+                                        onClick={() => setAssigningService(service)}
                                         className="flex-1 flex justify-center items-center py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-bold text-[10px] transition-colors border border-indigo-100 uppercase tracking-tighter"
-                                        title="Gestionar Pedido Comida Familia"
+                                        title="Asignar Responsables Comida Familia"
                                     >
-                                        <Users className="w-3.5 h-3.5 mr-1" /> Comida Familia
+                                        <UserPlus className="w-3.5 h-3.5 mr-1" /> Familia
                                     </button>
                                 )}
                                 <button
@@ -351,6 +353,14 @@ export const DiningServiceManager: React.FC = () => {
                 message="¿Estás seguro de que deseas eliminar este servicio de comedor?"
                 type="danger"
             />
+
+            {assigningService && (
+                <FamilyMealAssignmentModal 
+                    isOpen={!!assigningService} 
+                    onClose={() => setAssigningService(null)} 
+                    diningService={assigningService} 
+                />
+            )}
         </div>
     );
 };

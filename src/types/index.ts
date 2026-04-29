@@ -162,6 +162,7 @@ export interface AppEvent {
     end_date: string; // ISO string
     budget_per_teacher: number;
     authorized_teachers?: string[]; // user IDs
+    family_meal_authorized_teachers?: string[]; // teachers assigned to family meal
     status: 'Activo' | 'Inactivo';
     color?: string;
     academic_year_id?: string;
@@ -194,6 +195,7 @@ export interface Order {
   notes?: string;
   is_economato_order?: boolean;
   is_staff_meal?: boolean;
+  is_family_meal?: boolean;
   dining_service_id?: string;
   academic_year_id?: string;
 }
@@ -441,6 +443,7 @@ export interface DiningService {
   status: DiningServiceStatus;
   created_by: string;
   created_at: string;
+  family_meal_authorized_teachers?: string[]; // teachers assigned to family meal
   academic_year_id?: string;
 }
 
