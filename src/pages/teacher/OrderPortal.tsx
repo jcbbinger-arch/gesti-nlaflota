@@ -9,8 +9,7 @@ import { exportToCsv } from '../../utils/export';
 
 export const OrderPortal: React.FC = () => {
     const { events, orders, service_groups, assignments } = useData();
-    const { currentUser } = useAuth();
-    const { selectedProfile } = useAuth();
+    const { currentUser, selectedProfile, isOwner, effectiveUserId } = useAuth();
     const [searchParams] = useSearchParams();
     const isEconomatoMode = searchParams.get('type') === 'economato';
     
@@ -25,7 +24,7 @@ export const OrderPortal: React.FC = () => {
     const now = new Date();
 
     const isTransferSource = isAdmin || isAlmacen || assignments.some(a => 
-        a.user_id === currentUser?.id && a.allow_transfers
+        a.user_id === effectiveUserId && a.allow_transfers
     );
 
     // Filter events based on authorized_teachers
@@ -37,7 +36,7 @@ export const OrderPortal: React.FC = () => {
         
         // For Servicio and Extraordinario, check authorized_teachers
         if (e.authorized_teachers && e.authorized_teachers.length > 0) {
-            return e.authorized_teachers.includes(currentUser?.id || '');
+            return e.authorized_teachers.some(id => id === currentUser?.id || id === currentUser?.substituting_user_id);
         }
         
         // If type is Servicio or Extraordinario, but no authorized_teachers defined, 
@@ -56,15 +55,15 @@ export const OrderPortal: React.FC = () => {
         .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
         .slice(0, 6); // Limit to next 6 events to avoid saturation
 
-    const staffMealOrders = orders.filter(o => o.is_staff_meal && o.user_id === currentUser?.id);
+    const staffMealOrders = orders.filter(o => o.is_staff_meal && isOwner(o.user_id));
 
     const getMyOrderForEvent = (event: AppEvent, type?: 'weekly' | 'service') => {
-        const userId = currentUser?.id;
+        if (!isOwner) return null; // Safety check
         if (!type && !isEconomatoMode) {
-            return orders.find(o => o.user_id === userId && o.event_id === event.id && !o.is_economato_order);
+            return orders.find(o => isOwner(o.user_id) && o.event_id === event.id && !o.is_economato_order);
         }
         return orders.find(o => 
-            o.user_id === userId && 
+            isOwner(o.user_id) && 
             o.event_id === event.id && 
             (isEconomatoMode ? o.is_economato_order : (o.order_type === type && !o.is_economato_order))
         );

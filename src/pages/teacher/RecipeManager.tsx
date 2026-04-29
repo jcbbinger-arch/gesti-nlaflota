@@ -50,7 +50,7 @@ Este mensaje ha sido generado automáticamente.
 
 export const RecipeManager: React.FC = () => {
     const { recipes, setRecipes, users, messages, setMessages } = useData();
-    const { currentUser } = useAuth();
+    const { currentUser, isOwner } = useAuth();
     const navigate = useNavigate();
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -76,8 +76,8 @@ export const RecipeManager: React.FC = () => {
         });
     }, [recipes, searchTerm, productsMap]);
 
-    const myRecipes = useMemo(() => filteredRecipes.filter(r => r.author_id === currentUser?.id), [filteredRecipes, currentUser]);
-    const publicRecipes = useMemo(() => filteredRecipes.filter(r => r.is_public && r.author_id !== currentUser?.id), [filteredRecipes, currentUser]);
+    const myRecipes = useMemo(() => filteredRecipes.filter(r => isOwner(r.author_id)), [filteredRecipes, isOwner]);
+    const publicRecipes = useMemo(() => filteredRecipes.filter(r => r.is_public && !isOwner(r.author_id)), [filteredRecipes, isOwner]);
     const { workspaceSettings } = useData();
 
     const getCategoryColors = (categoryName: string) => {

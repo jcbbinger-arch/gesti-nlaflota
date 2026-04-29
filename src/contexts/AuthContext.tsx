@@ -26,6 +26,8 @@ interface AuthContextType {
   impersonateUser: (user: User) => void;
   stopImpersonating: () => void;
   updateCurrentUser: (userData: Partial<User>) => void;
+  isOwner: (userId?: string | null) => boolean;
+  effectiveUserId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -382,6 +384,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const isOwner = (userId?: string | null) => {
+    if (!currentUser || !userId) return false;
+    return userId === currentUser.id || userId === currentUser.substituting_user_id;
+  };
+
+  const effectiveUserId = currentUser?.substituting_user_id || currentUser?.id || null;
+
   const value = useMemo(
     () => ({
       currentUser,
@@ -396,6 +405,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       impersonateUser,
       stopImpersonating,
       updateCurrentUser,
+      isOwner,
+      effectiveUserId,
     }),
     [currentUser, selectedProfile, isImpersonating, isAuthReady]
   );

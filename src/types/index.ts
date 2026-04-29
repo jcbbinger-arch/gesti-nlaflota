@@ -85,6 +85,7 @@ export interface User {
   student_simulated_profile?: Profile.TEACHER | Profile.ALMACEN;
   must_change_password?: boolean;
   isMaintainer?: boolean;
+  substituting_user_id?: string;
 }
 
 export interface Company {

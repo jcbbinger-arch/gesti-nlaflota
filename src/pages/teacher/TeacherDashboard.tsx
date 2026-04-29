@@ -9,10 +9,10 @@ import { Profile, SUPER_USER_EMAILS } from '../../types';
 
 export const TeacherDashboard: React.FC = () => {
     const { events, orders, users, mini_economato_stock, assignments, groups, modules } = useData();
-    const { currentUser, selectedProfile } = useAuth();
+    const { currentUser, selectedProfile, effectiveUserId } = useAuth();
 
     const myAssignments = assignments
-        .filter(a => a.user_id === currentUser?.id)
+        .filter(a => a.user_id === effectiveUserId)
         .map(a => {
             const group = groups.find(g => g.id === a.group_id);
             const module = modules.find(m => m.id === a.module_id);
@@ -43,7 +43,7 @@ export const TeacherDashboard: React.FC = () => {
         
         // For Servicio and Extraordinario, check authorized_teachers
         if (e.authorized_teachers && e.authorized_teachers.length > 0) {
-            return e.authorized_teachers.includes(currentUser?.id || '');
+            return e.authorized_teachers.some(id => id === currentUser?.id || id === currentUser?.substituting_user_id);
         }
         
         // Extraordinario without authorized_teachers is for everyone
@@ -54,7 +54,7 @@ export const TeacherDashboard: React.FC = () => {
     });
     
     const myRecentOrders = orders
-        .filter(o => o.user_id === currentUser?.id)
+        .filter(o => o.user_id === effectiveUserId)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 3);
     

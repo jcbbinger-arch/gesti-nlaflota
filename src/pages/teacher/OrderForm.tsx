@@ -13,7 +13,7 @@ export const OrderForm: React.FC = () => {
     const isEconomatoOrder = searchParams.get('type') === 'economato';
     const navigate = useNavigate();
     const { events, products, orders, setOrders, mini_economato_stock, setMiniEconomatoStock } = useData();
-    const { currentUser } = useAuth();
+    const { currentUser, isOwner, effectiveUserId } = useAuth();
     
     const [orderType, setOrderType] = useState<'weekly' | 'service'>(
         (searchParams.get('order_type') as 'weekly' | 'service') || 'weekly'
@@ -29,7 +29,6 @@ export const OrderForm: React.FC = () => {
 
     const existingOrder = useMemo(() => orderId ? orders.find(o => o.id === orderId) : null, [orders, orderId]);
     const isAlmacen = currentUser?.profiles.includes(Profile.ALMACEN);
-    const isOwner = currentUser?.id === existingOrder?.user_id;
 
     const event = useMemo(() => {
         // If it's an economato order, we might need a default event or handle it differently.
@@ -56,7 +55,7 @@ export const OrderForm: React.FC = () => {
     const isEditable = useMemo(() => {
         if (!existingOrder) return true; // New order
         if (existingOrder.status === 'Procesado' || existingOrder.status === 'Cerrado' || existingOrder.status === 'Recibido OK') return false;
-        return isOwner || isAlmacen;
+        return isOwner(existingOrder.user_id) || isAlmacen;
     }, [existingOrder, isAlmacen, isOwner]);
     
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
@@ -184,7 +183,7 @@ export const OrderForm: React.FC = () => {
 
             const orderToSave: Order = {
                 id: existingOrder?.id || `ord-${Date.now()}`,
-                user_id: currentUser.id,
+                user_id: effectiveUserId || currentUser.id,
                 date: new Date().toISOString(),
                 status,
                 event_id: event.id,

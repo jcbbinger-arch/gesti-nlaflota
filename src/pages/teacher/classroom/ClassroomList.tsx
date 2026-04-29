@@ -330,10 +330,10 @@ const ClassroomManagementView: React.FC<{ classroom: Classroom, onBack: () => vo
 
 export const ClassroomList: React.FC = () => {
     const { classrooms } = useData();
-    const { currentUser } = useAuth();
+    const { currentUser, isOwner } = useAuth();
     const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null);
 
-    const myClassrooms = useMemo(() => classrooms.filter(c => c.tutor_id === currentUser?.id), [classrooms, currentUser]);
+    const myClassrooms = useMemo(() => classrooms.filter(c => isOwner(c.tutor_id)), [classrooms, isOwner]);
     
     // Auto-select if only one classroom
     useEffect(() => {

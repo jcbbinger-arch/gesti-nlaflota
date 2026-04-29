@@ -210,6 +210,7 @@ export const TeacherManager: React.FC = () => {
                     user={selectedUser} 
                     onClose={() => setIsFormModalOpen(false)} 
                     onSave={handleSaveUser}
+                    allUsers={users}
                     allAssignments={assignments}
                     allGroups={groups}
                     allModules={modules}
@@ -247,11 +248,12 @@ const UserFormModal: React.FC<{
     user: User | null; 
     onClose: () => void; 
     onSave: (user: Partial<User>) => void; 
+    allUsers: User[];
     allAssignments: Assignment[],
     allGroups: Group[],
     allModules: Module[],
     activeTab: 'profesores' | 'clientes' | 'alumnos'
-}> = ({ user, onClose, onSave, allAssignments, allGroups, allModules, activeTab }) => {
+}> = ({ user, onClose, onSave, allUsers, allAssignments, allGroups, allModules, activeTab }) => {
     const [formState, setFormState] = useState({
         name: user?.name || '',
         email: user?.email || '',
@@ -260,9 +262,15 @@ const UserFormModal: React.FC<{
         profiles: user ? user.profiles : (activeTab === 'clientes' ? [Profile.CUSTOMER] : activeTab === 'alumnos' ? [Profile.STUDENT] : []),
         contract_type: user?.contract_type || 'Fijo',
         role_type: user?.role_type || 'Titular',
+        substituting_user_id: user?.substituting_user_id || '',
         phone: user?.phone || '',
         address: user?.address || '',
     });
+
+    const titularTeachers = useMemo(() => {
+        // Find users that are Titular teachers
+        return (allUsers || []).filter(u => u.role_type === 'Titular' && u.profiles.includes(Profile.TEACHER) && u.id !== user?.id);
+    }, [allUsers, user]);
 
     const userAssignments = useMemo(() => {
         if (!user || !user.profiles.includes(Profile.TEACHER)) return [];
@@ -283,7 +291,33 @@ const UserFormModal: React.FC<{
     }, [user, allAssignments, allGroups, allModules]);
     
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormState({...formState, [e.target.name]: e.target.value});
+        const { name, value } = e.target;
+        
+        let newProfiles = [...formState.profiles];
+        let newSubstitutingId = formState.substituting_user_id;
+
+        if (name === 'role_type' && value === 'Titular') {
+            newSubstitutingId = '';
+        }
+
+        if (name === 'substituting_user_id' && value !== '') {
+            const titular = titularTeachers.find(t => t.id === value);
+            if (titular) {
+                // Inherit profiles EXCEPT Admin
+                newProfiles = titular.profiles.filter(p => p !== Profile.ADMIN);
+                // Ensure TEACHER is included if they are substituting a titular teacher
+                if (!newProfiles.includes(Profile.TEACHER)) {
+                    newProfiles.push(Profile.TEACHER);
+                }
+            }
+        }
+
+        setFormState({
+            ...formState, 
+            [name]: value, 
+            profiles: newProfiles,
+            substituting_user_id: newSubstitutingId
+        });
     }
 
     const handleProfileChange = (profile: Profile) => {
@@ -333,16 +367,39 @@ const UserFormModal: React.FC<{
                     </div>
                 )}
 
-                {formState.profiles.includes(Profile.TEACHER) && (
-                    <div className="grid grid-cols-2 gap-4">
-                        <select name="contract_type" value={formState.contract_type} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700">
-                            <option value="Fijo">Fijo</option>
-                            <option value="Interino">Interino</option>
-                        </select>
-                         <select name="role_type" value={formState.role_type} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700">
-                            <option value="Titular">Titular</option>
-                            <option value="Sustituto">Sustituto</option>
-                        </select>
+                 {formState.profiles.includes(Profile.TEACHER) && (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <select name="contract_type" value={formState.contract_type} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700">
+                                <option value="Fijo">Fijo</option>
+                                <option value="Interino">Interino</option>
+                            </select>
+                            <select name="role_type" value={formState.role_type} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700">
+                                <option value="Titular">Titular</option>
+                                <option value="Sustituto">Sustituto</option>
+                            </select>
+                        </div>
+                        
+                        {formState.role_type === 'Sustituto' && (
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Profesor al que sustituye</label>
+                                <select 
+                                    name="substituting_user_id" 
+                                    value={formState.substituting_user_id} 
+                                    onChange={handleChange} 
+                                    required 
+                                    className="w-full p-2 border rounded dark:bg-gray-700 font-bold text-primary-600"
+                                >
+                                    <option value="">-- Seleccionar Titular --</option>
+                                    {titularTeachers.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                </select>
+                                <p className="text-[10px] text-gray-400 mt-1 italic">
+                                    Al seleccionar un titular, el sustituto heredará sus perfiles automáticamente (excepto Administrador).
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
                 

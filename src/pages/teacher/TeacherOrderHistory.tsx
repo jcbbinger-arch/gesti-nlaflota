@@ -11,7 +11,7 @@ import { PrintHeader } from '../../components/PrintHeader';
 
 export const TeacherOrderHistory: React.FC = () => {
     const { orders, events, products } = useData();
-    const { currentUser } = useAuth();
+    const { currentUser, isOwner } = useAuth();
     const { companyInfo } = useCompany();
     
     const productsMap = useMemo(() => new Map<string, Product>(products.map(p => [p.id, p])), [products]);
@@ -22,7 +22,7 @@ export const TeacherOrderHistory: React.FC = () => {
     const myOrders = useMemo(() => {
         if (!currentUser) return [];
         return orders
-            .filter(o => o.user_id === currentUser.id || (isAlmacen && o.is_economato_order))
+            .filter(o => isOwner(o.user_id) || (isAlmacen && o.is_economato_order))
             .sort((a, b) => {
                 const dateA = a.date ? new Date(a.date).getTime() : 0;
                 const dateB = b.date ? new Date(b.date).getTime() : 0;
