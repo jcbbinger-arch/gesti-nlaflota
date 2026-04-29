@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Users, Calendar, Download, AlertTriangle } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -9,13 +10,33 @@ import { addHeaderToPdf } from '../../utils/export';
 import { DiningService, DiningReservation } from '../../types';
 
 export const DiningServiceView: React.FC = () => {
-    const { dining_services, dining_reservations } = useData();
+    const { dining_services, dining_reservations, services, service_groups } = useData();
+    const { currentUser } = useAuth();
     const { companyInfo } = useCompany();
     const [selectedServiceId, setSelectedServiceId] = useState<string>('');
 
-    const activeServices = useMemo(() => {
-        return dining_services.filter((s: DiningService) => s.status !== 'borrador');
-    }, [dining_services]);
+    const teacherServices = useMemo(() => {
+        if (!currentUser) return [];
+
+        return dining_services.filter((ds: DiningService) => {
+            if (ds.status === 'borrador') return false;
+            
+            // Link back to planning Service
+            const planningService = services.find(s => s.id === ds.service_id);
+            if (!planningService) return false;
+
+            // Check if teacher is in group
+            const group = service_groups.find(g => g.id === planningService.service_group_id);
+            const isInGroup = group?.teacher_ids.includes(currentUser.id);
+
+            // Check if teacher has an explicit role
+            const hasRole = Object.values(planningService.roles).includes(currentUser.id);
+
+            return isInGroup || hasRole;
+        });
+    }, [dining_services, services, service_groups, currentUser]);
+
+    const activeServices = teacherServices;
 
     const selectedService = useMemo(() => {
         return dining_services.find((s: DiningService) => s.id === selectedServiceId);
@@ -151,11 +172,14 @@ export const DiningServiceView: React.FC = () => {
                         className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     >
                         <option value="">-- Seleccione un servicio --</option>
-                        {activeServices.map((service: DiningService) => (
-                            <option key={service.id} value={service.id}>
-                                {new Date(service.date).toLocaleDateString()} - Estado: {service.status.toUpperCase()}
-                            </option>
-                        ))}
+                        {activeServices.map((ds: DiningService) => {
+                            const planningService = services.find(s => s.id === ds.service_id);
+                            return (
+                                <option key={ds.id} value={ds.id}>
+                                    {planningService?.name || 'Servicio Sin Nombre'} - {new Date(ds.date).toLocaleDateString()} ({ds.status.toUpperCase()})
+                                </option>
+                            );
+                        })}
                     </select>
                 </div>
 
