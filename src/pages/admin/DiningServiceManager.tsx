@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
@@ -10,30 +10,67 @@ import { doc, setDoc, deleteDoc, collection } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 export const DiningServiceManager: React.FC = () => {
-    const { dining_services, services } = useData();
+    const { dining_services, services, service_groups, users } = useData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingService, setEditingService] = useState<DiningService | null>(null);
+    const [editingService, setEditingService] = useState<Partial<DiningService> | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    // Merge planned services with dining services
+    const combinedServices = useMemo(() => {
+        const results: (DiningService & { isPlaceholder?: boolean, planningName?: string })[] = [];
+        
+        // 1. Start with existing dining services
+        dining_services.forEach(ds => {
+            const linkedPlanning = services.find(s => s.id === ds.service_id);
+            results.push({
+                ...ds,
+                isPlaceholder: false,
+                planningName: linkedPlanning?.name
+            });
+        });
+
+        // 2. Add planned services that don't have a dining_service yet
+        services.forEach(s => {
+            const exists = dining_services.find(ds => ds.service_id === s.id);
+            if (!exists) {
+                results.push({
+                    id: `placeholder-${s.id}`,
+                    service_id: s.id,
+                    date: s.date,
+                    max_capacity: 0,
+                    current_pax: 0,
+                    menu_price: 0,
+                    status: 'borrador',
+                    created_by: '',
+                    created_at: s.date,
+                    isPlaceholder: true,
+                    planningName: s.name
+                });
+            }
+        });
+
+        return results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [dining_services, services]);
 
     const [formData, setFormData] = useState({
         service_id: '',
         date: '',
         max_capacity: 40,
-        menu_price: 0,
+        menu_price: 15,
         status: 'abierto' as DiningServiceStatus
     });
 
-    const handleOpenModal = (service?: DiningService) => {
+    const handleOpenModal = (service?: Partial<DiningService> & { isPlaceholder?: boolean }) => {
         if (service) {
             setEditingService(service);
             setFormData({
                 service_id: service.service_id || '',
-                date: service.date,
-                max_capacity: service.max_capacity,
-                menu_price: service.menu_price,
-                status: service.status
+                date: service.date || new Date().toISOString().split('T')[0],
+                max_capacity: service.max_capacity || 40,
+                menu_price: service.menu_price || 15,
+                status: service.isPlaceholder ? 'abierto' : (service.status || 'abierto')
             });
         } else {
             setEditingService(null);
@@ -53,23 +90,24 @@ export const DiningServiceManager: React.FC = () => {
         if (!currentUser) return;
 
         try {
-            const serviceId = editingService?.id || doc(collection(db, 'dining_services')).id;
+            const isActuallyPlaceholder = editingService?.id?.startsWith('placeholder-');
+            const serviceId = isActuallyPlaceholder ? doc(collection(db, 'dining_services')).id : (editingService?.id || doc(collection(db, 'dining_services')).id);
             const newService: DiningService = {
                 id: serviceId,
                 service_id: formData.service_id || undefined,
                 date: formData.date,
                 max_capacity: formData.max_capacity,
-                current_pax: editingService ? editingService.current_pax : 0,
+                current_pax: editingService ? (editingService.current_pax || 0) : 0,
                 menu_price: formData.menu_price,
                 status: formData.status,
-                created_by: editingService ? editingService.created_by : currentUser.id,
-                created_at: editingService ? editingService.created_at : new Date().toISOString()
+                created_by: editingService?.created_by || currentUser.id,
+                created_at: editingService?.created_at || new Date().toISOString()
             };
 
             await setDoc(doc(db, 'dining_services', serviceId), newService);
 
-            // If it's a new service, create a skeleton "Staff Meal" order
-            if (!editingService) {
+            // If it's a new service (or converted placeholder), create a skeleton "Staff Meal" order
+            if (!editingService || isActuallyPlaceholder) {
                 const linkedSvc = services.find(s => s.id === formData.service_id);
                 const firstTeacherId = linkedSvc ? services.find(s => s.id === formData.service_id)?.roles?.Cocina || currentUser.id : currentUser.id;
 
@@ -148,52 +186,61 @@ export const DiningServiceManager: React.FC = () => {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {dining_services.sort((a: DiningService, b: DiningService) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((service: DiningService) => {
-                    const linkedService = services.find(s => s.id === service.service_id);
+                {combinedServices.map((service: DiningService & { isPlaceholder?: boolean, planningName?: string }) => {
+                    const isPending = service.isPlaceholder;
+                    
                     return (
-                        <Card key={service.id} className="relative">
+                        <Card key={service.id} className={`relative ${isPending ? 'border-dashed border-2' : ''}`}>
                             <div className="absolute top-4 right-4">
-                                {getStatusBadge(service.status)}
+                                {isPending ? (
+                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-[10px] font-bold uppercase tracking-wider">Pendiente</span>
+                                ) : getStatusBadge(service.status)}
                             </div>
                             <div className="flex items-center mb-4">
                                 <Calendar className="w-6 h-6 text-primary-500 mr-2" />
                                 <div>
                                     <h3 className="text-xl font-bold">{new Date(service.date).toLocaleDateString()}</h3>
-                                    {linkedService && (
-                                        <p className="text-xs text-gray-500 font-medium">Ref: {linkedService.name}</p>
+                                    {service.planningName && (
+                                        <p className="text-xs text-primary-600 font-bold uppercase tracking-tighter">Ref: {service.planningName}</p>
                                     )}
                                 </div>
                             </div>
-                        <div className="space-y-2 mb-6">
+                        <div className="space-y-2 mb-6 text-sm">
                             <div className="flex items-center text-gray-600 dark:text-gray-300">
                                 <Users className="w-4 h-4 mr-2" />
-                                <span>Aforo: {service.current_pax} / {service.max_capacity} pax</span>
+                                <span className={isPending ? 'italic text-gray-400' : ''}>
+                                    Aforo: {isPending ? 'No configurado' : `${service.current_pax} / ${service.max_capacity} pax`}
+                                </span>
                             </div>
                             <div className="flex items-center text-gray-600 dark:text-gray-300">
                                 <DollarSign className="w-4 h-4 mr-2" />
-                                <span>Precio Menú: {service.menu_price.toFixed(2)} €</span>
+                                <span className={isPending ? 'italic text-gray-400' : ''}>
+                                    Precio Menú: {isPending ? 'No configurado' : `${service.menu_price.toFixed(2)} €`}
+                                </span>
                             </div>
                         </div>
-                        <div className="flex justify-end space-x-2 border-t pt-4 dark:border-gray-700">
+                        <div className="flex justify-end gap-2 border-t pt-4 dark:border-gray-700">
                             <button
                                 onClick={() => handleOpenModal(service)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-md"
-                                title="Editar"
+                                className={`flex-1 flex justify-center items-center py-2 rounded-md font-bold text-xs transition-colors ${isPending ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-gray-100 text-blue-600 hover:bg-blue-200'}`}
+                                title={isPending ? "Configurar Servicio" : "Editar"}
                             >
-                                <Edit className="w-5 h-5" />
+                                {isPending ? 'NUEVO SERVICIO' : <><Edit className="w-4 h-4 mr-2" /> EDITAR</>}
                             </button>
-                            <button
-                                onClick={() => setConfirmDeleteId(service.id)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-md"
-                                title="Eliminar"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
+                            {!isPending && (
+                                <button
+                                    onClick={() => setConfirmDeleteId(service.id)}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-md border border-red-100"
+                                    title="Eliminar"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
                     </Card>
                 );
             })}
-                {dining_services.length === 0 && (
+                {combinedServices.length === 0 && (
                     <div className="col-span-full text-center py-12 text-gray-500">
                         No hay servicios de comedor configurados.
                     </div>

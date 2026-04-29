@@ -4,13 +4,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { Plus, Users, Calendar, Phone, AlertTriangle, Trash2 } from 'lucide-react';
-import { DiningReservation, DinerAllergen, DiningService } from '../../types';
+import { DiningReservation, DinerAllergen, DiningService, Profile } from '../../types';
 import { doc, collection, runTransaction } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { AllergenSelector } from '../teacher/RecipeForm';
 
 export const DiningReservations: React.FC = () => {
-    const { dining_services, dining_reservations } = useData();
+    const { dining_services, dining_reservations, services, service_groups } = useData();
     const { currentUser } = useAuth();
     
     const [selectedServiceId, setSelectedServiceId] = useState<string>('');
@@ -18,12 +18,48 @@ export const DiningReservations: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const activeServices = useMemo(() => {
-        return [...dining_services].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [dining_services]);
+        const results: (DiningService & { planningName?: string, isPending?: boolean })[] = [];
+        
+        // Filter planning services by teacher if needed
+        const availablePlanning = services.filter(s => {
+            if (!currentUser) return false;
+            // Admin/Staff sees all? Usually almacen is staff. 
+            // But if it's a teacher in this view, filter.
+            if (currentUser.profiles.includes(Profile.ALMACEN) || currentUser.profiles.includes(Profile.ADMIN)) return true;
+            
+            const group = service_groups.find(g => g.id === s.service_group_id);
+            const isInGroup = group?.teacher_ids.includes(currentUser.id);
+            const hasRole = Object.values(s.roles).includes(currentUser.id);
+            return isInGroup || hasRole;
+        });
+
+        availablePlanning.forEach(ps => {
+            const ds = dining_services.find(d => d.service_id === ps.id);
+            if (ds) {
+                results.push({ ...ds, planningName: ps.name, isPending: false });
+            } else {
+                results.push({
+                    id: `placeholder-${ps.id}`,
+                    service_id: ps.id,
+                    date: ps.date,
+                    max_capacity: 0,
+                    current_pax: 0,
+                    menu_price: 0,
+                    status: 'borrador',
+                    created_by: '',
+                    created_at: ps.date,
+                    planningName: ps.name,
+                    isPending: true
+                });
+            }
+        });
+
+        return results.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [dining_services, services, service_groups, currentUser]);
 
     const selectedService = useMemo(() => {
-        return dining_services.find((s: DiningService) => s.id === selectedServiceId);
-    }, [dining_services, selectedServiceId]);
+        return activeServices.find(s => s.id === selectedServiceId);
+    }, [activeServices, selectedServiceId]);
 
     const serviceReservations = useMemo(() => {
         return dining_reservations.filter((r: DiningReservation) => r.service_id === selectedServiceId);
@@ -131,9 +167,9 @@ export const DiningReservations: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Reservas de Comedor</h1>
-                <span className="text-xs font-bold text-primary-600 tracking-widest mt-1">
+            <div className="flex flex-col mb-2">
+                <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight uppercase">Reservas de Comedor</h1>
+                <span className="text-sm font-bold text-primary-600 tracking-[0.2em] mt-1">
                     {currentDateString}
                 </span>
             </div>
@@ -144,36 +180,52 @@ export const DiningReservations: React.FC = () => {
                     <select
                         value={selectedServiceId}
                         onChange={e => setSelectedServiceId(e.target.value)}
-                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        className="w-full p-4 border-2 border-primary-100 rounded-xl bg-white dark:bg-gray-800 dark:border-gray-700 font-bold text-gray-800 dark:text-white focus:border-primary-500 transition-all outline-none shadow-sm"
                     >
                         <option value="">-- Seleccione un servicio --</option>
-                        {activeServices.map((service: DiningService) => (
+                        {activeServices.map((service) => (
                             <option key={service.id} value={service.id}>
-                                {new Date(service.date).toLocaleDateString()} - Aforo: {service.current_pax}/{service.max_capacity} {service.status === 'borrador' ? '(Borrador)' : ''}
+                                {service.planningName || 'Sin Ref'} - {new Date(service.date).toLocaleDateString()} {service.isPending ? '(PENDIENTE CONFIGURAR)' : `- Aforo: ${service.current_pax}/${service.max_capacity}`}
                             </option>
                         ))}
                     </select>
                 </div>
 
                 {selectedService && (
-                    <div className="flex justify-between items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
-                        <div className="flex items-center space-x-6">
-                            <div className="flex items-center text-blue-800 dark:text-blue-200">
-                                <Users className="w-5 h-5 mr-2" />
-                                <span className="font-bold text-lg">{selectedService.current_pax} / {selectedService.max_capacity} pax</span>
+                    <div className={`p-4 rounded-xl border-2 transition-all ${selectedService.isPending ? 'bg-yellow-50 border-yellow-200' : 'bg-primary-50 border-primary-200'}`}>
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex flex-wrap items-center gap-6">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Planificación / Ref</span>
+                                    <span className="font-black text-primary-600">{selectedService.planningName || 'General'}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aforo Actual</span>
+                                    <span className={`font-black text-lg ${selectedService.isPending ? 'text-yellow-600 italic' : 'text-gray-800 dark:text-white'}`}>
+                                        {selectedService.isPending ? 'No configurado' : `${selectedService.current_pax} / ${selectedService.max_capacity} pax`}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Precio Menú</span>
+                                    <span className={`font-black text-lg ${selectedService.isPending ? 'text-yellow-600 italic' : 'text-gray-800 dark:text-white'}`}>
+                                        {selectedService.isPending ? 'Consultar' : `${selectedService.menu_price?.toFixed(2)} €`}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="text-blue-800 dark:text-blue-200">
-                                Precio Menú: <span className="font-bold">{selectedService.menu_price.toFixed(2)} €</span>
-                            </div>
+                            <button
+                                onClick={handleOpenModal}
+                                disabled={selectedService.isPending || (selectedService.current_pax >= (selectedService.max_capacity || 0))}
+                                className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+                            >
+                                {selectedService.isPending ? 'ESPERANDO CONFIGURACIÓN' : <><Plus className="w-5 h-5 mr-2" /> NUEVA RESERVA</>}
+                            </button>
                         </div>
-                        <button
-                            onClick={handleOpenModal}
-                            disabled={selectedService.current_pax >= selectedService.max_capacity}
-                            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Plus className="w-5 h-5 mr-2" />
-                            Nueva Reserva
-                        </button>
+                        {selectedService.isPending && (
+                            <p className="mt-2 text-xs font-bold text-yellow-700 flex items-center">
+                                <AlertTriangle className="w-4 h-4 mr-1" />
+                                Este servicio ha sido planificado pero aún no ha sido activado por un administrador para recibir reservas.
+                            </p>
+                        )}
                     </div>
                 )}
             </Card>

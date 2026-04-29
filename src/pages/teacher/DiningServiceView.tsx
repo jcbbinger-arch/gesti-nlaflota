@@ -18,29 +18,46 @@ export const DiningServiceView: React.FC = () => {
     const teacherServices = useMemo(() => {
         if (!currentUser) return [];
 
-        return dining_services.filter((ds: DiningService) => {
-            if (ds.status === 'borrador') return false;
-            
-            // Link back to planning Service
-            const planningService = services.find(s => s.id === ds.service_id);
-            if (!planningService) return false;
-
-            // Check if teacher is in group
-            const group = service_groups.find(g => g.id === planningService.service_group_id);
+        // 1. Get relevant planning services
+        const relevantPlanning = services.filter(ps => {
+            const group = service_groups.find(g => g.id === ps.service_group_id);
             const isInGroup = group?.teacher_ids.includes(currentUser.id);
-
-            // Check if teacher has an explicit role
-            const hasRole = Object.values(planningService.roles).includes(currentUser.id);
-
+            const hasRole = Object.values(ps.roles).includes(currentUser.id);
             return isInGroup || hasRole;
         });
+
+        // 2. Map to display objects (actual or placeholder)
+        const results: (DiningService & { planningName?: string, isPending?: boolean })[] = [];
+        
+        relevantPlanning.forEach(ps => {
+            const ds = dining_services.find(d => d.service_id === ps.id);
+            if (ds) {
+                results.push({ ...ds, planningName: ps.name, isPending: false });
+            } else {
+                results.push({
+                    id: `placeholder-${ps.id}`,
+                    service_id: ps.id,
+                    date: ps.date,
+                    max_capacity: 0,
+                    current_pax: 0,
+                    menu_price: 0,
+                    status: 'borrador',
+                    created_by: '',
+                    created_at: ps.date,
+                    planningName: ps.name,
+                    isPending: true
+                });
+            }
+        });
+
+        return results.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [dining_services, services, service_groups, currentUser]);
 
     const activeServices = teacherServices;
 
     const selectedService = useMemo(() => {
-        return dining_services.find((s: DiningService) => s.id === selectedServiceId);
-    }, [dining_services, selectedServiceId]);
+        return activeServices.find(s => s.id === selectedServiceId);
+    }, [activeServices, selectedServiceId]);
 
     const serviceReservations = useMemo(() => {
         return dining_reservations.filter((r: DiningReservation) => r.service_id === selectedServiceId);
@@ -169,28 +186,25 @@ export const DiningServiceView: React.FC = () => {
                     <select
                         value={selectedServiceId}
                         onChange={e => setSelectedServiceId(e.target.value)}
-                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        className="w-full p-4 border-2 border-primary-100 rounded-xl bg-white dark:bg-gray-800 dark:border-gray-700 font-bold text-gray-800 dark:text-white focus:border-primary-500 transition-all outline-none shadow-sm"
                     >
                         <option value="">-- Seleccione un servicio --</option>
-                        {activeServices.map((ds: DiningService) => {
-                            const planningService = services.find(s => s.id === ds.service_id);
-                            return (
-                                <option key={ds.id} value={ds.id}>
-                                    {planningService?.name || 'Servicio Sin Nombre'} - {new Date(ds.date).toLocaleDateString()} ({ds.status.toUpperCase()})
-                                </option>
-                            );
-                        })}
+                        {activeServices.map((ds) => (
+                            <option key={ds.id} value={ds.id}>
+                                {ds.planningName || 'Sin Ref'} - {new Date(ds.date).toLocaleDateString()} {ds.isPending ? '(PENDIENTE ACTIVAR)' : `(${ds.status.toUpperCase()})`}
+                            </option>
+                        ))}
                     </select>
                 </div>
 
                 {selectedService && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 ${selectedService.isPending ? 'opacity-50 grayscale' : ''}`}>
                         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800 flex items-center">
                             <Users className="w-8 h-8 text-blue-600 dark:text-blue-400 mr-3" />
                             <div>
                                 <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Aforo Actual</p>
                                 <p className="text-2xl font-bold text-blue-800 dark:text-blue-200">
-                                    {selectedService.current_pax} <span className="text-lg text-blue-600/70">/ {selectedService.max_capacity}</span>
+                                    {selectedService.isPending ? '0' : selectedService.current_pax} <span className="text-lg text-blue-600/70">/ {selectedService.isPending ? '?' : selectedService.max_capacity}</span>
                                 </p>
                             </div>
                         </div>
@@ -199,7 +213,7 @@ export const DiningServiceView: React.FC = () => {
                             <div>
                                 <p className="text-sm text-green-600 dark:text-green-400 font-medium">Estado</p>
                                 <p className="text-2xl font-bold text-green-800 dark:text-blue-200 capitalize">
-                                    {selectedService.status}
+                                    {selectedService.isPending ? 'Pendiente' : selectedService.status}
                                 </p>
                             </div>
                         </div>
@@ -212,6 +226,12 @@ export const DiningServiceView: React.FC = () => {
                                 </p>
                             </div>
                         </div>
+                    </div>
+                )}
+                {selectedService?.isPending && (
+                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center text-yellow-800 text-sm font-bold">
+                        <AlertTriangle className="w-5 h-5 mr-2" />
+                        Este servicio está planificado pero no ha sido activado para reservas todavía.
                     </div>
                 )}
             </Card>
