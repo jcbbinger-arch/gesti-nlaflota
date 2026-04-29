@@ -10,7 +10,7 @@ import {
     TrainingCycle, Module, Group, Assignment, Recipe, StockItem, Sale, Message,
     Classroom, ClassroomProduct, ClassroomSupplier, ClassroomEvent, ClassroomOrder,
     ServiceGroup, Service, WorkspaceSettings, SaleItem, Reservation,
-    DiningService, DiningReservation, StockReception, Transfer
+    DiningService, DiningReservation, StockReception, Transfer, SUPER_USER_EMAILS
 } from '../types';
 import { logAudit } from '../utils/auditLogger';
 
@@ -311,7 +311,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadDemoData = () => seedData(demoData);
     const seedInitialData = () => seedData(initialData);
 
-    const filteredUsers = useMemo(() => users.filter(u => u.email !== 'managerproapp@gmail.com'), [users]);
+    const filteredUsers = useMemo(() => users.filter(u => !SUPER_USER_EMAILS.includes(u.email)), [users]);
 
     const value: DataContextType = useMemo(() => ({
         users: filteredUsers, products, suppliers, events, orders, incidents, 
