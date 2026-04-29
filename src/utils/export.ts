@@ -102,6 +102,7 @@ export const addHeaderToPdf = (doc: jsPDF, companyInfo: Company, title: string, 
 
 /**
  * Generates a PDF for supplier orders.
+ * @param isInternal - If true, includes prices and totals. If false, only product and quantity.
  */
 export const generateOrderPdf = (
     ordersBySupplier: Map<string, { product: Product; quantity: number; price: number }[]>,
@@ -109,7 +110,8 @@ export const generateOrderPdf = (
     companyInfo: Company,
     managerUser?: User,
     appName?: string,
-    teacherName?: string
+    teacherName?: string,
+    isInternal: boolean = false
 ) => {
     const doc = new jsPDF();
     const date = new Date().toLocaleDateString();
@@ -124,7 +126,13 @@ export const generateOrderPdf = (
         const supplier = suppliersMap.get(supplierId);
         if (!supplier) return;
 
-        const startY = addHeaderToPdf(doc, companyInfo, 'HOJA DE PEDIDO A PROVEEDOR', `Fecha: ${date}`, teacherName);
+        const startY = addHeaderToPdf(
+            doc, 
+            companyInfo, 
+            isInternal ? 'HOJA DE RECEPCIÓN DE PEDIDOS' : 'HOJA DE PEDIDO A PROVEEDOR', 
+            `Fecha: ${date}`, 
+            teacherName || (isInternal ? 'RESPONSABLE ALMACÉN' : undefined)
+        );
 
         // Supplier Info
         doc.setFontSize(10);
@@ -144,24 +152,42 @@ export const generateOrderPdf = (
         }
 
         // Table
-        const body = items.map(item => [
-            item.product.reference,
-            item.product.name.toUpperCase(),
-            item.quantity,
-            item.product.unit,
-            item.price.toFixed(2) + ' €',
-            (item.quantity * item.price).toFixed(2) + ' €'
-        ]);
+        const head = isInternal 
+            ? [['Ref.', 'Producto', 'Cant.', 'Ud.', 'P. Unit.', 'P. Total', 'Estado', 'P. Real', 'Obs.']]
+            : [['Producto', 'Cantidad Pedida', 'Unidad']];
+
+        const body = items.map(item => {
+            if (isInternal) {
+                return [
+                    item.product.reference,
+                    item.product.name.toUpperCase(),
+                    item.quantity,
+                    item.product.unit,
+                    item.price.toFixed(2) + ' €',
+                    (item.quantity * item.price).toFixed(2) + ' €',
+                    '', '', '' // Columns for manual annotations
+                ];
+            } else {
+                return [
+                    item.product.name.toUpperCase(),
+                    item.quantity,
+                    item.product.unit
+                ];
+            }
+        });
         
-        const total = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-        body.push(['', '', '', '', 'TOTAL (SIN IVA)', total.toFixed(2) + ' €']);
+        if (isInternal) {
+            const total = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+            body.push(['', '', '', '', 'TOTAL (SIN IVA)', total.toFixed(2) + ' €', '', '', '']);
+        }
 
         (doc as any).autoTable({
             startY: startY + 25,
-            head: [['Ref.', 'Producto', 'Cant.', 'Ud.', 'P. Unit.', 'P. Total']],
+            head: head,
             body: body,
             theme: 'grid',
-            headStyles: { fillStyle: 'F', fillColor: [59, 130, 246] }
+            headStyles: { fillStyle: 'F', fillColor: isInternal ? [79, 70, 229] : [59, 130, 246] },
+            styles: { fontSize: isInternal ? 8 : 10 }
         });
     });
 
@@ -173,7 +199,8 @@ export const generateOrderPdf = (
         doc.text(footerText, 14, doc.internal.pageSize.height - 10);
     }
 
-    doc.save(`pedidos_proveedores_${new Date().toISOString().slice(0,10)}.pdf`);
+    const prefix = isInternal ? 'hoja_recepcion' : 'pedido_proveedor';
+    doc.save(`${prefix}_${new Date().toISOString().slice(0,10)}.pdf`);
 };
 
 /**

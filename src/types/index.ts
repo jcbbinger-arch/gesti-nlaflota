@@ -152,6 +152,7 @@ export interface Supplier {
   status: SupplierStatus;
   website?: string;
   notes?: string;
+  reception_history?: string[]; // IDs de recepciones pasadas o notas acumuladas
 }
 
 export interface AppEvent {
@@ -215,6 +216,10 @@ export interface ReceptionItem {
     status: ReceptionLineStatus;
     received_quantity: number;
     ordered_quantity: number;
+    price?: number;
+    weight_diff?: string;
+    is_correct?: boolean;
+    notes?: string;
 }
 
 export interface TrainingCycle {
@@ -473,6 +478,23 @@ export interface Transfer {
   price_per_unit?: number;
   date: string; // ISO string
   status: 'Completado' | 'Pendiente';
+}
+
+export interface SupplierReception {
+    id: string;
+    supplier_id: string;
+    event_id: string;
+    date: string;
+    items: {
+        product_id: string;
+        ordered_quantity: number;
+        received_quantity: number;
+        price: number;
+        is_correct: boolean;
+        weight_diff?: string;
+        notes?: string;
+    }[];
+    general_notes?: string;
 }
 
 export interface AppData {

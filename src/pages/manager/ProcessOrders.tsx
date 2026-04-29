@@ -9,7 +9,7 @@ import { generateOrderPdf } from '../../utils/export';
 import { PlusIcon, TrashIcon, HistoryIcon, UserCircleIcon, TruckIcon, AppleIcon, MessageIcon } from '../../components/icons';
 import { useCreator } from '../../contexts/CreatorContext';
 
-type ViewMode = 'Global' | 'Teacher' | 'Supplier';
+type ViewMode = 'Global' | 'Teacher' | 'Supplier' | 'Reception';
 
 type AggregatedProduct = {
     product: Product;
@@ -220,7 +220,7 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
         return Array.from(summary.values());
     }, [aggregatedProducts, selectedSuppliers, suppliersMap, editedQuantities]);
 
-    const handleGeneratePdfs = () => {
+    const handleGeneratePdfs = (isInternal: boolean = false) => {
          const ordersBySupplier = new Map<string, { product: Product; quantity: number; price: number }[]>();
         supplierSummary.forEach(({ supplier }) => {
             const itemsForSupplier = aggregatedProducts
@@ -235,7 +235,7 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                 ordersBySupplier.set(supplier.id, itemsForSupplier);
             }
         });
-        generateOrderPdf(ordersBySupplier, suppliersMap, companyInfo, currentUser || undefined, creatorInfo.app_name);
+        generateOrderPdf(ordersBySupplier, suppliersMap, companyInfo, currentUser || undefined, creatorInfo.app_name, undefined, isInternal);
     };
 
     const handleModifyOrders = () => {
@@ -355,6 +355,9 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                 </button>
                 <button onClick={() => setViewMode('Supplier')} className={`px-4 py-2 rounded-md flex items-center shadow-sm transition-all ${viewMode === 'Supplier' ? 'bg-primary-600 text-white ring-2 ring-primary-300' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border hover:bg-gray-50'}`}>
                     <TruckIcon className="w-4 h-4 mr-2" /> Por Proveedor (Hojas de Compra)
+                </button>
+                <button onClick={() => setViewMode('Reception')} className={`px-4 py-2 rounded-md flex items-center shadow-sm transition-all ${viewMode === 'Reception' ? 'bg-primary-600 text-white ring-2 ring-primary-300' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border hover:bg-gray-50'}`}>
+                    <TruckIcon className="w-4 h-4 mr-2" /> Recepción Directa (Check-in)
                 </button>
             </div>
 
@@ -528,6 +531,27 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                 </div>
             )}
 
+            {viewMode === 'Reception' && (
+                <div className="space-y-6">
+                    <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-4 text-sm text-green-700">
+                        <p className="font-bold">Modo de Recepción Interactiva</p>
+                        <p>Usa esta vista para validar los productos conforme llegan del proveedor. Puedes actualizar precios en tiempo real y registrar incidencias que se guardarán en la ficha del proveedor.</p>
+                    </div>
+                    
+                    {activeSuppliers.filter(s => supplierSummary.some(ss => ss.supplier.id === s.id)).map(supplier => {
+                        const summary = supplierSummary.find(ss => ss.supplier.id === supplier.id)!;
+                        return (
+                            <SupplierReceptionCard 
+                                key={supplier.id} 
+                                supplier={supplier} 
+                                aggregatedProducts={aggregatedProducts.filter(agg => selectedSuppliers[agg.product.id] === supplier.id)}
+                                editedQuantities={editedQuantities}
+                                eventId={eventId}
+                            />
+                        );
+                    })}
+                </div>
+            )}
             {viewMode === 'Supplier' && (
                 <div className="space-y-6">
                     {activeSuppliers.filter(s => supplierSummary.some(ss => ss.supplier.id === s.id)).map(supplier => {
@@ -596,7 +620,10 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
                     ))}
                 </div>
                  <div className="mt-6 flex justify-between items-center flex-wrap gap-4">
-                    <button onClick={handleGeneratePdfs} className="bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700">Generar Hojas de Pedido (PDF)</button>
+                     <div className="flex gap-2">
+                        <button onClick={() => handleGeneratePdfs(false)} className="bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700 text-sm font-bold uppercase">Hoja de Pedido (Proveedor)</button>
+                        <button onClick={() => handleGeneratePdfs(true)} className="bg-indigo-600 text-white py-2 px-6 rounded-md hover:bg-indigo-700 text-sm font-bold uppercase">Hoja de Recepción (Interna)</button>
+                    </div>
                     {isProcessed ? (
                         <button onClick={handleModifyOrders} className="bg-orange-600 text-white py-2 px-6 rounded-md hover:bg-orange-700">Modificar Pedidos Procesados</button>
                     ) : (
@@ -607,3 +634,235 @@ const EventProcessingDetail: React.FC<{ eventId: string }> = ({ eventId }) => {
         </div>
     );
 };
+
+// --- New Components for Supplier Reception ---
+
+const SupplierReceptionCard: React.FC<{
+    supplier: Supplier;
+    aggregatedProducts: AggregatedProduct[];
+    editedQuantities: Record<string, number>;
+    eventId: string;
+}> = ({ supplier, aggregatedProducts, editedQuantities, eventId }) => {
+    const { products, setProducts, suppliers, setSuppliers, setSupplierReceptions, supplier_receptions } = useData();
+    const [receptionStates, setReceptionStates] = useState<Record<string, { price: number; is_correct: boolean; weight_diff: string; notes: string; received: number }>>({});
+    const [generalNotes, setGeneralNotes] = useState('');
+    const [isSaved, setIsSaved] = useState(false);
+
+    // Initialize state
+    useEffect(() => {
+        const initial: Record<string, any> = {};
+        aggregatedProducts.forEach(agg => {
+            const priceInfo = agg.product.suppliers.find(s => s.supplier_id === supplier.id);
+            const totalQty = agg.orders.reduce((sum, d) => sum + (editedQuantities[`${d.order.id}-${agg.product.id}`] ?? d.item.quantity), 0);
+            
+            initial[agg.product.id] = {
+                price: priceInfo?.price || 0,
+                is_correct: true,
+                weight_diff: '',
+                notes: '',
+                received: totalQty
+            };
+        });
+        setReceptionStates(initial);
+    }, [aggregatedProducts, supplier.id, editedQuantities]);
+
+    const handleUpdateField = (productId: string, field: string, value: any) => {
+        setReceptionStates(prev => ({
+            ...prev,
+            [productId]: { ...prev[productId], [field]: value }
+        }));
+    };
+
+    const handleSaveReception = async () => {
+        if (!window.confirm("¿Confirmar recepción de pedido? Se actualizarán los precios de los productos y se guardarán las anotaciones en la ficha del proveedor.")) return;
+
+        // 1. Update Product Prices if they changed
+        const updatedProducts = products.map(p => {
+             const state = receptionStates[p.id];
+             if (state) {
+                 const supplierIdx = p.suppliers.findIndex(s => s.supplier_id === supplier.id);
+                 if (supplierIdx !== -1 && p.suppliers[supplierIdx].price !== state.price) {
+                     const newSuppliers = [...p.suppliers];
+                     newSuppliers[supplierIdx] = { ...newSuppliers[supplierIdx], price: state.price };
+                     return { ...p, suppliers: newSuppliers };
+                 }
+             }
+             return p;
+        });
+
+        setProducts(updatedProducts);
+
+        // 2. Add to Supplier Reception History
+        const receptionId = `rec-${Date.now()}-${supplier.id}`;
+        const newReception = {
+            id: receptionId,
+            supplier_id: supplier.id,
+            event_id: eventId,
+            date: new Date().toISOString(),
+            general_notes: generalNotes,
+            items: Object.entries(receptionStates).map(([productId, state]) => ({
+                product_id: productId,
+                ordered_quantity: aggregatedProducts.find(agg => agg.product.id === productId)?.orders.reduce((sum, d) => sum + (editedQuantities[`${d.order.id}-${productId}`] ?? d.item.quantity), 0) || 0,
+                received_quantity: state.received,
+                price: state.price,
+                is_correct: state.is_correct,
+                weight_diff: state.weight_diff,
+                notes: state.notes
+            }))
+        };
+
+        setSupplierReceptions([...supplier_receptions, newReception]);
+
+        // 3. Update Supplier notes/history
+        const updatedSuppliers = suppliers.map(s => {
+            if (s.id === supplier.id) {
+                const currentDate = new Date().toLocaleDateString();
+                const newNote = `\n[RECEPCIÓN ${currentDate}]: ${generalNotes || 'Sin notas generales'}`;
+                return { 
+                    ...s, 
+                    notes: (s.notes || '') + newNote,
+                    reception_history: [...(s.reception_history || []), receptionId]
+                };
+            }
+            return s;
+        });
+        setSuppliers(updatedSuppliers);
+
+        setIsSaved(true);
+        alert("Recepción procesada correctamente. Precios actualizados e historial guardado.");
+    };
+
+    if (isSaved) {
+        return (
+            <Card title={`Recepción completada: ${supplier.name}`} className="bg-green-50 border-green-200">
+                <div className="flex items-center text-green-700">
+                    <CheckIcon className="w-6 h-6 mr-2" />
+                    <span>La mercancía ha sido procesada y los datos se han guardado en el historial del proveedor.</span>
+                </div>
+                <button onClick={() => setIsSaved(false)} className="mt-4 text-sm text-green-600 underline font-bold uppercase">Volver a editar (solo local)</button>
+            </Card>
+        );
+    }
+
+    return (
+        <Card title={
+            <div className="flex justify-between items-center w-full">
+                <span>Check-in: {supplier.name}</span>
+                <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500 font-mono">ID: {supplier.cif}</span>
+            </div>
+        }>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead className="bg-gray-100 border-b">
+                        <tr>
+                            <th className="px-3 py-2 text-left">Ref / Producto</th>
+                            <th className="px-3 py-2 text-center">Cant. Pedida</th>
+                            <th className="px-3 py-2 text-center">Precio App</th>
+                            <th className="px-3 py-2 text-center w-24">Precio Real</th>
+                            <th className="px-3 py-2 text-center">¿Correcto?</th>
+                            <th className="px-3 py-2 text-left">Diferencia Peso/Obs.</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                        {aggregatedProducts.map(agg => {
+                            const state = receptionStates[agg.product.id];
+                            if (!state) return null;
+                            const totalOrdered = agg.orders.reduce((sum, d) => sum + (editedQuantities[`${d.order.id}-${agg.product.id}`] ?? d.item.quantity), 0);
+                            if (totalOrdered <= 0) return null;
+
+                            return (
+                                <tr key={agg.product.id} className={state.is_correct ? 'hover:bg-gray-50' : 'bg-red-50'}>
+                                    <td className="px-3 py-3">
+                                        <div className="font-bold text-gray-400 text-[10px] uppercase">{agg.product.reference}</div>
+                                        <div className="font-semibold">{agg.product.name}</div>
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                         <div className="font-bold text-primary-700">{totalOrdered} {agg.product.unit}</div>
+                                         <div className="text-[10px] text-gray-400">Recibido: 
+                                            <input 
+                                                type="number" 
+                                                className="w-12 ml-1 border rounded p-0 text-center" 
+                                                value={state.received}
+                                                onChange={(e) => handleUpdateField(agg.product.id, 'received', parseFloat(e.target.value) || 0)}
+                                            />
+                                         </div>
+                                    </td>
+                                    <td className="px-3 py-3 text-center font-mono text-gray-500">
+                                        {agg.product.suppliers.find(s => s.supplier_id === supplier.id)?.price.toFixed(2)}€
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                        <div className="flex items-center justify-center">
+                                            <input 
+                                                type="number" 
+                                                step="0.01"
+                                                className={`w-20 p-1 border rounded text-center font-bold ${state.price !== (agg.product.suppliers.find(s => s.supplier_id === supplier.id)?.price || 0) ? 'border-orange-500 bg-orange-50' : ''}`}
+                                                value={state.price}
+                                                onChange={(e) => handleUpdateField(agg.product.id, 'price', parseFloat(e.target.value) || 0)}
+                                            />
+                                            <span className="ml-1 text-xs">€</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                        <button 
+                                            onClick={() => handleUpdateField(agg.product.id, 'is_correct', !state.is_correct)}
+                                            className={`p-1 rounded-full ${state.is_correct ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100'}`}
+                                        >
+                                            {state.is_correct ? <CheckIcon className="w-5 h-5" /> : <WarningIcon className="w-5 h-5" />}
+                                        </button>
+                                    </td>
+                                    <td className="px-3 py-3 space-y-1">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Peso distinto..." 
+                                            className="w-full text-xs p-1 border rounded"
+                                            value={state.weight_diff}
+                                            onChange={(e) => handleUpdateField(agg.product.id, 'weight_diff', e.target.value)}
+                                        />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Otras anotaciones..." 
+                                            className="w-full text-xs p-1 border rounded"
+                                            value={state.notes}
+                                            onChange={(e) => handleUpdateField(agg.product.id, 'notes', e.target.value)}
+                                        />
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Anotaciones Generales de la Recepción</label>
+                <textarea 
+                    className="w-full p-2 border rounded text-sm h-20"
+                    placeholder="Escribe aquí cualquier incidencia global, comentarios sobre el transporte, retrasos, etc."
+                    value={generalNotes}
+                    onChange={(e) => setGeneralNotes(e.target.value)}
+                />
+            </div>
+
+            <div className="mt-6 flex justify-end">
+                <button 
+                    onClick={handleSaveReception}
+                    className="bg-green-600 text-white font-bold py-2 px-8 rounded shadow-md hover:bg-green-700 transition-all flex items-center"
+                >
+                    <CheckIcon className="w-5 h-5 mr-2" /> FINALIZAR RECEPCIÓN Y ACTUALIZAR DATOS
+                </button>
+            </div>
+        </Card>
+    );
+};
+
+export const CheckIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+  </svg>
+);
+
+export const WarningIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+  </svg>
+);

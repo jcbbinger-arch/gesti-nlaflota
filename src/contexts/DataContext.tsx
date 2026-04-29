@@ -11,7 +11,7 @@ import {
     Classroom, ClassroomProduct, ClassroomSupplier, ClassroomEvent, ClassroomOrder,
     ServiceGroup, Service, WorkspaceSettings, SaleItem, Reservation,
     DiningService, DiningReservation, StockReception, Transfer, SUPER_USER_EMAILS,
-    AcademicYear
+    AcademicYear, SupplierReception
 } from '../types';
 import { logAudit } from '../utils/auditLogger';
 
@@ -43,6 +43,7 @@ export interface DataContextType {
     dining_services: DiningService[];
     dining_reservations: DiningReservation[];
     stock_receptions: StockReception[];
+    supplier_receptions: SupplierReception[];
     academic_years: AcademicYear[];
     selectedYearId: string | null;
     setSelectedYearId: (id: string | null) => void;
@@ -75,6 +76,7 @@ export interface DataContextType {
     setDiningServices: (data: DiningService[] | ((prev: DiningService[]) => DiningService[])) => void;
     setDiningReservations: (data: DiningReservation[] | ((prev: DiningReservation[]) => DiningReservation[])) => void;
     setStockReceptions: (data: StockReception[] | ((prev: StockReception[]) => StockReception[])) => void;
+    setSupplierReceptions: (data: SupplierReception[] | ((prev: SupplierReception[]) => SupplierReception[])) => void;
     setAcademicYears: (data: AcademicYear[] | ((prev: AcademicYear[]) => AcademicYear[])) => void;
     setWorkspaceSettings: (settings: WorkspaceSettings) => void;
     loadDemoData: () => Promise<void>;
@@ -98,6 +100,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [sales, setSalesState] = useState<Sale[]>([]);
     const [sale_items, setSaleItemsState] = useState<SaleItem[]>([]);
     const [reservations, setReservationsState] = useState<Reservation[]>([]);
+    const [supplier_receptions, setSupplierReceptionsState] = useState<SupplierReception[]>([]);
     const [mini_economato_stock, setMiniEconomatoStockState] = useState<StockItem[]>([]);
     const [messages, setMessagesState] = useState<Message[]>([]);
     const [classrooms, setClassroomsState] = useState<Classroom[]>([]);
@@ -167,6 +170,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             { name: 'dining_services', setter: setDiningServicesState },
             { name: 'dining_reservations', setter: setDiningReservationsState },
             { name: 'stock_receptions', setter: setStockReceptionsState },
+            { name: 'supplier_receptions', setter: setSupplierReceptionsState },
             { name: 'academic_years', setter: setAcademicYearsState },
         ];
 
@@ -288,6 +292,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const setDiningServices = (data: any) => updateCollection('dining_services', data, dining_services);
     const setDiningReservations = (data: any) => updateCollection('dining_reservations', data, dining_reservations);
     const setStockReceptions = (data: any) => updateCollection('stock_receptions', data, stock_receptions);
+    const setSupplierReceptions = (data: any) => updateCollection('supplier_receptions', data, supplier_receptions);
     const setAcademicYears = (data: any) => updateCollection('academic_years', data, academic_years);
 
     const setWorkspaceSettings = async (settings: WorkspaceSettings) => {
@@ -380,6 +385,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         reservations: filteredReservations,
         dining_services: filteredDiningServices, 
         dining_reservations, stock_receptions,
+        supplier_receptions,
         academic_years, selectedYearId, setSelectedYearId, isPastYear,
         setUsers, setProducts, setSuppliers, setEvents, setOrders, setIncidents,
         setTrainingCycles, setModules, setGroups, setAssignments, setRecipes, setSales,
@@ -387,14 +393,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setMiniEconomatoStock, setMessages, setClassrooms, setClassroomProducts,
         setClassroomSuppliers, setClassroomEvents, setClassroomOrders,
         setServiceGroups, setServices, setTransfers, setDiningServices, setDiningReservations, 
-        setStockReceptions, setAcademicYears, setWorkspaceSettings,
+        setStockReceptions, setSupplierReceptions, setAcademicYears, setWorkspaceSettings,
         loadDemoData, seedInitialData
     }), [
         filteredUsers, products, suppliers, filteredEvents, filteredOrders, incidents, 
         training_cycles, modules, groups, assignments, recipes, filteredSales, mini_economato_stock, messages,
         classrooms, classroom_products, classroom_suppliers, classroom_events, classroom_orders,
         service_groups, services, transfers, workspaceSettings, filteredSaleItems, filteredReservations,
-        filteredDiningServices, dining_reservations, stock_receptions, academic_years, selectedYearId, isPastYear
+        filteredDiningServices, dining_reservations, stock_receptions, supplier_receptions, academic_years, selectedYearId, isPastYear
     ]);
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
