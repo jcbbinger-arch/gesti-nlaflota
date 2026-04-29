@@ -4,9 +4,9 @@ import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { useAuth } from '../../contexts/AuthContext';
 import { Product, User, Profile, Order, StockItem, OrderItem } from '../../types';
-import { DownloadIcon, PlusIcon, PencilIcon, ScannerIcon } from '../../components/icons';
+import { Download, Plus, Pencil, Scan, Search, AlertCircle, ShoppingCart, X } from 'lucide-react';
 import { printPage } from '../../utils/export';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 
 const ScannerModal: React.FC<{ onClose: () => void; onScan: (code: string) => void }> = ({ onClose, onScan }) => {
@@ -27,7 +27,7 @@ const ScannerModal: React.FC<{ onClose: () => void; onScan: (code: string) => vo
             <div className="relative bg-black rounded-lg aspect-square overflow-hidden flex flex-center items-center justify-center">
                 {/* Simulated Camera View */}
                 <div className="absolute inset-0 bg-gray-900 flex items-center justify-center text-gray-500">
-                    <ScannerIcon className="w-24 h-24 opacity-20" />
+                    <Scan className="w-24 h-24 opacity-20" />
                     <p className="absolute bottom-4 text-xs">Simulando cámara...</p>
                 </div>
 
@@ -92,52 +92,118 @@ const AssignExpenseModal: React.FC<{product: Product; onClose: () => void; onAss
     );
 };
 
-const AddProductModal: React.FC<{ allProducts: Product[], currentStockIds: string[], onClose: () => void, onAdd: (productId: string, stock: number, min_stock: number, is_shared: boolean) => void }> = ({ allProducts, currentStockIds, onClose, onAdd }) => {
+const AddProductModal: React.FC<{ allProducts: Product[], currentStockIds: string[], onClose: () => void, onAdd: (productId: string, stock: number, min_stock: number, max_stock: number, is_shared: boolean) => void }> = ({ allProducts, currentStockIds, onClose, onAdd }) => {
+    const [searchTerm, setSearchTerm] = useState('');
     const [productId, setProductId] = useState('');
     const [stock, setStock] = useState(0);
     const [min_stock, setMinStock] = useState(0);
+    const [max_stock, setMax_stock] = useState(0);
     const [is_shared, setIsShared] = useState(false);
     
-    const availableProducts = useMemo(() => allProducts.filter(p => !currentStockIds.includes(p.id)), [allProducts, currentStockIds]);
+    const availableProducts = useMemo(() => {
+        return allProducts
+            .filter(p => !currentStockIds.includes(p.id))
+            .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [allProducts, currentStockIds, searchTerm]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if(productId) onAdd(productId, stock, min_stock, is_shared);
+        if(productId) onAdd(productId, stock, min_stock, max_stock, is_shared);
     };
 
     return (
         <Modal isOpen={true} onClose={onClose} title="Añadir Producto al Mini-Economato">
             <form onSubmit={handleSubmit} className="space-y-4">
-                <select value={productId} onChange={e => setProductId(e.target.value)} required className="w-full p-2 border rounded dark:bg-gray-700">
-                    <option value="">-- Seleccionar Producto --</option>
-                    {availableProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Buscar producto..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-800 placeholder-gray-500 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                    />
+                </div>
+
+                <div className="max-h-40 overflow-y-auto border rounded-md p-1 space-y-1">
+                    {availableProducts.map(p => (
+                        <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                                setProductId(p.id);
+                                setSearchTerm(p.name);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm ${productId === p.id ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                        >
+                            <div className="font-medium">{p.name}</div>
+                            <div className="text-[10px] text-gray-500">{p.category} - {p.reference}</div>
+                        </button>
+                    ))}
+                    {availableProducts.length === 0 && (
+                        <div className="text-center py-4 text-gray-400 text-sm italic">
+                            No se encontraron productos disponibles.
+                        </div>
+                    )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
-                    <input type="number" value={stock} onChange={e => setStock(Number(e.target.value))} placeholder="Stock Inicial" required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
-                    <input type="number" value={min_stock} onChange={e => setMinStock(Number(e.target.value))} placeholder="Stock Mínimo" required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Stock Inicial</label>
+                        <input type="number" value={stock} onChange={e => setStock(Number(e.target.value))} required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
+                    </div>
+                    <div>
+                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Stock Mínimo</label>
+                         <input type="number" value={min_stock} onChange={e => setMinStock(Number(e.target.value))} required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
+                    </div>
+                </div>
+                <div>
+                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Stock Máximo Recomendado</label>
+                     <input type="number" value={max_stock} onChange={e => setMax_stock(Number(e.target.value))} required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
                 </div>
                 <div className="flex items-center space-x-2">
                     <input type="checkbox" id="is_shared" checked={is_shared} onChange={e => setIsShared(e.target.checked)} className="rounded text-primary-600" />
                     <label htmlFor="is_shared" className="text-sm">Producto de Gasto Compartido (repartir entre todos)</label>
                 </div>
-                <div className="flex justify-end"><button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded">Añadir</button></div>
+                <div className="flex justify-end pt-2">
+                    <button 
+                        type="submit" 
+                        disabled={!productId}
+                        className="bg-primary-600 text-white px-6 py-2 rounded-lg font-bold disabled:opacity-50 transition-all hover:bg-primary-700 shadow-md"
+                    >
+                        Añadir Producto
+                    </button>
+                </div>
             </form>
         </Modal>
     );
 };
 
-const EditStockModal: React.FC<{ item: StockItem, productName: string, onClose: () => void, onSave: (stock: number, min_stock: number, is_shared: boolean) => void }> = ({ item, productName, onClose, onSave }) => {
+const EditStockModal: React.FC<{ item: StockItem, productName: string, onClose: () => void, onSave: (stock: number, min_stock: number, max_stock: number, is_shared: boolean) => void }> = ({ item, productName, onClose, onSave }) => {
     const [stock, setStock] = useState(item.stock);
-    const [min_stock, setMinStock] = useState(item.min_stock);
+    const [min_stock, setMin_stock] = useState(item.min_stock);
+    const [max_stock, setMax_stock] = useState(item.max_stock || 0);
     const [is_shared, setIsShared] = useState(!!item.is_shared);
-    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(stock, min_stock, is_shared); };
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(stock, min_stock, max_stock, is_shared); };
 
     return (
         <Modal isOpen={true} onClose={onClose} title={`Editar Stock de ${productName}`}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <input type="number" value={stock} onChange={e => setStock(Number(e.target.value))} placeholder="Stock Actual" required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
-                    <input type="number" value={min_stock} onChange={e => setMinStock(Number(e.target.value))} placeholder="Stock Mínimo" required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Stock Actual</label>
+                        <input type="number" value={stock} onChange={e => setStock(Number(e.target.value))} required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Stock Mínimo</label>
+                        <input type="number" value={min_stock} onChange={e => setMin_stock(Number(e.target.value))} required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Stock Máximo</label>
+                    <input type="number" value={max_stock} onChange={e => setMax_stock(Number(e.target.value))} required min="0" step="0.01" className="w-full p-2 border rounded dark:bg-gray-700" />
                 </div>
                 <div className="flex items-center space-x-2">
                     <input type="checkbox" id="edit_is_shared" checked={is_shared} onChange={e => setIsShared(e.target.checked)} className="rounded text-primary-600" />
@@ -167,6 +233,7 @@ export const MiniEconomato: React.FC = () => {
         notes: ''
     });
 
+    const navigate = useNavigate();
     const canManage = useMemo(() => 
         currentUser?.profiles.includes(Profile.ALMACEN) || 
         currentUser?.profiles.includes(Profile.ADMIN)
@@ -204,10 +271,24 @@ export const MiniEconomato: React.FC = () => {
     }, [stockMap, productsMap, filter]);
 
     const getStockLevel = (current: number, min: number) => {
-        if (current === 0) return { text: 'Agotado', textClass: 'text-red-800', bgClass: 'bg-red-100', className: 'bg-red-200 dark:bg-red-900 border-red-400' };
-        if (current <= min * 0.5) return { text: 'Bajo Mínimos', textClass: 'text-red-800', bgClass: 'bg-red-100', className: 'bg-red-300 dark:bg-red-800 border-red-500' };
-        if (current <= min) return { text: 'Nivel Bajo', textClass: 'text-yellow-800', bgClass: 'bg-yellow-100', className: 'bg-yellow-200 dark:bg-yellow-900 border-yellow-400' };
-        return { text: 'Saludable', textClass: 'text-green-800', bgClass: 'bg-green-100', className: 'bg-green-200 dark:bg-green-900 border-green-400' };
+        if (current === 0) return { text: 'Agotado', textClass: 'text-red-800', bgClass: 'bg-red-100', className: 'bg-red-50 dark:bg-red-900/20 border-red-200' };
+        if (current <= min * 0.5) return { text: 'Urgente', textClass: 'text-red-800', bgClass: 'bg-red-100', className: 'bg-red-50 dark:bg-red-900/20 border-red-200' };
+        if (current <= min) return { text: 'Reponer', textClass: 'text-yellow-800', bgClass: 'bg-yellow-100', className: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200' };
+        return { text: 'Suficiente', textClass: 'text-green-800', bgClass: 'bg-green-100', className: 'bg-green-50 dark:bg-green-900/20 border-green-200' };
+    };
+
+    const handleQuickOrder = (product: Product, currentStock: number, maxStock: number) => {
+        const quantityToOrder = maxStock > currentStock ? maxStock - currentStock : 10;
+        // Search for active order event or just use current date
+        const now = new Date();
+        const activeEvent = events.find(e => e.type === 'Regular' && new Date(e.start_date) <= now && new Date(e.end_date) >= now);
+        
+        if (activeEvent) {
+             // In a real app we might redirect to order portal with state
+             navigate(`/teacher/order-portal?type=economato&productId=${product.id}&quantity=${quantityToOrder}`);
+        } else {
+            alert("No hay un periodo de pedidos activo para realizar el pedido automático.");
+        }
     };
 
     const handleOpenAssignModal = (product: Product) => {
@@ -268,14 +349,14 @@ export const MiniEconomato: React.FC = () => {
         setProductToAssign(null);
     };
     
-    const handleAddProduct = (productId: string, stock: number, min_stock: number, is_shared: boolean) => {
-        setMiniEconomatoStock((prev: StockItem[]) => [...prev, {id: productId, stock, min_stock, is_shared}]);
+    const handleAddProduct = (productId: string, stock: number, min_stock: number, max_stock: number, is_shared: boolean) => {
+        setMiniEconomatoStock((prev: StockItem[]) => [...prev, {id: productId, stock, min_stock, max_stock, is_shared}]);
         setIsAddModalOpen(false);
     }
     
-    const handleEditStock = (stock: number, min_stock: number, is_shared: boolean) => {
+    const handleEditStock = (stock: number, min_stock: number, max_stock: number, is_shared: boolean) => {
         if (!itemToEdit) return;
-        setMiniEconomatoStock((prev: StockItem[]) => prev.map((item: StockItem) => item.id === itemToEdit.id ? {...item, stock, min_stock, is_shared, last_update: new Date().toISOString()} : item));
+        setMiniEconomatoStock((prev: StockItem[]) => prev.map((item: StockItem) => item.id === itemToEdit.id ? {...item, stock, min_stock, max_stock, is_shared, last_update: new Date().toISOString()} : item));
         setIsEditModalOpen(false);
     }
 
@@ -351,20 +432,17 @@ export const MiniEconomato: React.FC = () => {
                 <div className="flex space-x-2 flex-wrap gap-y-2">
                     {canManage && (
                         <>
-                            <button onClick={() => setIsReceptionModalOpen(true)} className="no-print bg-amber-600 text-white py-2 px-4 rounded-md hover:bg-amber-700 flex items-center">
-                                <PlusIcon className="w-5 h-5 mr-2" /> Recibir Pedido (Empresa)
+                            <button onClick={() => setIsReceptionModalOpen(true)} className="no-print bg-amber-600 text-white py-2 px-4 rounded-md hover:bg-amber-700 flex items-center shadow-sm">
+                                <Plus className="w-5 h-5 mr-2" /> Recibir Albarán
                             </button>
-                            <button onClick={() => setIsAddModalOpen(true)} className="no-print bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center">
-                                <PlusIcon className="w-5 h-5 mr-2" /> Stock Manual
+                            <button onClick={() => setIsAddModalOpen(true)} className="no-print bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center shadow-sm">
+                                <Plus className="w-5 h-5 mr-2" /> Stock Manual
                             </button>
-                            <Link to="/teacher/order-portal?type=economato" className="no-print bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center">
-                                <PlusIcon className="w-5 h-5 mr-2" /> Hacer Pedido de Reposición
-                            </Link>
                         </>
                     )}
-                    <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
-                        <DownloadIcon className="w-5 h-5 mr-2" />
-                        Descargar PDF
+                    <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center shadow-sm">
+                        <Download className="w-5 h-5 mr-2" />
+                        Informe PDF
                     </button>
                 </div>
             </div>
@@ -417,7 +495,7 @@ export const MiniEconomato: React.FC = () => {
                             className="bg-gray-100 dark:bg-gray-700 p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 flex items-center space-x-1"
                             title="Escanear Código de Barras"
                         >
-                            <ScannerIcon className="w-5 h-5" />
+                            <Scan className="w-5 h-5" />
                             <span className="hidden sm:inline">Escanear</span>
                         </button>
                     </div>
@@ -426,17 +504,20 @@ export const MiniEconomato: React.FC = () => {
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                                 <tr>
                                     <th className="px-4 py-2 text-left w-16">Imagen</th>
-                                    <th className="px-4 py-2 text-left">Nombre</th>
-                                    <th className="px-4 py-2 text-left">Stock Actual</th>
-                                    <th className="px-4 py-2 text-left">Estado</th>
-                                    <th className="px-4 py-2 text-left">Acciones</th>
+                                    <th className="px-4 py-2 text-left">Nombre / Refs</th>
+                                    <th className="px-4 py-2 text-left text-center">Nivel de Stock</th>
+                                    <th className="px-4 py-2 text-center">Estado</th>
+                                    <th className="px-4 py-2 text-center">Reposición</th>
+                                    <th className="px-4 py-2 text-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {economatoProducts.map(({ product, stock }) => {
                                     const stockLevel = getStockLevel(stock.stock, stock.min_stock);
+                                    const needsReplenishment = stock.stock <= stock.min_stock;
+                                    
                                     return (
-                                        <tr key={product.id} className="border-b dark:border-gray-700">
+                                        <tr key={product.id} className={`border-b dark:border-gray-700 transition-colors ${needsReplenishment ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}>
                                             <td className="px-4 py-2">
                                                 <div className="w-10 h-10 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden border dark:border-gray-600">
                                                     {product.image ? (
@@ -447,38 +528,64 @@ export const MiniEconomato: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2 font-medium">
-                                                <div className="flex items-center space-x-2">
-                                                    <span>{product.name}</span>
-                                                    {stock.is_shared && (
-                                                        <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-bold uppercase">Compartido</span>
-                                                    )}
-                                                </div>
-                                                {product.unit === 'Uds' && product.unit_size && (
-                                                    <div className="text-[10px] text-gray-500">
-                                                        1 ud = {product.unit_size}{product.unit_size_type || 'g'}
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-center space-x-2">
+                                                        <span>{product.name}</span>
+                                                        {stock.is_shared && (
+                                                            <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">Gasto Común</span>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                <div className="font-mono text-sm font-bold">
-                                                    {stock.stock.toFixed(2)} <span className="text-xs text-gray-500 font-normal">/ Mín: {stock.min_stock}</span>
+                                                    <span className="text-[10px] text-gray-400 font-mono tracking-tighter">{product.reference}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-2">
-                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${stockLevel.bgClass} ${stockLevel.textClass}`}>
+                                            <td className="px-4 py-2 text-center">
+                                                <div className="flex flex-col items-center">
+                                                    <div className={`font-mono text-sm font-black ${needsReplenishment ? 'text-red-600' : 'text-gray-800 dark:text-white'}`}>
+                                                        {stock.stock.toFixed(2)}
+                                                    </div>
+                                                    <div className="flex items-center space-x-1 text-[10px] text-gray-400 font-bold uppercase">
+                                                        <span>Mín: {stock.min_stock}</span>
+                                                        {stock.max_stock ? <span>/ Máx: {stock.max_stock}</span> : null}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-2 text-center">
+                                                <span className={`px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${stockLevel.bgClass} ${stockLevel.textClass} border shadow-sm`}>
                                                     {stockLevel.text}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-2 space-x-2 no-print">
+                                            <td className="px-4 py-2 text-center">
+                                                {needsReplenishment ? (
+                                                    <button 
+                                                        onClick={() => handleQuickOrder(product, stock.stock, stock.max_stock || (stock.min_stock * 2))}
+                                                        className="inline-flex items-center text-xs font-bold text-primary-600 hover:text-primary-700 bg-white dark:bg-gray-800 px-2 py-1 rounded border border-primary-200 shadow-sm transition-all hover:scale-105 active:scale-95"
+                                                        title="Añadir al pedido actual"
+                                                    >
+                                                        <ShoppingCart className="w-3 h-3 mr-1" />
+                                                        +{(stock.max_stock ? (stock.max_stock - stock.stock) : (stock.min_stock * 2)).toFixed(0)} uds
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-gray-300 text-xs">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-2 text-right space-x-2 no-print">
                                                 {canManage && (
-                                                    <>
-                                                        <button onClick={() => { setItemToEdit(stock); setIsEditModalOpen(true); }} className="text-primary-600 hover:underline">
-                                                            Editar
+                                                    <div className="flex justify-end gap-1">
+                                                        <button 
+                                                            onClick={() => { setItemToEdit(stock); setIsEditModalOpen(true); }} 
+                                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                                                            title="Editar Stock"
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
                                                         </button>
-                                                        <button onClick={() => handleOpenAssignModal(product)} className="text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline" disabled={stock.stock <= 0}>
-                                                            Asignar
+                                                        <button 
+                                                            onClick={() => handleOpenAssignModal(product)} 
+                                                            className="py-1 px-3 text-xs font-bold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-30 disabled:grayscale transition-all shadow-sm flex items-center" 
+                                                            disabled={stock.stock <= 0}
+                                                        >
+                                                            <ShoppingCart className="w-3 h-3 mr-1" /> ASIGNAR
                                                         </button>
-                                                    </>
+                                                    </div>
                                                 )}
                                             </td>
                                         </tr>

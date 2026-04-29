@@ -268,6 +268,7 @@ export interface StockItem {
     id: string; // productId
     stock: number;
     min_stock: number;
+    max_stock?: number;
     is_shared?: boolean;
     last_update?: string;
 }

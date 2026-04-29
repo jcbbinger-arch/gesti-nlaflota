@@ -79,6 +79,16 @@ export const OrderForm: React.FC = () => {
         return groups;
     }, [filteredProducts]);
 
+    const [isScannerOpen, setIsScannerOpen] = useState(false); // Placeholder if added later
+    
+    useEffect(() => {
+        const productId = searchParams.get('productId');
+        const quantity = parseFloat(searchParams.get('quantity') || '0');
+        if (productId && quantity > 0 && !orderId) {
+            handleQuantityChange(productId, quantity);
+        }
+    }, [searchParams, orderId]);
+
     useEffect(() => {
         if (existingOrder) {
             const itemsMap = new Map<string, number>();
