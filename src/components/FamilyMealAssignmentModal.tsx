@@ -7,12 +7,14 @@ import { Users, Check, Search } from 'lucide-react';
 interface Props {
     isOpen: boolean;
     onClose: () => void;
-    diningService: DiningService;
+    diningServiceId: string;
 }
 
-export const FamilyMealAssignmentModal: React.FC<Props> = ({ isOpen, onClose, diningService }) => {
+export const FamilyMealAssignmentModal: React.FC<Props> = ({ isOpen, onClose, diningServiceId }) => {
     const { users, setDiningServices, dining_services } = useData();
     const [searchTerm, setSearchTerm] = useState('');
+
+    const diningService = dining_services.find(ds => ds.id === diningServiceId);
 
     const teachers = users.filter(u => u.profiles.includes(Profile.TEACHER));
     
@@ -21,9 +23,11 @@ export const FamilyMealAssignmentModal: React.FC<Props> = ({ isOpen, onClose, di
         t.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const assignedIds = (diningService as any).family_meal_authorized_teachers || [];
+    const assignedIds = diningService?.family_meal_authorized_teachers || [];
 
     const toggleAssignment = (userId: string) => {
+        if (!diningService) return;
+        
         const newIds = assignedIds.includes(userId)
             ? (assignedIds as string[]).filter(id => id !== userId)
             : [...assignedIds, userId];
@@ -34,6 +38,10 @@ export const FamilyMealAssignmentModal: React.FC<Props> = ({ isOpen, onClose, di
                 : ds
         ));
     };
+
+    if (!diningService && isOpen) {
+        return null; // Or show some loading/error state
+    }
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Asignar Responsables - Comida Familia`}>

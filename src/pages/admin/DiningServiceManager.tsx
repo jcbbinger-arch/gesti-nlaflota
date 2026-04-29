@@ -358,7 +358,7 @@ export const DiningServiceManager: React.FC = () => {
                 <FamilyMealAssignmentModal 
                     isOpen={!!assigningService} 
                     onClose={() => setAssigningService(null)} 
-                    diningService={assigningService} 
+                    diningServiceId={assigningService.id} 
                 />
             )}
         </div>

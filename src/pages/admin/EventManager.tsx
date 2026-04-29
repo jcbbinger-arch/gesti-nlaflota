@@ -41,7 +41,7 @@ export const EventManager: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
-    const [assigningDiningService, setAssigningDiningService] = useState<DiningService | null>(null);
+    const [assigningDiningServiceId, setAssigningDiningServiceId] = useState<string | null>(null);
     const [deleteStep, setDeleteStep] = useState(1);
     const { companyInfo } = useCompany();
 
@@ -424,14 +424,29 @@ export const EventManager: React.FC = () => {
                                                         const linkedService = services.find(s => s.event_id === event.id);
                                                         const ds = dining_services.find(d => d.service_id === linkedService?.id);
                                                         if (ds) {
-                                                            setAssigningDiningService(ds);
+                                                            setAssigningDiningServiceId(ds.id);
                                                         } else {
                                                             alert('Este servicio de planificación aún no tiene un servicio de comedor configurado.');
                                                         }
                                                     }}
-                                                    className="text-indigo-600 hover:text-indigo-800 font-bold text-xs uppercase underline flex items-center"
+                                                    className={`font-bold text-xs uppercase underline flex items-center ${
+                                                        (() => {
+                                                            const linkedService = services.find(s => s.event_id === event.id);
+                                                            const ds = dining_services.find(d => d.service_id === linkedService?.id);
+                                                            return (ds?.family_meal_authorized_teachers?.length || 0) > 0 
+                                                                ? 'text-green-600 hover:text-green-800' 
+                                                                : 'text-indigo-600 hover:text-indigo-800';
+                                                        })()
+                                                    }`}
                                                 >
-                                                    <UserPlusIcon className="w-3.5 h-3.5 mr-1" /> Familia
+                                                    <UserPlusIcon className="w-3.5 h-3.5 mr-1" /> 
+                                                    {(() => {
+                                                        const linkedService = services.find(s => s.event_id === event.id);
+                                                        const ds = dining_services.find(d => d.service_id === linkedService?.id);
+                                                        return (ds?.family_meal_authorized_teachers?.length || 0) > 0 
+                                                            ? 'Familia Asignada' 
+                                                            : 'Sin Asignar (Familia)';
+                                                    })()}
                                                 </button>
                                             )}
                                             <button onClick={() => handleOpenModal(event)} className="text-primary-600 hover:text-primary-800 font-bold text-xs uppercase underline">Editar</button>
@@ -475,11 +490,11 @@ export const EventManager: React.FC = () => {
                 )}
             </Modal>
             
-            {assigningDiningService && (
+            {assigningDiningServiceId && (
                 <FamilyMealAssignmentModal 
-                    isOpen={!!assigningDiningService} 
-                    onClose={() => setAssigningDiningService(null)} 
-                    diningService={assigningDiningService} 
+                    isOpen={!!assigningDiningServiceId} 
+                    onClose={() => setAssigningDiningServiceId(null)} 
+                    diningServiceId={assigningDiningServiceId} 
                 />
             )}
         </div>

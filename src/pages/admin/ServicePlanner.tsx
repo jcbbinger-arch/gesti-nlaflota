@@ -305,7 +305,7 @@ const ServiceManager: React.FC = () => {
     const { companyInfo } = useCompany();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
-    const [assigningDiningService, setAssigningDiningService] = useState<DiningService | null>(null);
+    const [assigningDiningServiceId, setAssigningDiningServiceId] = useState<string | null>(null);
     const [confirmDeleteServiceId, setConfirmDeleteServiceId] = useState<string | null>(null);
 
     const serviceGroupsMap = useMemo(() => new Map(service_groups.map((g: ServiceGroup) => [g.id, g.name])), [service_groups]);
@@ -424,18 +424,22 @@ const ServiceManager: React.FC = () => {
                                 <button onClick={() => { setSelectedService(service); setIsModalOpen(true); }} title="Editar"><PencilIcon className="w-4 h-4 text-gray-500 hover:text-blue-500"/></button>
                                 {(() => {
                                     const ds = dining_services.find(d => d.service_id === service.id);
-                                    if (ds) {
-                                        return (
-                                            <button 
-                                                onClick={() => setAssigningDiningService(ds)}
-                                                className="inline-flex items-center text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 uppercase"
-                                                title="Asignar Responsables Comida de Familia"
-                                            >
-                                                <UserPlusIcon className="w-3 h-3 mr-1" /> Familia
-                                            </button>
-                                        );
-                                    }
-                                    return null;
+                                    return (
+                                        <button 
+                                            onClick={() => {
+                                                if (ds) {
+                                                    setAssigningDiningServiceId(ds.id);
+                                                } else {
+                                                    alert('Aún no se ha habilitado el servicio de comedor para este servicio escolar. Debes habilitarlo primero en "Gestión de Comedor" para gestionar la comida de familia.');
+                                                }
+                                            }}
+                                            className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded border uppercase transition-colors ${(ds?.family_meal_authorized_teachers?.length || 0) > 0 ? 'text-green-700 bg-green-50 border-green-200 hover:text-green-800' : 'text-indigo-600 hover:text-indigo-800 bg-indigo-50 border-indigo-100'}`}
+                                            title="Asignar Responsables Comida de Familia"
+                                        >
+                                            <UserPlusIcon className="w-3 h-3 mr-1" /> 
+                                            {(ds?.family_meal_authorized_teachers?.length || 0) > 0 ? 'Familia Asignada' : 'Sin Asignar (Familia)'}
+                                        </button>
+                                    );
                                 })()}
                                 <button onClick={() => setConfirmDeleteServiceId(service.id)} title="Eliminar"><TrashIcon className="w-4 h-4 text-red-500 hover:text-red-700"/></button>
                             </td>
@@ -454,11 +458,11 @@ const ServiceManager: React.FC = () => {
                 type="danger"
             />
             
-            {assigningDiningService && (
+            {assigningDiningServiceId && (
                 <FamilyMealAssignmentModal 
-                    isOpen={!!assigningDiningService} 
-                    onClose={() => setAssigningDiningService(null)} 
-                    diningService={assigningDiningService} 
+                    isOpen={!!assigningDiningServiceId} 
+                    onClose={() => setAssigningDiningServiceId(null)} 
+                    diningServiceId={assigningDiningServiceId} 
                 />
             )}
         </div>
