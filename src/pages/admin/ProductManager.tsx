@@ -656,7 +656,12 @@ export const ProductManager: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Productos</h1>
+                <div className="flex items-baseline space-x-3">
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Productos</h1>
+                    <span className="text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2.5 py-0.5 rounded-full border dark:border-gray-700">
+                        {products.length} productos
+                    </span>
+                </div>
                 <div className="flex items-center space-x-2 no-print">
                     <button onClick={downloadTemplate} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center text-sm">
                          Plantilla CSV
@@ -675,12 +680,19 @@ export const ProductManager: React.FC = () => {
             </div>
 
             <Card>
-                <div className="flex space-x-4 mb-4 no-print">
-                    <input type="text" placeholder="Buscar producto por nombre..." value={filter} onChange={e => setFilter(e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700"/>
+                <div className="flex space-x-4 mb-4 no-print items-center">
+                    <div className="flex-1">
+                        <input type="text" placeholder="Buscar producto por nombre..." value={filter} onChange={e => setFilter(e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700"/>
+                    </div>
                     <select value={familyFilter} onChange={e => setFamilyFilter(e.target.value)} className="p-2 border rounded-md dark:bg-gray-700">
                         <option value="">Todas las Familias</option>
                         {uniqueFamilies.map(family => <option key={family} value={family}>{family.toUpperCase()}</option>)}
                     </select>
+                    {(filter || familyFilter) && (
+                        <div className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                            Encontrados: {filteredProducts.length}
+                        </div>
+                    )}
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
