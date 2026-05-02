@@ -618,7 +618,8 @@ export const ProductManager: React.FC = () => {
     const filteredProducts = useMemo(() => {
         return products
             .filter(p => filter ? p.name.toLowerCase().includes(filter.toLowerCase()) : true)
-            .filter(p => familyFilter ? p.family.toUpperCase() === familyFilter.toUpperCase() : true);
+            .filter(p => familyFilter ? p.family.toUpperCase() === familyFilter.toUpperCase() : true)
+            .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
     }, [products, filter, familyFilter]);
 
     const handleOpenModal = (product: Product | null = null) => {
