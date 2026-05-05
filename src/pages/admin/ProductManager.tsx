@@ -534,7 +534,17 @@ export const ProductManager: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="px-4 py-2 font-medium">
-                                        <div>{product.name}</div>
+                                        <div className="flex items-center space-x-2">
+                                            <span>{product.name}</span>
+                                            {product.allergens && product.allergens.length > 0 && (
+                                                <div 
+                                                    title={`Alérgenos: ${product.allergens.join(', ')}`}
+                                                    className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 cursor-help"
+                                                >
+                                                    <WarningIcon className="w-3 h-3" />
+                                                </div>
+                                            )}
+                                        </div>
                                         {product.unit === 'Uds' && product.unit_size && (
                                             <div className="text-[10px] text-gray-500">
                                                 1 ud = {product.unit_size}{product.unit_size_type || 'g'}

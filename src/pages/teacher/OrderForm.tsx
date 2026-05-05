@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { AppEvent, Order, OrderItem, Product, NewProductRequest, Profile } from '../../types';
 import { BlockedAccess } from '../shared/BlockedAccess';
-import { TrashIcon, PlusIcon, MinusIcon, LockIcon } from '../../components/icons';
+import { TrashIcon, PlusIcon, MinusIcon, LockIcon, WarningIcon } from '../../components/icons';
 
 export const OrderForm: React.FC = () => {
     const { eventId, orderId } = useParams<{ eventId?: string; orderId?: string }>();
@@ -303,7 +303,17 @@ export const OrderForm: React.FC = () => {
                                             referrerPolicy="no-referrer"
                                         />
                                     </div>
-                                    <h4 className="font-bold text-[11px] leading-tight line-clamp-2 min-h-[2.2em]">{product.name}</h4>
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="font-bold text-[11px] leading-tight line-clamp-2 min-h-[2.2em] flex-1">{product.name}</h4>
+                                        {product.allergens && product.allergens.length > 0 && (
+                                            <div 
+                                                title={`Alérgenos: ${product.allergens.join(', ')}`}
+                                                className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 cursor-help flex-shrink-0"
+                                            >
+                                                <WarningIcon className="w-2.5 h-2.5" />
+                                            </div>
+                                        )}
+                                    </div>
                                     
                                     {product.description && (
                                         <p className="text-[9px] text-gray-400 mt-0.5 line-clamp-2 italic leading-tight" title={product.description}>
@@ -381,7 +391,17 @@ export const OrderForm: React.FC = () => {
                                             />
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-gray-800 dark:text-gray-200">{product.name}</p>
+                                            <div className="flex items-center space-x-2">
+                                                <p className="font-semibold text-gray-800 dark:text-gray-200">{product.name}</p>
+                                                {product.allergens && product.allergens.length > 0 && (
+                                                    <div 
+                                                        title={`Alérgenos: ${product.allergens.join(', ')}`}
+                                                        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 cursor-help"
+                                                    >
+                                                        <WarningIcon className="w-2.5 h-2.5" />
+                                                    </div>
+                                                )}
+                                            </div>
                                             <p className="text-xs text-gray-500">{product.unit}</p>
                                         </div>
                                     </div>

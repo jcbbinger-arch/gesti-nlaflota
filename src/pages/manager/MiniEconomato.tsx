@@ -547,6 +547,14 @@ export const MiniEconomato: React.FC = () => {
                                                 <div className="flex flex-col">
                                                     <div className="flex items-center space-x-2">
                                                         <span>{product.name}</span>
+                                                        {product.allergens && product.allergens.length > 0 && (
+                                                            <div 
+                                                                title={`Alérgenos: ${product.allergens.join(', ')}`}
+                                                                className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 cursor-help"
+                                                            >
+                                                                <AlertCircle className="w-3 h-3" />
+                                                            </div>
+                                                        )}
                                                         {stock.is_shared && (
                                                             <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">Gasto Común</span>
                                                         )}
