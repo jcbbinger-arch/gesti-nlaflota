@@ -385,7 +385,7 @@ const CartModal: React.FC<{
 
     return (
         <Modal isOpen={true} onClose={onClose} title="Completar Reserva">
-            <div className="max-h-[80vh] overflow-y-auto pr-2">
+            <div className="pr-2">
                 <div className="mb-6 space-y-4">
                     <h3 className="font-bold text-lg text-gray-900 dark:text-white border-b pb-2">Resumen de tu pedido</h3>
                     {cart.map(item => (

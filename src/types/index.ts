@@ -47,11 +47,18 @@ export interface AcademicYear {
     is_active: boolean;
 }
 
+export interface CustomTaxonomyFamily {
+  nombre: string;
+  categorias: string[];
+  condiciones: string[];
+}
+
 export interface WorkspaceSettings {
   workspaceId: string;
   categories: string[];
   families?: string[];
   product_conditions?: string[];
+  custom_taxonomy?: CustomTaxonomyFamily[];
   categoryConfigs?: CategoryConfig[];
 }
 

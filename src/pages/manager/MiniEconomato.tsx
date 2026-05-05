@@ -495,8 +495,8 @@ export const MiniEconomato: React.FC = () => {
             </div>
             
             {view === 'inventory' ? (
-                <Card noPadding>
-                    <div className="sticky top-0 z-20 bg-white dark:bg-gray-800 px-6 pt-6 pb-4 no-print flex items-center space-x-2">
+                <Card noPadding className="flex flex-col h-[calc(100vh-200px)]">
+                    <div className="shrink-0 bg-white dark:bg-gray-800 px-6 pt-6 pb-4 no-print flex items-center space-x-2 border-b dark:border-gray-700">
                         <div className="relative flex-1">
                             <input 
                                 type="text" 
@@ -515,9 +515,9 @@ export const MiniEconomato: React.FC = () => {
                             )}
                         </div>
                     </div>
-                    <div className="overflow-x-auto px-6 pb-6">
+                    <div className="flex-1 overflow-auto">
                         <table className="w-full text-sm">
-                            <thead className="sticky top-[82px] z-10 text-xs text-gray-700 uppercase bg-white dark:bg-gray-800 dark:text-gray-400 shadow-[0_1px_rgba(0,0,0,0.05)]">
+                            <thead className="sticky top-0 z-10 text-xs text-gray-700 uppercase bg-white dark:bg-gray-800 dark:text-gray-400 shadow-[0_1px_rgba(0,0,0,0.05)]">
                                 <tr>
                                     <th className="px-4 py-2 text-left w-16">Imagen</th>
                                     <th className="px-4 py-2 text-left">Nombre / Refs</th>
@@ -652,7 +652,7 @@ export const MiniEconomato: React.FC = () => {
 
             {isReceptionModalOpen && (
                 <Modal isOpen={true} onClose={() => setIsReceptionModalOpen(false)} title="Recibir Mercancía (Entrada en Almacén)">
-                    <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-2">
+                    <div className="space-y-4 pr-2">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium">Proveedor</label>

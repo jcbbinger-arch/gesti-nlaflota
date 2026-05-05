@@ -330,7 +330,7 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
 
     return (
         <Modal isOpen={true} onClose={onClose} title="Crear Ficha Manual">
-            <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto p-1">
+            <form onSubmit={handleSubmit} className="space-y-4 p-1">
                 <div>
                     <label className="block text-sm font-medium mb-1">Nombre del Plato *</label>
                     <input 

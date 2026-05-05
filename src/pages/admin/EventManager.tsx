@@ -618,11 +618,13 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label>Curso Académico</label>
-                        <select name="academic_year_id" value={formState.academic_year_id} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                        <select name="academic_year_id" value={formState.academic_year_id} onChange={handleChange} disabled className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 cursor-not-allowed">
                             {academic_years.map(y => (
                                 <option key={y.id} value={y.id}>{y.name}</option>
                             ))}
+                            {academic_years.length === 0 && <option value="">Curso actual</option>}
                         </select>
+                        <p className="text-[10px] text-gray-500 mt-1">Se vincula automáticamente al curso actual.</p>
                     </div>
                     <div>
                         <label>Estado</label>

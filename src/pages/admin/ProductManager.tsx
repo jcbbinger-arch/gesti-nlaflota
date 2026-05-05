@@ -49,7 +49,7 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
     
     // Families from JSON + custom ones from workspace
     const families = useMemo(() => {
-        const jsonFamilies = Object.keys(productClassification.families);
+        const jsonFamilies = productClassification.familias.map((f: any) => f.nombre);
         const customFamilies = workspaceSettings?.families || [];
         const productFamilies = allProducts.map(p => p.family).filter(f => f);
         return [...new Set([...jsonFamilies, ...productFamilies, ...customFamilies])].map(f => f.toUpperCase()).sort();
@@ -57,8 +57,8 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
 
     // Categories filter based on family
     const categories = useMemo(() => {
-        const familyData = (productClassification.families as any)[formState.family.toUpperCase()];
-        const jsonCategories = familyData ? Object.keys(familyData.categories) : [];
+        const familyData = productClassification.familias.find((f: any) => f.nombre.toUpperCase() === formState.family.toUpperCase());
+        const jsonCategories = familyData ? familyData.categorias : [];
         const customCategories = workspaceSettings?.categories || [];
         const productCategories = allProducts.filter(p => p.family === formState.family).map(p => p.category).filter(c => c);
         
@@ -72,15 +72,14 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
 
     // Conditions filter based on category
     const conditions = useMemo(() => {
-        const familyData = (productClassification.families as any)[formState.family.toUpperCase()];
-        const categoryData = familyData ? familyData.categories[formState.category.toUpperCase()] : null;
-        const jsonConditions = categoryData ? categoryData.conditions : [];
+        const familyData = productClassification.familias.find((f: any) => f.nombre.toUpperCase() === formState.family.toUpperCase());
+        const jsonConditions = familyData ? familyData.condiciones : [];
         
         const customConditions = workspaceSettings?.product_conditions || [];
         const productStates = allProducts.filter(p => p.category === formState.category).map(p => p.product_state).filter((s): s is ProductState => !!s);
         
-        if (categoryData) {
-             return [...new Set([...jsonConditions, ...customConditions])].map(s => s.toUpperCase()).sort();
+        if (familyData) {
+             return [...new Set([...jsonConditions, ...customConditions])].map((s: any) => s.toUpperCase()).sort();
         }
         
         return [...new Set([...PRODUCT_STATES, ...productStates, ...customConditions])].map(s => s.toUpperCase()).sort();
@@ -98,9 +97,8 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
             setFormState(prev => ({ ...prev, family: value, category: '', condition: '', product_state: '' }));
         } else if (name === 'category') {
             setFormState(prev => {
-                const familyData = (productClassification.families as any)[prev.family.toUpperCase()];
-                const categoryData = familyData ? familyData.categories[value.toUpperCase()] : null;
-                const defaultCondition = categoryData && categoryData.conditions.length > 0 ? categoryData.conditions[0] : '';
+                const familyData = productClassification.familias.find((f: any) => f.nombre.toUpperCase() === prev.family.toUpperCase());
+                const defaultCondition = familyData && familyData.condiciones.length > 0 ? familyData.condiciones[0] : '';
                 
                 return { 
                     ...prev, 
@@ -270,7 +268,7 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
     const renderMainForm = () => {
         const units = ["Uds", "kg", "g", "L", "ml", "Pack", "Docena"];
         return (
-            <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto p-1">
+            <form onSubmit={handleSubmit} className="space-y-4 p-1">
                 <div className="flex items-start space-x-4">
                     <div className="flex-1 space-y-4">
                         <input type="text" name="name" value={formState.name} onChange={handleChange} placeholder="Nombre del Producto" required className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600"/>
@@ -358,7 +356,7 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                      </div>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex flex-col space-y-4">
                     <div>
                         <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">1. Familia 
                             <span className="space-x-2">
@@ -655,7 +653,7 @@ export const ProductManager: React.FC = () => {
     };
     
     const uniqueFamilies = useMemo(() => {
-        const jsonFamilies = Object.keys(productClassification.families);
+        const jsonFamilies = productClassification.familias.map((f: any) => f.nombre);
         const productFamilies = products.map(p => p.family).filter(Boolean);
         const customFamilies = workspaceSettings?.families || [];
         return [...new Set([...jsonFamilies, ...productFamilies, ...customFamilies])].map(f => f.toUpperCase()).sort();
@@ -726,12 +724,12 @@ export const ProductManager: React.FC = () => {
                 </div>
             </div>
 
-            <Card noPadding>
-                <div className="sticky top-0 z-20 bg-white dark:bg-gray-800 px-6 pt-6 pb-4 no-print flex items-center space-x-4">
-                    <div className="flex-1">
+            <Card noPadding className="flex flex-col h-[calc(100vh-200px)]">
+                <div className="shrink-0 bg-white dark:bg-gray-800 px-6 pt-6 pb-4 no-print flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 border-b dark:border-gray-700">
+                    <div className="flex-1 w-full">
                         <input type="text" placeholder="Buscar producto por nombre..." value={filter} onChange={e => setFilter(e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700"/>
                     </div>
-                    <select value={familyFilter} onChange={e => setFamilyFilter(e.target.value)} className="p-2 border rounded-md dark:bg-gray-700">
+                    <select value={familyFilter} onChange={e => setFamilyFilter(e.target.value)} className="w-full sm:w-auto p-2 border rounded-md dark:bg-gray-700">
                         <option value="">Todas las Familias</option>
                         {uniqueFamilies.map(family => <option key={family} value={family}>{family.toUpperCase()}</option>)}
                     </select>
@@ -741,9 +739,9 @@ export const ProductManager: React.FC = () => {
                         </div>
                     )}
                 </div>
-                <div className="overflow-x-auto px-6 pb-6">
+                <div className="flex-1 overflow-auto px-6 pb-6">
                     <table className="w-full text-sm">
-                        <thead className="sticky top-[82px] z-10 text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <thead className="sticky top-0 z-10 text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 shadow-[0_1px_rgba(0,0,0,0.05)]">
                             <tr>
                                 <th className="px-4 py-2 text-left w-16">Imagen</th>
                                 <th className="px-4 py-2 text-left">Nombre</th>

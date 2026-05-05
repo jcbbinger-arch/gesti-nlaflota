@@ -236,10 +236,10 @@ export const EconomatoManager: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Recepción: {event.name}</h1>
             </div>
-            <Card noPadding>
-                <div className="overflow-x-auto px-6 pb-6">
+            <Card noPadding className="flex flex-col h-[calc(100vh-200px)]">
+                <div className="flex-1 overflow-auto">
                     <table className="w-full text-sm">
-                         <thead className="sticky top-0 z-10 text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                         <thead className="sticky top-0 z-10 text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 shadow-[0_1px_rgba(0,0,0,0.05)]">
                             <tr>
                                 <th className="px-2 py-2">Producto</th>
                                 <th className="px-2 py-2">Cant. Pedida</th>

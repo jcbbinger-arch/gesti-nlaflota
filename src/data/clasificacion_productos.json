@@ -1,84 +1,138 @@
 {
-  "families": {
-    "CARNES": {
-      "categories": {
-        "AVES Y CAZA": { "conditions": ["FRESCO", "CONGELADO", "OTRO"] },
-        "VACUNO": { "conditions": ["FRESCO", "CONGELADO", "OTRO"] },
-        "CERDO": { "conditions": ["FRESCO", "CONGELADO", "ELABORADO"] },
-        "CORDERO Y CABRITO": { "conditions": ["FRESCO", "CONGELADO"] },
-        "EMBUTIDOS": { "conditions": ["CURADO", "FRESCO", "COCIDO"] }
-      }
-    },
-    "PESCADOS Y MARISCOS": {
-      "categories": {
-        "PESCADO BLANCO": { "conditions": ["FRESCO", "CONGELADO", "SALAZÓN"] },
-        "PESCADO AZUL": { "conditions": ["FRESCO", "CONGELADO", "AHUMADO"] },
-        "MARISCO": { "conditions": ["FRESCO", "CONGELADO", "VIVO"] },
-        "CEFALÓPODOS": { "conditions": ["FRESCO", "CONGELADO"] }
-      }
-    },
-    "VEGETALES Y FRUTAS": {
-      "categories": {
-        "VERDURAS": { "conditions": ["FRESCO", "IV GAMA", "CONGELADO"] },
-        "HORTALIZAS": { "conditions": ["FRESCO"] },
-        "FRUTAS": { "conditions": ["FRESCO", "ALMÍBAR", "CONFITADO"] },
-        "SETAS Y ALGAS": { "conditions": ["FRESCO", "DESHIDRATADO", "CONSERVAS"] }
-      }
-    },
-    "LÁCTEOS Y HUEVOS": {
-      "categories": {
-        "LECHE": { "conditions": ["FRESCO", "UHT", "ESTERILIZADO"] },
-        "QUESOS": { "conditions": ["TIERNO", "CURADO", "AZUL", "FRESCO"] },
-        "HUEVOS": { "conditions": ["FRESCO", "PASTEURIZADO"] },
-        "DERIVADOS LÁCTEOS": { "conditions": ["YOGURES", "NATAS", "MANTEQUILLAS"] }
-      }
-    },
-    "BEBIDAS": {
-      "categories": {
-        "AGUAS": { "conditions": ["SIN GAS", "CON GAS"] },
-        "REFRESCOS": { "conditions": ["AZUCARADOS", "ZERO/LIGHT"] },
-        "ZUMOS": { "conditions": ["NATURAL", "CONCENTRADO"] },
-        "VINOS": { "conditions": ["TINTO", "BLANCO", "ROSADO", "ESPUMOSO"] },
-        "CERVEZAS": { "conditions": ["CON ALCOHOL", "SIN ALCOHOL"] },
-        "CAFÉS E INFUSIONES": { "conditions": ["GRANO", "MOLIDO", "CÁPSULAS", "GRAL"] }
-      }
-    },
-    "ABARROTES Y DESPENSA": {
-      "categories": {
-        "ARROCES": { "conditions": ["REDONDO", "LARGO", "VAPORIZADO"] },
-        "PASTAS": { "conditions": ["SECA", "FRESCA"] },
-        "LEGUMBRES": { "conditions": ["SECA", "COCIDA"] },
-        "HARINAS Y SEMILLAS": { "conditions": ["TRIGO", "OTROS CEREALES"] },
-        "AZÚCARES Y EDULCORANTES": { "conditions": ["BLANCO", "MORENO", "EDULCORANTE"] }
-      }
-    },
-    "ACEITES Y CONDIMENTOS": {
-      "categories": {
-        "ACEITES": { "conditions": ["OLIVA VIRGEN EXTRA", "GIRASOL", "OTROS"] },
-        "GRASAS": { "conditions": ["MANTECA", "MARGARINA"] },
-        "ESPECIAS": { "conditions": ["MOLIDO", "GRANO", "ENTERO"] },
-        "SALSAS": { "conditions": ["INDUSTRIAL", "BASES"] }
-      }
-    },
-    "CONSERVAS": {
-      "categories": {
-        "VEGETALES": { "conditions": ["LATA", "CRISTAL"] },
-        "PESCADOS": { "conditions": ["ACEITE", "ESCABECHE", "NATURAL"] },
-        "FRUTAS": { "conditions": ["ALMÍBAR", "NATURAL"] }
-      }
-    },
-    "CONGELADOS": {
-        "categories": {
-            "PRODUCTO TERMINADO": { "conditions": ["RTU", "PARA HORNEAR"] },
-            "BASES": { "conditions": ["MASAS", "FONDOS"] }
+    "familias": [
+        {
+            "nombre": "CARNES",
+            "categorias": [
+                "AVES Y CAZA",
+                "CERDO",
+                "VACUNO",
+                "CORDERO",
+                "CABRITO",
+                "EMBUTIDOS",
+                "OTRAS CARNES"
+            ],
+            "condiciones": [
+                "FRESCO",
+                "CONGELADO",
+                "AL VACÍO",
+                "AHUMADO",
+                "DESALADO",
+                "DESHIDRATADO",
+                "SALAZÓN"
+            ]
+        },
+        {
+            "nombre": "PESCADOS Y MARISCOS",
+            "categorias": [
+                "PESCADO",
+                "CRUSTACEOS",
+                "MOLUSCOS",
+                "MARISCO"
+            ],
+            "condiciones": [
+                "FRESCO",
+                "CONGELADO",
+                "SALAZÓN",
+                "CONSERVAS",
+                "AHUMADO",
+                "DESALADO",
+                "ENLATADO"
+            ]
+        },
+        {
+            "nombre": "AGUAS, REFRESCOS Y CERVEZAS",
+            "categorias": [
+                "AGUAS",
+                "REFRESCOS",
+                "CERVEZAS",
+                "ZUMOS"
+            ],
+            "condiciones": [
+                "EMBOTELLADO",
+                "ENLATADO",
+                "BRIKS",
+                "UHT"
+            ]
+        },
+        {
+            "nombre": "FRUTAS Y VERDURAS",
+            "categorias": [
+                "FRUTAS",
+                "VERDURAS",
+                "SETAS",
+                "FRUTAS PROCESADAS",
+                "FRUTAS CONFITADAS",
+                "FRUTAS DESHIDRATADAS"
+            ],
+            "condiciones": [
+                "FRESCO",
+                "CONGELADO",
+                "CONSERVAS",
+                "DESHIDRATADO",
+                "LIOFILIZADOS"
+            ]
+        },
+        {
+            "nombre": "LÁCTEOS Y HUEVOS",
+            "categorias": [
+                "LÁCTEOS",
+                "QUESOS",
+                "HUEVOS",
+                "CREMAS"
+            ],
+            "condiciones": [
+                "FRESCO",
+                "UHT",
+                "ESTERILIZADO"
+            ]
+        },
+        {
+            "nombre": "ABARROTES Y OTROS",
+            "categorias": [
+                "ACEITES",
+                "ARROCES",
+                "PASTAS",
+                "LEGUMBRES",
+                "AZÚCARES",
+                "HARINAS",
+                "SAL",
+                "ESPECIAS",
+                "CONDIMENTOS"
+            ],
+            "condiciones": [
+                "FRESCO",
+                "CONSERVAS",
+                "ENLATADO",
+                "DESHIDRATADO"
+            ]
+        },
+        {
+            "nombre": "BEBIDAS ALCOHÓLICAS Y CAFÉS",
+            "categorias": [
+                "VINOS",
+                "DESTILADOS Y COCTELERÍA",
+                "ESPIRITUOSOS",
+                "LICORES, APERITIVOS Y AGUARDIENTES",
+                "CAFÉS",
+                "INFUSIONES"
+            ],
+            "condiciones": [
+                "EMBOTELLADO"
+            ]
+        },
+        {
+            "nombre": "PASTELERÍA Y PANADERÍA",
+            "categorias": [
+                "BOLLERÍA",
+                "CHOCOLATES",
+                "CACAO/CHOCOLATES",
+                "MERMELADAS",
+                "SIROPES"
+            ],
+            "condiciones": [
+                "FRESCO",
+                "CONGELADO"
+            ]
         }
-    },
-    "VARIOS": {
-      "categories": {
-        "LIMPIEZA": { "conditions": ["DETERGENTE", "DESINFECTANTE"] },
-        "MENAJE": { "conditions": ["DESECHABLE", "REUTILIZABLE"] },
-        "OTROS": { "conditions": ["VARIOS"] }
-      }
-    }
-  }
+    ]
 }
