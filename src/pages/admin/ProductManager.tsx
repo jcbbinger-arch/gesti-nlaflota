@@ -208,19 +208,6 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                             </select>
                         </div>
                      )}
-                      <div>
-                        <label className="text-sm">Estado (Catálogo)</label>
-                        <select name="status" value={formState.status} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
-                            <option value="Activo">Activo</option>
-                            <option value="Inactivo">Inactivo</option>
-                        </select>
-                     </div>
-                      <div>
-                        <label className="text-sm">Estado (Almacén)</label>
-                        <select name="warehouse_status" value={formState.warehouse_status} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
-                            {WAREHOUSE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                     </div>
                 </div>
                 
                 <div className="flex flex-col space-y-4">
@@ -240,7 +227,7 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                     </div>
                     <div>
                         <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">3. Condición</label>
-                        <select name="product_state" value={formState.product_state} onChange={handleChange} disabled={!formState.category} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <select name="condition" value={formState.condition || ''} onChange={handleChange} disabled={!formState.category} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                              <option value="">-- Selecciona Condición --</option>
                             {conditions.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
                         </select>
@@ -274,7 +261,7 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                      <button type="button" onClick={addSupplier} className="text-sm text-primary-600 mt-2">Añadir Proveedor</button>
                 </div>
 
-                <div className="flex justify-end space-x-2 pt-4">
+                <div className="sticky bottom-0 bg-white dark:bg-gray-800 flex justify-end space-x-2 pt-4 pb-2 border-t mt-4 border-gray-200 dark:border-gray-700">
                     <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-gray-600 px-4 py-2 rounded-md">Cancelar</button>
                     <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-md">Guardar</button>
                 </div>
@@ -505,8 +492,8 @@ export const ProductManager: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border-t-4 border-primary-500 flex flex-col h-[calc(100vh-200px)] overflow-hidden">
-                <div className="shrink-0 px-6 pt-6 pb-4 no-print flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 border-b dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border-t-4 border-primary-500 overflow-hidden">
+                <div className="px-6 pt-6 pb-4 no-print flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 border-b dark:border-gray-700">
                     <div className="flex-1 w-full">
                         <input type="text" placeholder="Buscar producto por nombre..." value={filter} onChange={e => setFilter(e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700"/>
                     </div>
@@ -520,7 +507,7 @@ export const ProductManager: React.FC = () => {
                         </div>
                     )}
                 </div>
-                <div className="flex-1 overflow-auto px-6 pb-6">
+                <div className="overflow-x-auto px-6 pb-6 pt-2">
                     <table className="w-full text-sm">
                         <thead className="sticky top-0 z-10 text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 shadow-[0_1px_rgba(0,0,0,0.05)]">
                             <tr>
@@ -528,7 +515,7 @@ export const ProductManager: React.FC = () => {
                                 <th className="px-4 py-2 text-left">Nombre</th>
                                 <th className="px-4 py-2 text-left">Mejor Precio</th>
                                 <th className="px-4 py-2 text-left">Proveedor Principal</th>
-                                <th className="px-4 py-2 text-left">Estado</th>
+                                <th className="px-4 py-2 text-left">Condición</th>
                                 <th className="px-4 py-2 text-left">Acciones</th>
                             </tr>
                         </thead>
@@ -595,8 +582,8 @@ export const ProductManager: React.FC = () => {
                                         )}
                                     </td>
                                     <td className="px-4 py-2">
-                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${product.status === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {product.status}
+                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300`}>
+                                            {product.condition || product.product_state || 'Sin asignar'}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 space-x-2 no-print">
