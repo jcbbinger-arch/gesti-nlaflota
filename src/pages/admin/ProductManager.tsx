@@ -15,28 +15,6 @@ const ALLERGENS_LIST = [
     "Sésamo", "Sulfitos", "Altramuces", "Moluscos"
 ];
 
-const PREDEFINED_FAMILIES = [
-    "ACEITES Y GRASAS", "AGUAS, REFRESCOS Y CERVEZAS", "ARROCES, PASTAS Y LEGUMBRES", "CAFÉS E INFUSIONES",
-    "CARNES", "CONSERVAS", "DESTILADOS Y COCTELERÍA", "EMBUTIDOS", "ESPECIAS Y CONDIMENTOS",
-    "FRUTOS SECOS", "HARINAS, SEMILLAS Y GRANOS", "LÁCTEOS Y HUEVOS", "LICORES Y APERITIVOS",
-    "MARISCO", "PASTELERÍA Y PANADERÍA", "PATO", "PESCADOS", "QUESOS", "SALSAS Y CREMAS", "VARIOS",
-    "VEGETALES", "VINOS", "NO ESTÁN EN LA LISTA/NUEVOS", "OTROS"
-];
-
-const PREDEFINED_CATEGORIES = [
-    "ACEITES", "AGUAS", "ALGAS", "ARROCES", "AVES Y CAZA", "AZÚCARES", "CABRITO", "CACAO/CHOCOLATES",
-    "CAFÉS", "CERDO", "CERVEZAS", "CONDIMENTOS", "CONSERVAS", "CORDERO", "CREMAS", "DESHIDRATADOS",
-    "DESTILADOS Y COCTELERÍA", "EMBUTIDOS", "ESPECIAS", "FLORES", "FRUTAS", "FRUTAS CONFITADAS",
-    "FRUTAS DESHIDRATADAS", "FRUTAS PROCESADAS", "FRUTOS SECOS", "GRANOS", "GRASAS", "HARINAS",
-    "HIERBAS", "HUEVOS", "INFUSIONES", "LÁCTEOS", "LEGUMBRES", "LICORES Y APERITIVOS", "LIOFILIZADOS",
-    "MARISCO", "MERMELADAS", "OTROS", "PASTAS", "PATO", "PESCADO", "PREPARADOS", "QUESOS", "REFRESCOS",
-    "SALSAS", "SEMILLAS", "SETAS", "SIROPES", "VACUNO", "VERDURAS", "VINOS", "ZUMOS"
-].sort();
-
-const PRODUCT_STATES: ProductState[] = [
-    'FRESCO', 'CONGELADO', 'OTROS', 'CONSERVAS', 'AHUMADO', 'DESALADO', 'UHT', 'ESTERILIZADO', 'ENLATADO', 'DESHIDRATADO'
-];
-
 const WAREHOUSE_STATUSES: WarehouseStatus[] = ['Disponible', 'Bajo Pedido', 'Descontinuado'];
 
 // FIX: Export ProductFormModal so it can be reused in other components.
@@ -50,24 +28,20 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
     const taxonomy = workspaceSettings?.custom_taxonomy || [];
     
     const families = useMemo(() => {
-        return taxonomy.map(f => f.nombre.toUpperCase()).sort();
+        return [...new Set(taxonomy.map(f => f.nombre.toUpperCase()))].sort();
     }, [taxonomy]);
 
     // Categories filter based on family
     const categories = useMemo(() => {
         const familyData = taxonomy.find(f => f.nombre.toUpperCase() === formState.family.toUpperCase());
-        return familyData ? familyData.categorias.map(c => c.toUpperCase()).sort() : [];
+        return familyData ? [...new Set(familyData.categorias.map(c => c.toUpperCase()))].sort() : [];
     }, [taxonomy, formState.family]);
 
     // Conditions filter based on category
     const conditions = useMemo(() => {
         const familyData = taxonomy.find(f => f.nombre.toUpperCase() === formState.family.toUpperCase());
-        return familyData ? familyData.condiciones.map(c => c.toUpperCase()).sort() : [];
+        return familyData ? [...new Set(familyData.condiciones.map(c => c.toUpperCase()))].sort() : [];
     }, [taxonomy, formState.family]);
-
-    const [addModalType, setAddModalType] = useState<'family' | 'category' | 'condition' | null>(null);
-    const [removeModalType, setRemoveModalType] = useState<'family' | 'category' | 'condition' | null>(null);
-    const [newListItemName, setNewListItemName] = useState('');
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
@@ -107,84 +81,6 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
         setFormState({ ...formState, allergens: newAllergens });
     };
 
-    const handleAddNew = (type: 'family' | 'category' | 'condition') => {
-        setNewListItemName('');
-        setAddModalType(type);
-    };
-
-    const handleSaveNew = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const newValue = newListItemName.trim().toUpperCase();
-        if (addModalType && newValue) {
-            if (addModalType === 'family' && !families.includes(newValue)) {
-                const currentCustom = (workspaceSettings?.families || []).map(f => f.toUpperCase());
-                await setWorkspaceSettings({
-                    ...workspaceSettings!,
-                    families: [...currentCustom, newValue]
-                });
-                setFormState(prev => ({...prev, family: newValue}));
-            }
-            if (addModalType === 'category' && !categories.includes(newValue)) {
-                const currentCustom = (workspaceSettings?.categories || []).map(c => c.toUpperCase());
-                await setWorkspaceSettings({
-                    ...workspaceSettings!,
-                    categories: [...currentCustom, newValue]
-                });
-                setFormState(prev => ({...prev, category: newValue}));
-            }
-            if (addModalType === 'condition' && !conditions.includes(newValue)) {
-                const currentCustom = (workspaceSettings?.product_conditions || []).map(c => c.toUpperCase());
-                await setWorkspaceSettings({
-                    ...workspaceSettings!,
-                    product_conditions: [...currentCustom, newValue]
-                });
-                setFormState(prev => ({...prev, product_state: newValue}));
-            }
-        }
-        setAddModalType(null);
-    };
-
-    const handleRemoveNew = (type: 'family' | 'category' | 'condition') => {
-        setRemoveModalType(type);
-    };
-
-    const handleConfirmRemove = async (valueToRemove: string) => {
-        if (!removeModalType) return;
-        
-        if (window.confirm(`¿Estás seguro de que quieres eliminar "${valueToRemove}" de la lista de sugerencias? Esta acción no se puede deshacer.`)) {
-            if (removeModalType === 'family') {
-                const currentCustom = (workspaceSettings?.families || []).map(f => f.toUpperCase());
-                await setWorkspaceSettings({
-                    ...workspaceSettings!,
-                    families: currentCustom.filter(f => f !== valueToRemove)
-                });
-                if (formState.family.toUpperCase() === valueToRemove) {
-                    setFormState(prev => ({ ...prev, family: '' }));
-                }
-            }
-            if (removeModalType === 'category') {
-                const currentCustom = (workspaceSettings?.categories || []).map(c => c.toUpperCase());
-                await setWorkspaceSettings({
-                    ...workspaceSettings!,
-                    categories: currentCustom.filter(c => c !== valueToRemove)
-                });
-                 if (formState.category.toUpperCase() === valueToRemove) {
-                    setFormState(prev => ({ ...prev, category: '' }));
-                }
-            }
-            if (removeModalType === 'condition') {
-                const currentCustom = (workspaceSettings?.product_conditions || []).map(s => s.toUpperCase());
-                await setWorkspaceSettings({
-                    ...workspaceSettings!,
-                    product_conditions: currentCustom.filter(c => c !== valueToRemove)
-                });
-                 if ((formState.product_state || '').toUpperCase() === valueToRemove) {
-                    setFormState(prev => ({ ...prev, product_state: '' }));
-                }
-            }
-        }
-    };
-    
     const addSupplier = () => setFormState({...formState, suppliers: [...formState.suppliers, {supplier_id: '', price: 0}]});
     const removeSupplier = (index: number) => setFormState({...formState, suppliers: formState.suppliers.filter((_, i) => i !== index)});
 
@@ -196,15 +92,6 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
             category: formState.category.toUpperCase(),
             product_state: formState.product_state?.toUpperCase()
         });
-    };
-
-    const handleClose = () => {
-        if (addModalType || removeModalType) {
-            setAddModalType(null);
-            setRemoveModalType(null);
-        } else {
-            onClose();
-        }
     };
 
     useEffect(() => {
@@ -338,36 +225,21 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                 
                 <div className="flex flex-col space-y-4">
                     <div>
-                        <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">1. Familia 
-                            <span className="space-x-2">
-                                <button type="button" onClick={() => handleAddNew('family')} className="text-[10px] text-primary-600 hover:underline">Añadir</button>
-                                <button type="button" onClick={() => handleRemoveNew('family')} className="text-[10px] text-red-500 hover:underline">Eliminar</button>
-                            </span>
-                        </label>
+                        <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">1. Familia </label>
                         <select name="family" value={formState.family} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
                             <option value="">-- Selecciona Familia --</option>
                             {families.map(f => <option key={f} value={f}>{f.toUpperCase()}</option>)}
                         </select>
                     </div>
                      <div>
-                        <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">2. Categoría 
-                            <span className="space-x-2">
-                                <button type="button" onClick={() => handleAddNew('category')} className="text-[10px] text-primary-600 hover:underline">Añadir</button>
-                                <button type="button" onClick={() => handleRemoveNew('category')} className="text-[10px] text-red-500 hover:underline">Eliminar</button>
-                            </span>
-                        </label>
+                        <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">2. Categoría </label>
                         <select name="category" value={formState.category} onChange={handleChange} disabled={!formState.family} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                             <option value="">-- Selecciona Categoría --</option>
                             {categories.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">3. Condición
-                            <span className="space-x-2 text-[10px]">
-                                <button type="button" onClick={() => handleAddNew('condition')} className="text-primary-600 hover:underline">Añadir</button>
-                                <button type="button" onClick={() => handleRemoveNew('condition')} className="text-red-500 hover:underline">Eliminar</button>
-                            </span>
-                        </label>
+                        <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">3. Condición</label>
                         <select name="product_state" value={formState.product_state} onChange={handleChange} disabled={!formState.category} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                              <option value="">-- Selecciona Condición --</option>
                             {conditions.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
@@ -410,78 +282,9 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
         );
     };
 
-    const renderAddForm = () => {
-        const type = addModalType!;
-        const placeholder = type === 'family' ? 'Ej: LACTEOS Y DERIVADOS' : type === 'category' ? 'Ej: VERDURAS' : 'Ej: BOTELLINES DE CRISTAL';
-        const buttonText = type === 'family' ? 'Guardar Familia' : type === 'category' ? 'Guardar Categoría' : 'Guardar Condición';
-        return (
-            <form onSubmit={handleSaveNew}>
-                <label>Nombre de la {type === 'family' ? 'Familia' : type === 'category' ? 'Categoría' : 'Condición'}</label>
-                <input
-                    type="text"
-                    value={newListItemName}
-                    onChange={e => setNewListItemName(e.target.value)}
-                    placeholder={placeholder}
-                    className="w-full mt-1 p-2 border rounded-md dark:bg-gray-700 uppercase"
-                    required autoFocus
-                />
-                <div className="flex justify-end mt-4 space-x-2">
-                    <button type="button" onClick={() => setAddModalType(null)} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700">{buttonText}</button>
-                </div>
-            </form>
-        );
-    };
-
-    const renderRemoveList = () => {
-        const type = removeModalType!;
-        const items = type === 'family' ? families : type === 'category' ? categories : conditions;
-        const predefinedItems = type === 'family' ? PREDEFINED_FAMILIES : type === 'category' ? PREDEFINED_CATEGORIES : PRODUCT_STATES;
-        const removableItems = items.filter(item => !predefinedItems.includes(item.toUpperCase()));
-
-        return (
-            <div>
-                <div className="space-y-2 max-h-60 overflow-y-auto p-1">
-                    {removableItems.length > 0 ? (
-                        removableItems.map(item => (
-                            <div key={item} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded">
-                                <span className="uppercase">{item}</span>
-                                <button onClick={() => handleConfirmRemove(item)} className="text-red-500 hover:text-red-700">
-                                    <TrashIcon className="w-5 h-5" />
-                                </button>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-gray-500 text-sm">No hay elementos personalizados para eliminar.</p>
-                    )}
-                </div>
-                 <div className="flex justify-end mt-4">
-                    <button type="button" onClick={() => setRemoveModalType(null)} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cerrar</button>
-                </div>
-            </div>
-        );
-    };
-
-    let content, title;
-    let modalSize: 'sm' | 'xl' = 'xl';
-
-    if (addModalType) {
-        title = addModalType === 'family' ? 'Añadir Nueva Familia' : addModalType === 'category' ? 'Añadir Nueva Categoría' : 'Añadir Nueva Condición';
-        content = renderAddForm();
-        modalSize = 'sm';
-    } else if (removeModalType) {
-        title = removeModalType === 'family' ? 'Eliminar Familia de la Lista' : removeModalType === 'category' ? 'Eliminar Categoría de la Lista' : 'Eliminar Condición de la Lista';
-        content = renderRemoveList();
-        modalSize = 'sm';
-    } else {
-        title = product ? 'Editar Producto' : 'Añadir Nuevo Producto';
-        content = renderMainForm();
-        modalSize = 'xl';
-    }
-
     return (
-        <Modal isOpen={true} onClose={handleClose} title={title} size={modalSize}>
-            {content}
+        <Modal isOpen={true} onClose={onClose} title={product ? 'Editar Producto' : 'Añadir Nuevo Producto'} size="xl">
+            {renderMainForm()}
         </Modal>
     );
 };
@@ -634,7 +437,7 @@ export const ProductManager: React.FC = () => {
     
     const uniqueFamilies = useMemo(() => {
         const taxonomy = workspaceSettings?.custom_taxonomy || [];
-        return taxonomy.map(f => f.nombre.toUpperCase()).sort();
+        return [...new Set(taxonomy.map(f => f.nombre.toUpperCase()))].sort();
     }, [workspaceSettings]);
 
     const filteredProducts = useMemo(() => {
@@ -702,8 +505,8 @@ export const ProductManager: React.FC = () => {
                 </div>
             </div>
 
-            <Card noPadding className="flex flex-col h-[calc(100vh-200px)]">
-                <div className="shrink-0 bg-white dark:bg-gray-800 px-6 pt-6 pb-4 no-print flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 border-b dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border-t-4 border-primary-500 flex flex-col h-[calc(100vh-200px)] overflow-hidden">
+                <div className="shrink-0 px-6 pt-6 pb-4 no-print flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 border-b dark:border-gray-700">
                     <div className="flex-1 w-full">
                         <input type="text" placeholder="Buscar producto por nombre..." value={filter} onChange={e => setFilter(e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700"/>
                     </div>
@@ -805,7 +608,7 @@ export const ProductManager: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
-            </Card>
+            </div>
 
             {isModalOpen && <ProductFormModal product={selectedProduct} onClose={() => setIsModalOpen(false)} onSave={handleSaveProduct} allProducts={products} allSuppliers={suppliers} />}
             
