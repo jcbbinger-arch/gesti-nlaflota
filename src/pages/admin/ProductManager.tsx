@@ -8,7 +8,6 @@ import { exportToCsv } from '../../utils/export';
 import { parseCsv } from '../../utils/csv';
 import { useAuth } from '../../contexts/AuthContext';
 import { resizeImage } from '../../utils/image';
-import productClassification from '../../data/clasificacion_productos.json';
 
 const ALLERGENS_LIST = [
     "Gluten", "Crustáceos", "Huevos", "Pescado", "Cacahuetes", 
@@ -48,42 +47,23 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
     });
     
     // Families from JSON + custom ones from workspace
+    const taxonomy = workspaceSettings?.custom_taxonomy || [];
+    
     const families = useMemo(() => {
-        const jsonFamilies = productClassification.familias.map((f: any) => f.nombre);
-        const customFamilies = workspaceSettings?.families || [];
-        const productFamilies = allProducts.map(p => p.family).filter(f => f);
-        return [...new Set([...jsonFamilies, ...productFamilies, ...customFamilies])].map(f => f.toUpperCase()).sort();
-    }, [allProducts, workspaceSettings]);
+        return taxonomy.map(f => f.nombre.toUpperCase()).sort();
+    }, [taxonomy]);
 
     // Categories filter based on family
     const categories = useMemo(() => {
-        const familyData = productClassification.familias.find((f: any) => f.nombre.toUpperCase() === formState.family.toUpperCase());
-        const jsonCategories = familyData ? familyData.categorias : [];
-        const customCategories = workspaceSettings?.categories || [];
-        const productCategories = allProducts.filter(p => p.family === formState.family).map(p => p.category).filter(c => c);
-        
-        // If we have a family match in JSON, we prioritize those categories
-        if (familyData) {
-            return [...new Set([...jsonCategories, ...customCategories])].map(c => c.toUpperCase()).sort();
-        }
-        
-        return [...new Set([...PREDEFINED_CATEGORIES, ...productCategories, ...customCategories])].map(c => c.toUpperCase()).sort();
-    }, [allProducts, workspaceSettings, formState.family]);
+        const familyData = taxonomy.find(f => f.nombre.toUpperCase() === formState.family.toUpperCase());
+        return familyData ? familyData.categorias.map(c => c.toUpperCase()).sort() : [];
+    }, [taxonomy, formState.family]);
 
     // Conditions filter based on category
     const conditions = useMemo(() => {
-        const familyData = productClassification.familias.find((f: any) => f.nombre.toUpperCase() === formState.family.toUpperCase());
-        const jsonConditions = familyData ? familyData.condiciones : [];
-        
-        const customConditions = workspaceSettings?.product_conditions || [];
-        const productStates = allProducts.filter(p => p.category === formState.category).map(p => p.product_state).filter((s): s is ProductState => !!s);
-        
-        if (familyData) {
-             return [...new Set([...jsonConditions, ...customConditions])].map((s: any) => s.toUpperCase()).sort();
-        }
-        
-        return [...new Set([...PRODUCT_STATES, ...productStates, ...customConditions])].map(s => s.toUpperCase()).sort();
-    }, [allProducts, workspaceSettings, formState.family, formState.category]);
+        const familyData = taxonomy.find(f => f.nombre.toUpperCase() === formState.family.toUpperCase());
+        return familyData ? familyData.condiciones.map(c => c.toUpperCase()).sort() : [];
+    }, [taxonomy, formState.family]);
 
     const [addModalType, setAddModalType] = useState<'family' | 'category' | 'condition' | null>(null);
     const [removeModalType, setRemoveModalType] = useState<'family' | 'category' | 'condition' | null>(null);
@@ -97,7 +77,7 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
             setFormState(prev => ({ ...prev, family: value, category: '', condition: '', product_state: '' }));
         } else if (name === 'category') {
             setFormState(prev => {
-                const familyData = productClassification.familias.find((f: any) => f.nombre.toUpperCase() === prev.family.toUpperCase());
+                const familyData = taxonomy.find((f: any) => f.nombre.toUpperCase() === prev.family.toUpperCase());
                 const defaultCondition = familyData && familyData.condiciones.length > 0 ? familyData.condiciones[0] : '';
                 
                 return { 
@@ -653,11 +633,9 @@ export const ProductManager: React.FC = () => {
     };
     
     const uniqueFamilies = useMemo(() => {
-        const jsonFamilies = productClassification.familias.map((f: any) => f.nombre);
-        const productFamilies = products.map(p => p.family).filter(Boolean);
-        const customFamilies = workspaceSettings?.families || [];
-        return [...new Set([...jsonFamilies, ...productFamilies, ...customFamilies])].map(f => f.toUpperCase()).sort();
-    }, [products, workspaceSettings]);
+        const taxonomy = workspaceSettings?.custom_taxonomy || [];
+        return taxonomy.map(f => f.nombre.toUpperCase()).sort();
+    }, [workspaceSettings]);
 
     const filteredProducts = useMemo(() => {
         return products
