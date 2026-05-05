@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
-import { Plus, Users, Calendar, Phone, AlertTriangle, Trash2 } from 'lucide-react';
+import { Plus, Users, Calendar, Phone, AlertTriangle, Trash2, Search, Filter } from 'lucide-react';
 import { DiningReservation, DinerAllergen, DiningService, Profile } from '../../types';
 import { doc, collection, runTransaction } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -16,6 +16,11 @@ export const DiningReservations: React.FC = () => {
     const [selectedServiceId, setSelectedServiceId] = useState<string>('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Filter states
+    const [searchTerm, setSearchTerm] = useState('');
+    const [typeFilter, setTypeFilter] = useState<'all' | 'medio' | 'noche'>('all');
+    const [onlyWithSpots, setOnlyWithSpots] = useState(false);
 
     const activeServices = useMemo(() => {
         const results: (DiningService & { planningName?: string, isPending?: boolean })[] = [];
@@ -56,6 +61,25 @@ export const DiningReservations: React.FC = () => {
 
         return results.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [dining_services, services, service_groups, currentUser]);
+
+    const filteredServices = useMemo(() => {
+        return activeServices.filter(service => {
+            const name = (service.planningName || '').toLowerCase();
+            const matchesSearch = name.includes(searchTerm.toLowerCase());
+            
+            const isDinner = name.includes('cena') || name.includes('noche');
+            const isLunch = name.includes('medio') || name.includes('comida') || !isDinner;
+            
+            const matchesType = typeFilter === 'all' || 
+                              (typeFilter === 'medio' && isLunch) || 
+                              (typeFilter === 'noche' && isDinner);
+            
+            const hasSpots = service.isPending || (service.current_pax < service.max_capacity);
+            const matchesSpots = !onlyWithSpots || hasSpots;
+
+            return matchesSearch && matchesType && matchesSpots;
+        });
+    }, [activeServices, searchTerm, typeFilter, onlyWithSpots]);
 
     const selectedService = useMemo(() => {
         return activeServices.find(s => s.id === selectedServiceId);
@@ -175,15 +199,70 @@ export const DiningReservations: React.FC = () => {
             </div>
 
             <Card>
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6 pb-6 border-b dark:border-gray-700">
+                    <div className="lg:col-span-2">
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Buscar por Grupo o Nombre</label>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input 
+                                type="text"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                placeholder="Ej: Grupo 1B, Cena Gala..."
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 transition-all outline-none"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Tipo de Servicio</label>
+                        <div className="flex bg-gray-50 dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <button 
+                                onClick={() => setTypeFilter('all')}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${typeFilter === 'all' ? 'bg-white dark:bg-gray-700 shadow-sm text-primary-600' : 'text-gray-500'}`}
+                            >
+                                TODOS
+                            </button>
+                            <button 
+                                onClick={() => setTypeFilter('medio')}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${typeFilter === 'medio' ? 'bg-white dark:bg-gray-700 shadow-sm text-primary-600' : 'text-gray-500'}`}
+                            >
+                                COMIDAS
+                            </button>
+                            <button 
+                                onClick={() => setTypeFilter('noche')}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${typeFilter === 'noche' ? 'bg-white dark:bg-gray-700 shadow-sm text-primary-600' : 'text-gray-500'}`}
+                            >
+                                CENAS
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex items-end">
+                        <button 
+                            onClick={() => setOnlyWithSpots(!onlyWithSpots)}
+                            className={`w-full py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                                onlyWithSpots 
+                                ? 'bg-primary-50 border-primary-500 text-primary-700' 
+                                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500'
+                            }`}
+                        >
+                            <Users className="w-4 h-4" />
+                            {onlyWithSpots ? 'SOLO PLAZAS LIBRES' : 'TODOS LOS AFOROS'}
+                        </button>
+                    </div>
+                </div>
+
                 <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Seleccionar Servicio</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                        <Filter className="w-4 h-4 mr-2 text-primary-500" />
+                        Seleccionar Servicio <span className="text-[10px] bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded ml-2 font-black text-gray-500 tracking-tighter">{filteredServices.length} DISPONIBLES</span>
+                    </label>
                     <select
                         value={selectedServiceId}
                         onChange={e => setSelectedServiceId(e.target.value)}
                         className="w-full p-4 border-2 border-primary-100 rounded-xl bg-white dark:bg-gray-800 dark:border-gray-700 font-bold text-gray-800 dark:text-white focus:border-primary-500 transition-all outline-none shadow-sm"
                     >
                         <option value="">-- Seleccione un servicio --</option>
-                        {activeServices.map((service) => (
+                        {filteredServices.map((service) => (
                             <option key={service.id} value={service.id}>
                                 {service.planningName || 'Sin Ref'} - {new Date(service.date).toLocaleDateString()} {service.isPending ? '(PENDIENTE CONFIGURAR)' : `- Aforo: ${service.current_pax}/${service.max_capacity}`}
                             </option>
