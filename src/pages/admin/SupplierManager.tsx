@@ -149,6 +149,16 @@ export const SupplierManager = () => {
                              <div className="text-xs mt-2">
                                 <strong>CIF:</strong> {supplier.cif} | <strong>Dirección:</strong> {supplier.address}
                             </div>
+                            {supplier.delivery_days && supplier.delivery_days.length > 0 && (
+                                <div className="text-[10px] mt-2 flex flex-wrap gap-1">
+                                    <span className="font-bold text-gray-400 uppercase mr-1 pt-0.5">Entrega:</span>
+                                    {supplier.delivery_days.map(day => (
+                                        <span key={day} className="bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 px-1.5 py-0.5 rounded border border-primary-100 dark:border-primary-800">
+                                            {day}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                             {supplier.notes && <div className="text-xs mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded"><strong>Notas:</strong> {supplier.notes}</div>}
 
                             <div className="mt-4 pt-2 border-t dark:border-gray-600 text-xs space-y-2">
@@ -221,31 +231,78 @@ export const SupplierManager = () => {
 };
 
 const SupplierFormModal: React.FC<{ supplier: Supplier | null; onClose: () => void; onSave: (supplier: Supplier) => void; }> = ({ supplier, onClose, onSave }) => {
-    const [formState, setFormState] = useState<Supplier>(supplier || { id: '', name: '', cif: '', address: '', phone: '', email: '', contact_person: '', status: 'Activo', website: '', notes: '' });
+    const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const [formState, setFormState] = useState<Supplier>(supplier || { 
+        id: '', 
+        name: '', 
+        cif: '', 
+        address: '', 
+        phone: '', 
+        email: '', 
+        contact_person: '', 
+        status: 'Activo', 
+        website: '', 
+        notes: '',
+        delivery_days: []
+    });
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setFormState({ ...formState, [e.target.name]: e.target.value });
+    
+    const toggleDay = (day: string) => {
+        const currentDays = formState.delivery_days || [];
+        const newDays = currentDays.includes(day)
+            ? currentDays.filter(d => d !== day)
+            : [...currentDays, day];
+        setFormState({ ...formState, delivery_days: newDays });
+    };
+
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formState); };
 
     return (
         <Modal isOpen={true} onClose={onClose} title={supplier ? 'Editar Proveedor' : 'Nuevo Proveedor'}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input type="text" name="name" value={formState.name} onChange={handleChange} placeholder="Nombre" required className="w-full p-2 border rounded"/>
-                    <input type="text" name="contact_person" value={formState.contact_person} onChange={handleChange} placeholder="Persona de Contacto" className="w-full p-2 border rounded"/>
-                    <input type="email" name="email" value={formState.email} onChange={handleChange} placeholder="Email" required className="w-full p-2 border rounded"/>
-                    <input type="tel" name="phone" value={formState.phone} onChange={handleChange} placeholder="Teléfono" className="w-full p-2 border rounded"/>
-                    <input type="text" name="cif" value={formState.cif} onChange={handleChange} placeholder="CIF" required className="w-full p-2 border rounded"/>
-                    <input type="url" name="website" value={formState.website || ''} onChange={handleChange} placeholder="Sitio Web" className="w-full p-2 border rounded"/>
+                    <input type="text" name="name" value={formState.name} onChange={handleChange} placeholder="Nombre" required className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"/>
+                    <input type="text" name="contact_person" value={formState.contact_person} onChange={handleChange} placeholder="Persona de Contacto" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"/>
+                    <input type="email" name="email" value={formState.email} onChange={handleChange} placeholder="Email" required className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"/>
+                    <input type="tel" name="phone" value={formState.phone} onChange={handleChange} placeholder="Teléfono" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"/>
+                    <input type="text" name="cif" value={formState.cif} onChange={handleChange} placeholder="CIF" required className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"/>
+                    <input type="url" name="website" value={formState.website || ''} onChange={handleChange} placeholder="Sitio Web" className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"/>
                     <div>
-                        <select name="status" value={formState.status} onChange={handleChange} className="w-full p-2 border rounded">
+                        <select name="status" value={formState.status} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600">
                             <option value="Activo">Activo</option>
                             <option value="Inactivo">Inactivo</option>
                         </select>
                     </div>
                 </div>
-                <textarea name="address" value={formState.address} onChange={handleChange} placeholder="Dirección" rows={2} className="w-full p-2 border rounded" />
-                <textarea name="notes" value={formState.notes || ''} onChange={handleChange} placeholder="Notas" rows={2} className="w-full p-2 border rounded" />
+
+                <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">Días de Entrega</label>
+                    <div className="flex flex-wrap gap-2">
+                        {daysOfWeek.map(day => {
+                            const isSelected = (formState.delivery_days || []).includes(day);
+                            return (
+                                <button
+                                    key={day}
+                                    type="button"
+                                    onClick={() => toggleDay(day)}
+                                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                                        isSelected 
+                                            ? 'bg-primary-600 border-primary-600 text-white' 
+                                            : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                    }`}
+                                >
+                                    {day}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <textarea name="address" value={formState.address} onChange={handleChange} placeholder="Dirección" rows={2} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
+                <textarea name="notes" value={formState.notes || ''} onChange={handleChange} placeholder="Notas" rows={2} className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600" />
                 <div className="flex justify-end space-x-2 pt-4">
-                    <button type="button" onClick={onClose} className="bg-gray-200 px-4 py-2 rounded-md">Cancelar</button>
+                    <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-gray-600 px-4 py-2 rounded-md">Cancelar</button>
                     <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-md">Guardar</button>
                 </div>
             </form>
@@ -267,6 +324,18 @@ const SupplierDetailModal: React.FC<{supplier: Supplier, incidents: Incident[], 
                     <p><strong>Dirección:</strong> {supplier.address}</p>
                 </div>
             </div>
+            {supplier.delivery_days && supplier.delivery_days.length > 0 && (
+                <div className="p-3 bg-primary-50 dark:bg-primary-900/10 rounded-lg border border-primary-100 dark:border-primary-800 my-2">
+                    <p className="font-bold text-primary-700 dark:text-primary-300 mb-1">Días de Entrega:</p>
+                    <div className="flex flex-wrap gap-2">
+                        {supplier.delivery_days.map(day => (
+                            <span key={day} className="bg-white dark:bg-gray-800 px-3 py-1 rounded-full shadow-sm text-xs font-bold text-primary-600">
+                                {day}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
             <div className="pt-2">
                 <h4 className="font-bold">Historial de Incidencias (Últimas 15)</h4>
                 {incidents.length > 0 ? (

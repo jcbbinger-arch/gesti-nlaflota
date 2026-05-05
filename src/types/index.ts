@@ -161,6 +161,7 @@ export interface Supplier {
   website?: string;
   notes?: string;
   reception_history?: string[]; // IDs de recepciones pasadas o notas acumuladas
+  delivery_days?: string[];
 }
 
 export interface AppEvent {
