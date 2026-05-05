@@ -58,11 +58,11 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                     ...prev, 
                     category: value, 
                     condition: defaultCondition,
-                    product_state: defaultCondition.toUpperCase() 
+                    product_state: defaultCondition.toUpperCase() as any
                 };
             });
-        } else if (name === 'product_state') {
-             setFormState(prev => ({ ...prev, product_state: value, condition: value }));
+        } else if (name === 'condition' || name === 'product_state') {
+             setFormState(prev => ({ ...prev, product_state: value.toUpperCase() as any, condition: value.toUpperCase() }));
         } else {
             setFormState(prev => ({ ...prev, [name]: updatedValue }));
         }
