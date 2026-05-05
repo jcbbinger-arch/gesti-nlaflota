@@ -8,6 +8,7 @@ import { exportToCsv } from '../../utils/export';
 import { parseCsv } from '../../utils/csv';
 import { useAuth } from '../../contexts/AuthContext';
 import { resizeImage } from '../../utils/image';
+import productClassification from '../../data/clasificacion_productos.json';
 
 const ALLERGENS_LIST = [
     "Gluten", "Crustáceos", "Huevos", "Pescado", "Cacahuetes", 
@@ -43,26 +44,47 @@ const WAREHOUSE_STATUSES: WarehouseStatus[] = ['Disponible', 'Bajo Pedido', 'Des
 export const ProductFormModal: React.FC<{ product: Product | null; onClose: () => void; onSave: (product: Product) => void; allProducts: Product[]; allSuppliers: Supplier[] }> = ({ product, onClose, onSave, allProducts, allSuppliers }) => {
     const { workspaceSettings, setWorkspaceSettings } = useData();
     const [formState, setFormState] = useState<Product>(product || { 
-        id: '', name: '', description: '', reference: `REF-${Date.now().toString().slice(-6)}`, unit: 'Uds', suppliers: [], tax: 21, category: '', family: '', allergens: [], status: 'Activo', product_state: 'FRESCO', warehouse_status: 'Disponible', image: ''
+        id: '', name: '', description: '', reference: `REF-${Date.now().toString().slice(-6)}`, unit: 'Uds', suppliers: [], tax: 21, category: '', family: '', condition: '', allergens: [], status: 'Activo', product_state: 'FRESCO', warehouse_status: 'Disponible', image: ''
     });
     
+    // Families from JSON + custom ones from workspace
     const families = useMemo(() => {
+        const jsonFamilies = Object.keys(productClassification.families);
         const customFamilies = workspaceSettings?.families || [];
         const productFamilies = allProducts.map(p => p.family).filter(f => f);
-        return [...new Set([...PREDEFINED_FAMILIES, ...productFamilies, ...customFamilies])].map(f => f.toUpperCase()).sort();
+        return [...new Set([...jsonFamilies, ...productFamilies, ...customFamilies])].map(f => f.toUpperCase()).sort();
     }, [allProducts, workspaceSettings]);
 
+    // Categories filter based on family
     const categories = useMemo(() => {
+        const familyData = (productClassification.families as any)[formState.family.toUpperCase()];
+        const jsonCategories = familyData ? Object.keys(familyData.categories) : [];
         const customCategories = workspaceSettings?.categories || [];
-        const productCategories = allProducts.map(p => p.category).filter(c => c);
+        const productCategories = allProducts.filter(p => p.family === formState.family).map(p => p.category).filter(c => c);
+        
+        // If we have a family match in JSON, we prioritize those categories
+        if (familyData) {
+            return [...new Set([...jsonCategories, ...customCategories])].map(c => c.toUpperCase()).sort();
+        }
+        
         return [...new Set([...PREDEFINED_CATEGORIES, ...productCategories, ...customCategories])].map(c => c.toUpperCase()).sort();
-    }, [allProducts, workspaceSettings]);
+    }, [allProducts, workspaceSettings, formState.family]);
 
+    // Conditions filter based on category
     const conditions = useMemo(() => {
+        const familyData = (productClassification.families as any)[formState.family.toUpperCase()];
+        const categoryData = familyData ? familyData.categories[formState.category.toUpperCase()] : null;
+        const jsonConditions = categoryData ? categoryData.conditions : [];
+        
         const customConditions = workspaceSettings?.product_conditions || [];
-        const productStates = allProducts.map(p => p.product_state).filter((s): s is ProductState => !!s);
+        const productStates = allProducts.filter(p => p.category === formState.category).map(p => p.product_state).filter((s): s is ProductState => !!s);
+        
+        if (categoryData) {
+             return [...new Set([...jsonConditions, ...customConditions])].map(s => s.toUpperCase()).sort();
+        }
+        
         return [...new Set([...PRODUCT_STATES, ...productStates, ...customConditions])].map(s => s.toUpperCase()).sort();
-    }, [allProducts, workspaceSettings]);
+    }, [allProducts, workspaceSettings, formState.family, formState.category]);
 
     const [addModalType, setAddModalType] = useState<'family' | 'category' | 'condition' | null>(null);
     const [removeModalType, setRemoveModalType] = useState<'family' | 'category' | 'condition' | null>(null);
@@ -70,7 +92,28 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
-        setFormState({ ...formState, [name]: type === 'number' ? parseFloat(value) || 0 : value });
+        const updatedValue = type === 'number' ? parseFloat(value) || 0 : value;
+        
+        if (name === 'family') {
+            setFormState(prev => ({ ...prev, family: value, category: '', condition: '', product_state: '' }));
+        } else if (name === 'category') {
+            setFormState(prev => {
+                const familyData = (productClassification.families as any)[prev.family.toUpperCase()];
+                const categoryData = familyData ? familyData.categories[value.toUpperCase()] : null;
+                const defaultCondition = categoryData && categoryData.conditions.length > 0 ? categoryData.conditions[0] : '';
+                
+                return { 
+                    ...prev, 
+                    category: value, 
+                    condition: defaultCondition,
+                    product_state: defaultCondition.toUpperCase() 
+                };
+            });
+        } else if (name === 'product_state') {
+             setFormState(prev => ({ ...prev, product_state: value, condition: value }));
+        } else {
+            setFormState(prev => ({ ...prev, [name]: updatedValue }));
+        }
     };
 
     const handleSupplierChange = (index: number, field: 'supplier_id' | 'price', value: string) => {
@@ -308,18 +351,6 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                         </select>
                      </div>
                       <div>
-                        <label className="text-sm flex justify-between items-center">Condición del Producto
-                            <span className="space-x-2 text-[10px]">
-                                <button type="button" onClick={() => handleAddNew('condition')} className="text-primary-600 hover:underline">Añadir</button>
-                                <button type="button" onClick={() => handleRemoveNew('condition')} className="text-red-500 hover:underline">Eliminar</button>
-                            </span>
-                        </label>
-                        <select name="product_state" value={formState.product_state} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
-                             <option value="">-- Selecciona --</option>
-                            {conditions.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-                        </select>
-                     </div>
-                     <div>
                         <label className="text-sm">Estado (Almacén)</label>
                         <select name="warehouse_status" value={formState.warehouse_status} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
                             {WAREHOUSE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -327,29 +358,41 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                      </div>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
-                        <label className="text-sm flex justify-between items-center">Familia 
+                        <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">1. Familia 
                             <span className="space-x-2">
-                                <button type="button" onClick={() => handleAddNew('family')} className="text-xs text-primary-600 hover:underline">Añadir</button>
-                                <button type="button" onClick={() => handleRemoveNew('family')} className="text-xs text-red-500 hover:underline">Eliminar</button>
+                                <button type="button" onClick={() => handleAddNew('family')} className="text-[10px] text-primary-600 hover:underline">Añadir</button>
+                                <button type="button" onClick={() => handleRemoveNew('family')} className="text-[10px] text-red-500 hover:underline">Eliminar</button>
                             </span>
                         </label>
                         <select name="family" value={formState.family} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
-                            <option value="">-- Selecciona --</option>
+                            <option value="">-- Selecciona Familia --</option>
                             {families.map(f => <option key={f} value={f}>{f.toUpperCase()}</option>)}
                         </select>
                     </div>
                      <div>
-                        <label className="text-sm flex justify-between items-center">Categoría 
+                        <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">2. Categoría 
                             <span className="space-x-2">
-                                <button type="button" onClick={() => handleAddNew('category')} className="text-xs text-primary-600 hover:underline">Añadir</button>
-                                <button type="button" onClick={() => handleRemoveNew('category')} className="text-xs text-red-500 hover:underline">Eliminar</button>
+                                <button type="button" onClick={() => handleAddNew('category')} className="text-[10px] text-primary-600 hover:underline">Añadir</button>
+                                <button type="button" onClick={() => handleRemoveNew('category')} className="text-[10px] text-red-500 hover:underline">Eliminar</button>
                             </span>
                         </label>
-                        <select name="category" value={formState.category} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600">
-                            <option value="">-- Selecciona --</option>
+                        <select name="category" value={formState.category} onChange={handleChange} disabled={!formState.family} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <option value="">-- Selecciona Categoría --</option>
                             {categories.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">3. Condición
+                            <span className="space-x-2 text-[10px]">
+                                <button type="button" onClick={() => handleAddNew('condition')} className="text-primary-600 hover:underline">Añadir</button>
+                                <button type="button" onClick={() => handleRemoveNew('condition')} className="text-red-500 hover:underline">Eliminar</button>
+                            </span>
+                        </label>
+                        <select name="product_state" value={formState.product_state} onChange={handleChange} disabled={!formState.category} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                             <option value="">-- Selecciona Condición --</option>
+                            {conditions.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
                         </select>
                     </div>
                 </div>
@@ -530,7 +573,8 @@ export const ProductManager: React.FC = () => {
                         family: String(item.family || 'VARIOS').toUpperCase(),
                         allergens: Array.isArray(item.allergens) ? item.allergens : (typeof item.allergens === 'string' ? item.allergens.split('|').map((a: string) => a.trim()) : []),
                         status: item.status === 'Inactivo' ? 'Inactivo' : 'Activo',
-                        product_state: (String(item.product_state || 'FRESCO').toUpperCase() as ProductState),
+                        product_state: (String(item.product_state || item.condition || 'FRESCO').toUpperCase() as ProductState),
+                        condition: String(item.condition || item.product_state || 'FRESCO').toUpperCase(),
                         warehouse_status: (item.warehouse_status as WarehouseStatus) || 'Disponible',
                         suppliers: itemSuppliers.length > 0 ? itemSuppliers : (existingIndex >= 0 ? updatedProducts[existingIndex].suppliers : []),
                         image: item.image || item.imagen || (existingIndex >= 0 ? updatedProducts[existingIndex].image : ''),
@@ -573,6 +617,7 @@ export const ProductManager: React.FC = () => {
                 allergens: ["Gluten", "Lácteos"],
                 status: "Activo",
                 product_state: "FRESCO",
+                condition: "FRESCO",
                 warehouse_status: "Disponible",
                 image: "https://picsum.photos/seed/product/200/200",
                 supplier_name: "Makro",
@@ -610,9 +655,10 @@ export const ProductManager: React.FC = () => {
     };
     
     const uniqueFamilies = useMemo(() => {
+        const jsonFamilies = Object.keys(productClassification.families);
         const productFamilies = products.map(p => p.family).filter(Boolean);
         const customFamilies = workspaceSettings?.families || [];
-        return [...new Set([...PREDEFINED_FAMILIES, ...productFamilies, ...customFamilies])].map(f => f.toUpperCase()).sort();
+        return [...new Set([...jsonFamilies, ...productFamilies, ...customFamilies])].map(f => f.toUpperCase()).sort();
     }, [products, workspaceSettings]);
 
     const filteredProducts = useMemo(() => {
@@ -680,8 +726,8 @@ export const ProductManager: React.FC = () => {
                 </div>
             </div>
 
-            <Card>
-                <div className="flex space-x-4 mb-4 no-print items-center">
+            <Card noPadding>
+                <div className="sticky top-0 z-20 bg-white dark:bg-gray-800 px-6 pt-6 pb-4 no-print flex items-center space-x-4">
                     <div className="flex-1">
                         <input type="text" placeholder="Buscar producto por nombre..." value={filter} onChange={e => setFilter(e.target.value)} className="w-full p-2 border rounded-md dark:bg-gray-700"/>
                     </div>
@@ -695,9 +741,9 @@ export const ProductManager: React.FC = () => {
                         </div>
                     )}
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto px-6 pb-6">
                     <table className="w-full text-sm">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <thead className="sticky top-[82px] z-10 text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
                                 <th className="px-4 py-2 text-left w-16">Imagen</th>
                                 <th className="px-4 py-2 text-left">Nombre</th>

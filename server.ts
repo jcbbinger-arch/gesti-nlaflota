@@ -31,13 +31,34 @@ try {
   console.log('Could not read firebase-applet-config.json:', e);
 }
 
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-  projectId: projectIdStr
-});
+let db: admin.firestore.Firestore | null = null;
+let authAdmin: admin.auth.Auth | null = null;
 
-// Use the specific database ID if provided
-const db = databaseIdStr ? admin.firestore(databaseIdStr) : admin.firestore();
+function getAdminDb() {
+  if (!db) {
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+        projectId: projectIdStr
+      });
+    }
+    db = databaseIdStr ? admin.firestore(databaseIdStr) : admin.firestore();
+  }
+  return db;
+}
+
+function getAdminAuth() {
+  if (!authAdmin) {
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+        projectId: projectIdStr
+      });
+    }
+    authAdmin = admin.auth();
+  }
+  return authAdmin;
+}
 
 async function startServer() {
   const app = express();
@@ -57,11 +78,12 @@ async function startServer() {
               return res.status(401).json({ error: 'No autorizado' });
           }
           const idToken = authHeader.split('Bearer ')[1];
-          const decodedToken = await admin.auth().verifyIdToken(idToken);
+          const decodedToken = await getAdminAuth().verifyIdToken(idToken);
 
           const { collection, documentId, action, changes } = req.body;
+          const database = getAdminDb();
           
-          await db.collection('audit_logs').add({
+          await database.collection('audit_logs').add({
               timestamp: admin.firestore.FieldValue.serverTimestamp(),
               user_id: decodedToken.uid,
               user_email: decodedToken.email,
@@ -85,10 +107,12 @@ async function startServer() {
               return res.status(401).json({ error: 'No autorizado' });
           }
           const idToken = authHeader.split('Bearer ')[1];
-          const decodedToken = await admin.auth().verifyIdToken(idToken);
+          const decodedToken = await getAdminAuth().verifyIdToken(idToken);
           
+          const database = getAdminDb();
+
           // Verify user permission
-          const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+          const userDoc = await database.collection('users').doc(decodedToken.uid).get();
           const userData = userDoc.data();
           const isCreator = userData?.profiles?.includes('creator');
           const isMaintainer = userData?.isMaintainer === true;
@@ -101,7 +125,7 @@ async function startServer() {
           const threeYearsAgo = new Date();
           threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
           
-          const collections = await db.listCollections();
+          const collections = await database.listCollections();
           // Exclude audit_logs as it could be massive
           const filteredCollections = collections.filter(c => c.id !== 'audit_logs');
           const backup: Record<string, any[]> = {};
@@ -129,7 +153,7 @@ async function startServer() {
 
           // Log the backup operation via Firestore - this might fail if db is busy, wrap in try/catch
           try {
-            await db.collection('audit_logs').add({
+            await database.collection('audit_logs').add({
                 timestamp: admin.firestore.FieldValue.serverTimestamp(),
                 user_id: decodedToken.uid,
                 user_email: decodedToken.email,

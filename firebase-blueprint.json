@@ -445,6 +445,7 @@
         "phone_1": { "type": "string" },
         "phone_2": { "type": "string" },
         "total_price": { "type": "number" },
+        "table_number": { "type": "string" },
         "diners_allergens": { 
           "type": "array", 
           "items": { 
@@ -456,10 +457,87 @@
           }
         },
         "created_by": { "type": "string" },
-        "created_at": { "type": "string", "format": "date-time" },
-        "table_number": { "type": "string" }
+        "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "service_id", "reference_name", "pax", "total_price", "created_by", "created_at"]
+    },
+    "StockReception": {
+      "title": "StockReception",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "supplier_id": { "type": "string" },
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": { "type": "string" },
+              "quantity": { "type": "number" },
+              "price": { "type": "number" }
+            }
+          }
+        },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "date", "supplier_id", "products"]
+    },
+    "SupplierReception": {
+      "title": "SupplierReception",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "supplier_id": { "type": "string" },
+        "event_id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": { "type": "string" },
+              "ordered_quantity": { "type": "number" },
+              "received_quantity": { "type": "number" },
+              "price": { "type": "number" },
+              "is_correct": { "type": "boolean" },
+              "weight_diff": { "type": "string" },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "general_notes": { "type": "string" }
+      },
+      "required": ["id", "supplier_id", "event_id", "date", "items"]
+    },
+    "Transfer": {
+      "title": "Transfer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "from_user_id": { "type": "string" },
+        "from_assignment_id": { "type": "string" },
+        "to_event_id": { "type": "string" },
+        "amount": { "type": "number" },
+        "concept": { "type": "string" },
+        "units": { "type": "number" },
+        "price_per_unit": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Completado", "Pendiente"] }
+      },
+      "required": ["id", "from_user_id", "to_event_id", "amount", "concept", "date", "status"]
+    },
+    "AcademicYear": {
+      "title": "AcademicYear",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "start_date": { "type": "string", "format": "date-time" },
+        "end_date": { "type": "string", "format": "date-time" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["id", "name", "start_date", "end_date", "is_active"]
     }
   },
   "firestore": {
@@ -488,6 +566,10 @@
     "/sale_items": { "schema": "SaleItem", "description": "Collection of sale items" },
     "/reservations": { "schema": "Reservation", "description": "Collection of reservations" },
     "/dining_services": { "schema": "DiningService", "description": "Collection of dining services" },
-    "/dining_reservations": { "schema": "DiningReservation", "description": "Collection of dining reservations" }
+    "/dining_reservations": { "schema": "DiningReservation", "description": "Collection of dining reservations" },
+    "/stock_receptions": { "schema": "StockReception", "description": "Collection of stock receptions" },
+    "/supplier_receptions": { "schema": "SupplierReception", "description": "Collection of supplier receptions" },
+    "/transfers": { "schema": "Transfer", "description": "Collection of transfers" },
+    "/academic_years": { "schema": "AcademicYear", "description": "Collection of academic years" }
   }
 }

@@ -202,9 +202,13 @@ export const MiniEconomato: React.FC = () => {
             stock: stockItem
         })).filter(item => item.product);
 
-        if (!filter) return mapped;
-        const lowerFilter = filter.toLowerCase();
-        return mapped.filter(item => item.product.name.toLowerCase().includes(lowerFilter));
+        let filtered = mapped;
+        if (filter) {
+            const lowerFilter = filter.toLowerCase();
+            filtered = mapped.filter(item => item.product.name.toLowerCase().includes(lowerFilter));
+        }
+        
+        return filtered.sort((a, b) => a.product.name.localeCompare(b.product.name, 'es', { sensitivity: 'base' }));
     }, [stockMap, productsMap, filter]);
 
     const getStockLevel = (current: number, min: number) => {
@@ -491,8 +495,8 @@ export const MiniEconomato: React.FC = () => {
             </div>
             
             {view === 'inventory' ? (
-                <Card title="Stock Interno">
-                    <div className="flex space-x-2 mb-4 no-print">
+                <Card noPadding>
+                    <div className="sticky top-0 z-20 bg-white dark:bg-gray-800 px-6 pt-6 pb-4 no-print flex items-center space-x-2">
                         <div className="relative flex-1">
                             <input 
                                 type="text" 
@@ -511,9 +515,9 @@ export const MiniEconomato: React.FC = () => {
                             )}
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto px-6 pb-6">
                         <table className="w-full text-sm">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <thead className="sticky top-[82px] z-10 text-xs text-gray-700 uppercase bg-white dark:bg-gray-800 dark:text-gray-400 shadow-[0_1px_rgba(0,0,0,0.05)]">
                                 <tr>
                                     <th className="px-4 py-2 text-left w-16">Imagen</th>
                                     <th className="px-4 py-2 text-left">Nombre / Refs</th>

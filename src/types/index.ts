@@ -132,6 +132,7 @@ export interface Product {
   tax: number; // e.g. 21 for 21%
   category: string;
   family: string;
+  condition?: string;
   allergens: string[];
   status: 'Activo' | 'Inactivo';
   product_state?: ProductState;

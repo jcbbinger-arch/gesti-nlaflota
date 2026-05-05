@@ -89,6 +89,7 @@ service cloud.firestore {
     match /stock_receptions/{id} { allow read, list: if isSignedIn(); allow write: if isManager(); }
     match /transfers/{id} { allow read, list: if isSignedIn(); allow write: if isSignedIn(); }
     match /academic_years/{id} { allow read, list: if isSignedIn(); allow write: if isAdmin(); }
+    match /supplier_receptions/{id} { allow read, list: if isSignedIn(); allow write: if isManager(); }
 
     // Transactional Data
     match /orders/{id} {

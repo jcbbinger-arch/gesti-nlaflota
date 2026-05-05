@@ -77,10 +77,12 @@ export const OrderForm: React.FC = () => {
 
     const filteredProducts = useMemo(() => {
         if (searchTerm.trim() === '') return [];
-        return products.filter(p => 
-            p.status === 'Activo' && 
-            p.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        return products
+            .filter(p => 
+                p.status === 'Activo' && 
+                p.name.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
     }, [products, searchTerm]);
 
     const groupedProducts = useMemo(() => {
