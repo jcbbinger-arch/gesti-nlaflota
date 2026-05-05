@@ -607,6 +607,14 @@ const EventFormModal: React.FC<{ event: AppEvent | null; onClose: () => void; on
                     <label className="block text-sm font-medium">Nombre</label>
                     <input type="text" name="name" value={formState.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600" />
                 </div>
+                <div>
+                    <label className="block text-sm font-medium">Tipo de Evento</label>
+                    <select name="type" value={formState.type} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-700 dark:border-gray-600">
+                        <option value="Regular">Regular</option>
+                        <option value="Extraordinario">Extraordinario</option>
+                        <option value="Servicio">Servicio</option>
+                    </select>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label>Curso Académico</label>
