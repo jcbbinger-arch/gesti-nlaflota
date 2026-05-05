@@ -515,7 +515,7 @@ export const ProductManager: React.FC = () => {
                                 <th className="px-4 py-2 text-left">Nombre</th>
                                 <th className="px-4 py-2 text-left">Mejor Precio</th>
                                 <th className="px-4 py-2 text-left">Proveedor Principal</th>
-                                <th className="px-4 py-2 text-left">Condición</th>
+                                <th className="px-4 py-2 text-left">Familia</th>
                                 <th className="px-4 py-2 text-left">Acciones</th>
                             </tr>
                         </thead>
@@ -582,8 +582,8 @@ export const ProductManager: React.FC = () => {
                                         )}
                                     </td>
                                     <td className="px-4 py-2">
-                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300`}>
-                                            {product.condition || product.product_state || 'Sin asignar'}
+                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 uppercase tracking-tighter`}>
+                                            {product.family || 'Sin asignar'}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 space-x-2 no-print">
