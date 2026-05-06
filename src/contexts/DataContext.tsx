@@ -216,30 +216,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [currentUser]);
 
-    // Cleanup script for bugged user (pablo.palazon@murciaeduca.es)
-    useEffect(() => {
-        if (!currentUser) return;
-        const targetEmail = 'pablo.palazon@murciaeduca.es'.toLowerCase();
-        const usersToDelete = users.filter(u => (u.email || '').toLowerCase() === targetEmail);
-        
-        if (usersToDelete.length > 0) {
-            console.warn('LIMPIEZA AUTOMÁTICA: Eliminando', usersToDelete.length, 'registros bugueados de:', targetEmail);
-            usersToDelete.forEach(u => {
-                // Delete user doc
-                deleteDoc(doc(db, 'users', u.id))
-                    .then(() => console.log('Documento de usuario eliminado:', u.id))
-                    .catch(err => console.error('Error eliminando usuario:', u.id, err));
-                
-                // Delete associated assignments
-                assignments.filter(a => a.user_id === u.id).forEach(a => {
-                    deleteDoc(doc(db, 'assignments', a.id))
-                        .then(() => console.log('Asignación eliminada:', a.id))
-                        .catch(err => console.error('Error eliminando asignación:', a.id, err));
-                });
-            });
-        }
-    }, [users, assignments, currentUser]);
-
     const updateCollection = async (collectionName: string, data: any[] | ((prev: any[]) => any[]), currentState: any[]) => {
         const newData = typeof data === 'function' ? data(currentState) : data;
         
