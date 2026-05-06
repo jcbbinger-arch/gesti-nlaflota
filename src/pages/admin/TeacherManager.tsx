@@ -14,32 +14,33 @@ export const TeacherManager: React.FC = () => {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [deleteStep, setDeleteStep] = useState(1);
 
-    const staff = useMemo(() => users.filter(u => 
-        u.email && u.name && // Filter out empty/corrupt users
-        // A user is staff if they have a staff profile OR if they have NO profiles at all 
-        // AND they are not explicitly a Student or Customer.
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredUsers = useMemo(() => {
+        if (!searchTerm) return users;
+        const lowTerm = searchTerm.toLowerCase().trim();
+        return users.filter(u => 
+            (u.email || '').toLowerCase().includes(lowTerm) || 
+            (u.name || '').toLowerCase().includes(lowTerm)
+        );
+    }, [users, searchTerm]);
+
+    const staff = useMemo(() => filteredUsers.filter(u => 
+        u.email && u.name && 
         (
             u.profiles.length === 0 || 
             u.profiles.some(p => [Profile.TEACHER, Profile.ADMIN, Profile.ALMACEN, Profile.SALES_MANAGER, Profile.CREATOR].includes(p))
         ) &&
-        !u.profiles.includes(Profile.STUDENT) && 
-        !u.profiles.includes(Profile.CUSTOMER) &&
         !SUPER_USER_EMAILS.includes(u.email)
-    ), [users]);
+    ), [filteredUsers]);
 
-    const takeawayCustomers = useMemo(() => users.filter(u => 
-        u.email && u.name &&
-        u.profiles.includes(Profile.CUSTOMER) &&
-        !u.profiles.includes(Profile.TEACHER) && 
-        !u.profiles.includes(Profile.ADMIN)
-    ), [users]);
+    const takeawayCustomers = useMemo(() => filteredUsers.filter(u => 
+        u.profiles.includes(Profile.CUSTOMER)
+    ), [filteredUsers]);
 
-    const students = useMemo(() => users.filter(u => 
-        u.email && u.name &&
-        u.profiles.includes(Profile.STUDENT) &&
-        !u.profiles.includes(Profile.TEACHER) && 
-        !u.profiles.includes(Profile.ADMIN)
-    ), [users]);
+    const students = useMemo(() => filteredUsers.filter(u => 
+        u.profiles.includes(Profile.STUDENT)
+    ), [filteredUsers]);
 
     const renderTable = (usersList: User[]) => (
         <div className="overflow-x-auto">
@@ -193,13 +194,24 @@ export const TeacherManager: React.FC = () => {
                 </div>
             </div>
             
-            <div className="flex space-x-2 mb-6">
-                <button onClick={() => setActiveTab('profesores')} className={`px-4 py-2 rounded-md ${activeTab === 'profesores' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Profesores</button>
-                <button onClick={() => setActiveTab('clientes')} className={`px-4 py-2 rounded-md ${activeTab === 'clientes' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Clientes Takeaway</button>
-                <button onClick={() => setActiveTab('alumnos')} className={`px-4 py-2 rounded-md ${activeTab === 'alumnos' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}>Alumnos</button>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div className="flex space-x-2">
+                    <button onClick={() => setActiveTab('profesores')} className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'profesores' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>Profesores</button>
+                    <button onClick={() => setActiveTab('clientes')} className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'clientes' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>Clientes Takeaway</button>
+                    <button onClick={() => setActiveTab('alumnos')} className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'alumnos' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>Alumnos</button>
+                </div>
+                <div className="w-full md:w-64">
+                    <input 
+                        type="text" 
+                        placeholder="Buscar por nombre o email..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                </div>
             </div>
 
-            <Card title={activeTab === 'profesores' ? 'Profesores' : activeTab === 'clientes' ? 'Clientes Takeaway' : 'Alumnos'}>
+            <Card title={activeTab === 'profesores' ? 'Lista de Profesores y Personal' : activeTab === 'clientes' ? 'Lista de Clientes Takeaway' : 'Lista de Alumnos'}>
                 {activeTab === 'profesores' && renderTable(staff)}
                 {activeTab === 'clientes' && renderTable(takeawayCustomers)}
                 {activeTab === 'alumnos' && renderTable(students)}
