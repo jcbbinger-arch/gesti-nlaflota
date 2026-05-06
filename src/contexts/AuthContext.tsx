@@ -146,6 +146,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           delete (newUser as any).isInvitation;
 
           await setDoc(userDocRef, newUser);
+
+          // Migrate assignments if they exist
+          try {
+            const assignmentsQuery = query(collection(db, 'assignments'), where('user_id', '==', inviteDoc.id));
+            const assignmentsSnapshot = await getDocs(assignmentsQuery);
+            for (const aDoc of assignmentsSnapshot.docs) {
+              const assignmentData = aDoc.data();
+              // Update user_id to the permanent one
+              await setDoc(doc(db, 'assignments', aDoc.id), { ...assignmentData, user_id: firebaseUser.uid });
+              console.log(`Assignment ${aDoc.id} migrated to ${firebaseUser.uid}`);
+            }
+          } catch (err) {
+            console.error('Error migrating assignments:', err);
+          }
+
           // Delete the invitation document if the IDs are different
           if (inviteDoc.id !== firebaseUser.uid) {
             await deleteDoc(doc(db, 'users', inviteDoc.id));

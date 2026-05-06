@@ -424,31 +424,44 @@ const UserFormModal: React.FC<{
                     <input type="text" name="address" value={formState.address} onChange={handleChange} placeholder="Dirección" className="w-full p-2 border rounded dark:bg-gray-700"/>
                 </div>
 
-                {activeTab === 'profesores' && (
+                {(activeTab === 'profesores' || activeTab === 'invitaciones') && (
                     <div>
-                        <label className="font-medium">Perfiles / Permisos</label>
-                        <div className="grid grid-cols-2 gap-2 mt-1">
+                        <label className="font-medium text-sm text-gray-700 dark:text-gray-300">Perfiles / Permisos</label>
+                        <div className="grid grid-cols-2 gap-3 mt-2">
                             {assignableProfiles.map(p => (
-                                <label key={p} className="flex items-center space-x-2 p-2 border rounded-md dark:border-gray-600 bg-white dark:bg-gray-800">
-                                    <input type="checkbox" checked={formState.profiles.includes(p)} onChange={() => handleProfileChange(p)} />
-                                    <span className="text-sm">{getProfileDisplayName(p)}</span>
+                                <label key={p} className="flex items-center space-x-2 p-2 border rounded-md dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formState.profiles.includes(p)} 
+                                        onChange={() => handleProfileChange(p)} 
+                                        className="rounded text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{getProfileDisplayName(p)}</span>
                                 </label>
                             ))}
                         </div>
                     </div>
                 )}
 
-                 {formState.profiles.includes(Profile.TEACHER) && (
+                 {(activeTab === 'profesores' || activeTab === 'invitaciones') && (
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <select name="contract_type" value={formState.contract_type} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700">
-                                <option value="Fijo">Fijo</option>
-                                <option value="Interino">Interino</option>
-                            </select>
-                            <select name="role_type" value={formState.role_type} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700">
-                                <option value="Titular">Titular</option>
-                                <option value="Sustituto">Sustituto</option>
-                            </select>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Tipo Contrato</label>
+                                <select name="contract_type" value={formState.contract_type} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 text-sm">
+                                    <option value="Fijo">Fijo</option>
+                                    <option value="Interino">Interino</option>
+                                    <option value="Religión">Religión</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Rol Académico</label>
+                                <select name="role_type" value={formState.role_type} onChange={handleChange} className="w-full p-2 border rounded dark:bg-gray-700 text-sm">
+                                    <option value="Titular">Titular</option>
+                                    <option value="Sustituto">Sustituto</option>
+                                    <option value="Sustituto Titular Parcial">Sustituto Titular Parcial</option>
+                                </select>
+                            </div>
                         </div>
                         
                         {formState.role_type === 'Sustituto' && (
@@ -475,17 +488,25 @@ const UserFormModal: React.FC<{
                 )}
                 
                 {userAssignments.length > 0 && (
-                    <div className="pt-2">
-                        <h4 className="font-semibold text-sm">Módulos Asignados</h4>
-                        <ul className="list-disc list-inside text-xs mt-1 bg-gray-100 dark:bg-gray-700 p-2 rounded-md max-h-24 overflow-y-auto">
-                            {userAssignments.map(a => <li key={a.id}>{a.module_name} - {a.group_name}</li>)}
-                        </ul>
+                    <div className="mt-4 pt-4 border-t dark:border-gray-700">
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">Módulos Asignados</label>
+                        <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
+                            <ul className="space-y-1">
+                                {userAssignments.map(a => (
+                                    <li key={a.id} className="text-xs text-gray-600 dark:text-gray-400 flex items-start">
+                                        <span className="mr-2 text-blue-500">•</span>
+                                        <span>
+                                            <strong className="text-gray-800 dark:text-gray-200">{a.module_name}</strong> - {a.group_name}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     </div>
                 )}
-
-                <div className="flex justify-end space-x-2 pt-4">
-                    <button type="button" onClick={onClose} className="bg-gray-200 px-4 py-2 rounded-md">Cancelar</button>
-                    <button type="submit" className="bg-primary-600 text-white px-4 py-2 rounded-md">Guardar</button>
+                <div className="flex justify-end space-x-2 pt-6">
+                    <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">Cancelar</button>
+                    <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-bold shadow-md shadow-blue-500/20">Guardar</button>
                 </div>
             </form>
         </Modal>
