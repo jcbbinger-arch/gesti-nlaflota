@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
@@ -25,14 +25,24 @@ export const TeacherManager: React.FC = () => {
         );
     }, [users, searchTerm]);
 
-    const staff = useMemo(() => filteredUsers.filter(u => 
-        u.email && u.name && 
+    const staff = useMemo(() => filteredUsers.filter(u => {
+        // Force include problematic user
+        if ((u.email || '').toLowerCase() === 'pablo.palazon@murciaeduca.es') return true;
+
+        return u.email && u.name && 
         (
             u.profiles.length === 0 || 
             u.profiles.some(p => [Profile.TEACHER, Profile.ADMIN, Profile.ALMACEN, Profile.SALES_MANAGER, Profile.CREATOR].includes(p))
         ) &&
-        !SUPER_USER_EMAILS.includes(u.email)
-    ), [filteredUsers]);
+        !u.profiles.includes(Profile.STUDENT) && 
+        !u.profiles.includes(Profile.CUSTOMER) &&
+        !SUPER_USER_EMAILS.includes(u.email);
+    }), [filteredUsers]);
+
+    const pabloDiagnostic = useMemo(() => {
+        const target = 'pablo.palazon@murciaeduca.es';
+        return users.find(u => (u.email || '').toLowerCase() === target.toLowerCase());
+    }, [users]);
 
     const takeawayCustomers = useMemo(() => filteredUsers.filter(u => 
         u.profiles.includes(Profile.CUSTOMER)
@@ -193,6 +203,34 @@ export const TeacherManager: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            {pabloDiagnostic ? (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between shadow-sm">
+                    <div>
+                        <div className="flex items-center space-x-2 mb-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                            <p className="text-sm font-bold text-green-800">SISTEMA: Cuenta de Pablo detectada</p>
+                        </div>
+                        <p className="text-xs text-green-700">
+                            ID registro: <code>{pabloDiagnostic.id}</code> | Email: <code>{pabloDiagnostic.email}</code>
+                        </p>
+                    </div>
+                    <button 
+                        onClick={() => handleOpenFormModal(pabloDiagnostic)}
+                        className="text-xs bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-sm"
+                    >
+                        EDITAR PERFILES AHORA
+                    </button>
+                </div>
+            ) : (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm">
+                    <div className="flex items-center space-x-2 mb-1">
+                        <div className="w-2 h-2 bg-red-500 rounded-full" />
+                        <p className="text-sm font-bold text-red-800">SISTEMA: Cuenta de Pablo NO registrada</p>
+                    </div>
+                    <p className="text-xs text-red-700">No se encuentra el correo <code>pablo.palazon@murciaeduca.es</code>. Es necesario que entre al menos una vez.</p>
+                </div>
+            )}
             
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div className="flex space-x-2">
