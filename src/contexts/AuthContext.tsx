@@ -98,8 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userData.role = 'admin';
         needsUpdate = true;
       }
-      // Ensure super users are active
-      if (isSuperUser && userData.activity_status !== 'Activo') {
+      // Ensure super users and fixed accounts are active
+      if ((isSuperUser || userEmail === 'pablo.palazon@murciaeduca.es') && userData.activity_status !== 'Activo') {
         userData.activity_status = 'Activo';
         needsUpdate = true;
       }
@@ -153,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : [], // Do not default to TEACHER anymore, stay in standby/activation required
         role: isSuperUser ? 'admin' : 'user',
         workspaceId: firebaseUser.uid, // Set workspaceId to UID by default
-        activity_status: isSuperUser ? 'Activo' : 'De Baja', // Default to inactive/pending
+        activity_status: (isSuperUser || userEmail === 'pablo.palazon@murciaeduca.es') ? 'Activo' : 'De Baja', // Default to active for this specific recovery case
         location_status: 'En el centro',
         avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
       };
