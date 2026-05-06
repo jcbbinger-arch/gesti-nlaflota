@@ -205,6 +205,7 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                                 <option value="kg">kg</option>
                                 <option value="ml">ml</option>
                                 <option value="L">L</option>
+                                <option value="uds">ud</option>
                             </select>
                         </div>
                      )}
@@ -576,6 +577,9 @@ export const ProductManager: React.FC = () => {
                                                     } else if (type === 'L') {
                                                         pricePerBase = bestPriceInfo.price / size;
                                                         baseLabel = 'L';
+                                                    } else if (type === 'uds') {
+                                                        pricePerBase = bestPriceInfo.price / size;
+                                                        baseLabel = 'ud';
                                                     }
 
                                                     return pricePerBase > 0 ? `(${pricePerBase.toFixed(2)}€/${baseLabel})` : '';
