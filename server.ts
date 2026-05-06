@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import * as admin from 'firebase-admin';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 import fs from 'fs';
 
@@ -31,8 +33,8 @@ try {
   console.log('Could not read firebase-applet-config.json:', e);
 }
 
-let db: admin.firestore.Firestore | null = null;
-let authAdmin: admin.auth.Auth | null = null;
+let db: any = null;
+let authAdmin: any = null;
 
 function getAdminDb() {
   if (!db) {
@@ -42,7 +44,8 @@ function getAdminDb() {
         projectId: projectIdStr
       });
     }
-    db = databaseIdStr ? admin.firestore(databaseIdStr) : admin.firestore();
+    const app = admin.apps[0];
+    db = databaseIdStr ? getFirestore(app!, databaseIdStr) : getFirestore(app!);
   }
   return db;
 }
@@ -55,7 +58,8 @@ function getAdminAuth() {
         projectId: projectIdStr
       });
     }
-    authAdmin = admin.auth();
+    const app = admin.apps[0];
+    authAdmin = getAuth(app!);
   }
   return authAdmin;
 }
@@ -84,7 +88,7 @@ async function startServer() {
           const database = getAdminDb();
           
           await database.collection('audit_logs').add({
-              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+              timestamp: FieldValue.serverTimestamp(),
               user_id: decodedToken.uid,
               user_email: decodedToken.email,
               collection,
@@ -154,7 +158,7 @@ async function startServer() {
           // Log the backup operation via Firestore - this might fail if db is busy, wrap in try/catch
           try {
             await database.collection('audit_logs').add({
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                timestamp: FieldValue.serverTimestamp(),
                 user_id: decodedToken.uid,
                 user_email: decodedToken.email,
                 action: 'GENERATE_BACKUP'
