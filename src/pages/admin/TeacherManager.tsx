@@ -8,7 +8,7 @@ import { exportToCsv } from '../../utils/export';
 
 export const TeacherManager: React.FC = () => {
     const { users, setUsers, assignments, groups, modules } = useData();
-    const [activeTab, setActiveTab] = useState<'profesores' | 'clientes' | 'alumnos'>('profesores');
+    const [activeTab, setActiveTab] = useState<'profesores' | 'clientes' | 'alumnos' | 'invitaciones'>('profesores');
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -26,8 +26,8 @@ export const TeacherManager: React.FC = () => {
     }, [users, searchTerm]);
 
     const staff = useMemo(() => filteredUsers.filter(u => {
-        // Force include problematic user
-        if ((u.email || '').toLowerCase() === 'pablo.palazon@murciaeduca.es') return true;
+        // Invitations don't show up here
+        if (u.id.startsWith('invite-') || u.isInvitation) return false;
 
         return u.email && u.name && 
         (
@@ -39,10 +39,9 @@ export const TeacherManager: React.FC = () => {
         !SUPER_USER_EMAILS.includes(u.email);
     }), [filteredUsers]);
 
-    const pabloDiagnostic = useMemo(() => {
-        const target = 'pablo.palazon@murciaeduca.es';
-        return users.find(u => (u.email || '').toLowerCase() === target.toLowerCase());
-    }, [users]);
+    const invitations = useMemo(() => filteredUsers.filter(u => 
+        u.id.startsWith('invite-') || u.isInvitation
+    ), [filteredUsers]);
 
     const takeawayCustomers = useMemo(() => filteredUsers.filter(u => 
         u.profiles.includes(Profile.CUSTOMER)
@@ -88,12 +87,18 @@ export const TeacherManager: React.FC = () => {
                                 </td>
                             )}
                             <td className="px-6 py-4">
-                                <button 
-                                    onClick={() => handleToggleStatus(user)}
-                                    className={`px-2 py-1 rounded-full text-xs font-semibold ${user.activity_status === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-                                >
-                                    {user.activity_status}
-                                </button>
+                                {user.isInvitation ? (
+                                    <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-tighter">
+                                        Pendiente
+                                    </span>
+                                ) : (
+                                    <button 
+                                        onClick={() => handleToggleStatus(user)}
+                                        className={`px-2 py-1 rounded-full text-xs font-semibold ${user.activity_status === 'Activo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                                    >
+                                        {user.activity_status}
+                                    </button>
+                                )}
                             </td>
                             <td className="px-6 py-4">
                                 <span 
@@ -144,18 +149,22 @@ export const TeacherManager: React.FC = () => {
             }
         } else { // Creating new
             try {
+                const isInvitation = activeTab === 'invitaciones' || activeTab === 'profesores';
+                const idPrefix = isInvitation ? 'invite' : 'user';
+                
                 const newUser: User = {
-                    id: `user-${Date.now()}`,
+                    id: `${idPrefix}-${Date.now()}`,
                     name: userData.name || '',
                     email: userData.email?.trim().toLowerCase() || '',
                     profiles: userData.profiles || [Profile.TEACHER],
                     activity_status: 'Activo',
-                    location_status: 'En el centro',
-                    avatar: `https://i.pravatar.cc/150?u=${Date.now()}`,
+                    location_status: 'Fuera del centro',
+                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name || 'U')}&background=random`,
+                    isInvitation: isInvitation,
                     ...userData
-                };
+                } as any;
                 setUsers([...users, newUser]);
-                console.log('New user created locally and syncing to DB...');
+                console.log('New invitation/user created locally and syncing to DB...');
             } catch (error: any) {
                 console.error('Error creating user:', error);
                 alert(`Error: ${error.message}`);
@@ -197,46 +206,45 @@ export const TeacherManager: React.FC = () => {
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Personal</h1>
-                <div className="no-print flex items-center">
-                    <button onClick={handleExport} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 mr-2 flex items-center">
-                        <DownloadIcon className="w-5 h-5 mr-1" /> Exportar a CSV
+                <div className="no-print flex items-center space-x-2">
+                    <button 
+                        onClick={() => handleOpenFormModal(null)} 
+                        className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center shadow-sm"
+                    >
+                        <PlusIcon className="w-5 h-5 mr-1" /> Nuevo Registro/Invitación
+                    </button>
+                    <button onClick={handleExport} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
+                        <DownloadIcon className="w-5 h-5 mr-1" /> Exportar
                     </button>
                 </div>
             </div>
 
-            {pabloDiagnostic ? (
-                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between shadow-sm">
-                    <div>
-                        <div className="flex items-center space-x-2 mb-1">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            <p className="text-sm font-bold text-green-800">SISTEMA: Cuenta de Pablo detectada</p>
-                        </div>
-                        <p className="text-xs text-green-700">
-                            ID registro: <code>{pabloDiagnostic.id}</code> | Email: <code>{pabloDiagnostic.email}</code>
-                        </p>
-                    </div>
-                    <button 
-                        onClick={() => handleOpenFormModal(pabloDiagnostic)}
-                        className="text-xs bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-sm"
-                    >
-                        EDITAR PERFILES AHORA
-                    </button>
-                </div>
-            ) : (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm">
-                    <div className="flex items-center space-x-2 mb-1">
-                        <div className="w-2 h-2 bg-red-500 rounded-full" />
-                        <p className="text-sm font-bold text-red-800">SISTEMA: Cuenta de Pablo NO registrada</p>
-                    </div>
-                    <p className="text-xs text-red-700">No se encuentra el correo <code>pablo.palazon@murciaeduca.es</code>. Es necesario que entre al menos una vez.</p>
-                </div>
-            )}
-            
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <div className="flex space-x-2">
-                    <button onClick={() => setActiveTab('profesores')} className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'profesores' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>Profesores</button>
-                    <button onClick={() => setActiveTab('clientes')} className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'clientes' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>Clientes Takeaway</button>
-                    <button onClick={() => setActiveTab('alumnos')} className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'alumnos' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>Alumnos</button>
+                <div className="flex flex-wrap gap-2">
+                    <button 
+                        onClick={() => setActiveTab('profesores')} 
+                        className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'profesores' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}
+                    >
+                        Profesores Activos
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('invitaciones')} 
+                        className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'invitaciones' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}
+                    >
+                        Invitaciones <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-xs font-bold">{invitations.length}</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('clientes')} 
+                        className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'clientes' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}
+                    >
+                        Clientes Takeaway
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('alumnos')} 
+                        className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'alumnos' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}
+                    >
+                        Alumnos
+                    </button>
                 </div>
                 <div className="w-full md:w-64">
                     <input 
@@ -249,8 +257,14 @@ export const TeacherManager: React.FC = () => {
                 </div>
             </div>
 
-            <Card title={activeTab === 'profesores' ? 'Lista de Profesores y Personal' : activeTab === 'clientes' ? 'Lista de Clientes Takeaway' : 'Lista de Alumnos'}>
+            <Card title={
+                activeTab === 'profesores' ? 'Lista de Profesores y Personal Activo' : 
+                activeTab === 'clientes' ? 'Lista de Clientes Takeaway' : 
+                activeTab === 'alumnos' ? 'Lista de Alumnos' :
+                'Invitaciones Pendientes (Usuarios que aún no han entrado)'
+            }>
                 {activeTab === 'profesores' && renderTable(staff)}
+                {activeTab === 'invitaciones' && renderTable(invitations)}
                 {activeTab === 'clientes' && renderTable(takeawayCustomers)}
                 {activeTab === 'alumnos' && renderTable(students)}
             </Card>
@@ -302,14 +316,14 @@ const UserFormModal: React.FC<{
     allAssignments: Assignment[],
     allGroups: Group[],
     allModules: Module[],
-    activeTab: 'profesores' | 'clientes' | 'alumnos'
+    activeTab: 'profesores' | 'clientes' | 'alumnos' | 'invitaciones'
 }> = ({ user, onClose, onSave, allUsers, allAssignments, allGroups, allModules, activeTab }) => {
     const [formState, setFormState] = useState({
         name: user?.name || '',
         email: user?.email || '',
         // For new users, default to empty profile so admin MUST choose.
         // For existing users, keep their profiles (which might be empty if pending).
-        profiles: user ? user.profiles : (activeTab === 'clientes' ? [Profile.CUSTOMER] : activeTab === 'alumnos' ? [Profile.STUDENT] : []),
+        profiles: user ? user.profiles : (activeTab === 'clientes' ? [Profile.CUSTOMER] : activeTab === 'alumnos' ? [Profile.STUDENT] : [Profile.TEACHER]),
         contract_type: user?.contract_type || 'Fijo',
         role_type: user?.role_type || 'Titular',
         substituting_user_id: user?.substituting_user_id || '',
@@ -392,8 +406,15 @@ const UserFormModal: React.FC<{
         return [Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.SALES_MANAGER];
     }, [activeTab]);
 
+    const modalTitle = useMemo(() => {
+        if (user) return 'Editar Usuario';
+        const target = activeTab as string;
+        if (target === 'invitaciones') return 'Crear Invitación (Pre-registro)';
+        return 'Nuevo Usuario';
+    }, [user, activeTab]);
+
     return (
-        <Modal isOpen={true} onClose={onClose} title={user ? 'Editar Personal' : 'Nuevo Personal'}>
+        <Modal isOpen={true} onClose={onClose} title={modalTitle}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <input type="text" name="name" value={formState.name} onChange={handleChange} placeholder="Nombre y Apellidos" required className="w-full p-2 border rounded dark:bg-gray-700"/>
                 <input type="email" name="email" value={formState.email} onChange={handleChange} placeholder="Email" required className="w-full p-2 border rounded dark:bg-gray-700"/>

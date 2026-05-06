@@ -120,28 +120,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return userData;
     } else {
-      // Create user if it doesn't exist, BUT first check if admin pre-created it based on email
+      // Create user if it doesn't exist, BUT first check if admin pre-created it based on email (Invitation)
       const usersQuery = query(collection(db, 'users'), where('email', '==', userEmail));
       const querySnapshot = await getDocs(usersQuery);
 
       if (!querySnapshot.empty) {
-        // Find if any of the pre-created documents has a temporary ID (like 'user-171...')
-        const oldUserDoc = querySnapshot.docs.find(d => d.id !== firebaseUser.uid);
+        // Find if any of the documents has an invitation ID or is marked as invitation
+        const inviteDoc = querySnapshot.docs.find(d => d.id.startsWith('invite-') || d.id.startsWith('user-') || d.data().isInvitation);
         
-        if (oldUserDoc) {
-          console.log(`Pre-registered user found for email ${userEmail}. Migrating to true UID...`);
-          const oldUserData = oldUserDoc.data() as User;
+        if (inviteDoc) {
+          console.log(`Pre-registered invitation found for ${userEmail}. Activating account...`);
+          const inviteData = inviteDoc.data() as User;
           
           const newUser: User = {
-            ...oldUserData,
+            ...inviteData,
             id: firebaseUser.uid,
-            name: firebaseUser.displayName || oldUserData.name || userEmail.split('@')[0],
-            avatar: firebaseUser.photoURL || oldUserData.avatar,
-            workspaceId: oldUserData.workspaceId || firebaseUser.uid,
-          };
+            name: firebaseUser.displayName || inviteData.name || userEmail.split('@')[0],
+            avatar: firebaseUser.photoURL || inviteData.avatar || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
+            workspaceId: firebaseUser.uid,
+            activity_status: 'Activo', // Always active if activated from invitation
+            isInvitation: false, // Clear the flag if it exists
+          } as any;
           
+          // Remove the temporary flag if I used one
+          delete (newUser as any).isInvitation;
+
           await setDoc(userDocRef, newUser);
-          await deleteDoc(doc(db, 'users', oldUserDoc.id));
+          // Delete the invitation document if the IDs are different
+          if (inviteDoc.id !== firebaseUser.uid) {
+            await deleteDoc(doc(db, 'users', inviteDoc.id));
+          }
           return newUser;
         }
       }

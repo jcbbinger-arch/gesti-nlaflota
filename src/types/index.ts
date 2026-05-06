@@ -101,6 +101,7 @@ export interface User {
   must_change_password?: boolean;
   isMaintainer?: boolean;
   substituting_user_id?: string;
+  isInvitation?: boolean;
 }
 
 export interface Company {
