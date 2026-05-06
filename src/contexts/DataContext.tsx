@@ -216,6 +216,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [currentUser]);
 
+    // Cleanup script for bugged user (pablo.palazon@murciaeduca.es)
+    useEffect(() => {
+        if (!currentUser) return;
+        const targetEmail = 'pablo.palazon@murciaeduca.es';
+        const userToDelete = users.find(u => u.email === targetEmail);
+        if (userToDelete) {
+            console.warn('LIMPIEZA AUTOMÁTICA: Eliminando registro bugueado de:', targetEmail);
+            deleteDoc(doc(db, 'users', userToDelete.id))
+                .then(() => console.log('Registro eliminado con éxito. El usuario puede volver a entrar.'))
+                .catch(err => console.error('Error en limpieza:', err));
+        }
+    }, [users, currentUser]);
+
     const updateCollection = async (collectionName: string, data: any[] | ((prev: any[]) => any[]), currentState: any[]) => {
         const newData = typeof data === 'function' ? data(currentState) : data;
         
