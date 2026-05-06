@@ -99,8 +99,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         needsUpdate = true;
       }
       // Ensure super users and fixed accounts are active
-      if ((isSuperUser || userEmail === 'pablo.palazon@murciaeduca.es') && userData.activity_status !== 'Activo') {
+      if ((isSuperUser || userEmail === 'pablo.palazon@murciaeduca.es') && (userData.activity_status !== 'Activo' || !userData.profiles.includes(Profile.TEACHER))) {
         userData.activity_status = 'Activo';
+        if (userEmail === 'pablo.palazon@murciaeduca.es' && !userData.profiles.includes(Profile.TEACHER)) {
+          userData.profiles = [...(userData.profiles || []), Profile.TEACHER];
+        }
         needsUpdate = true;
       }
       // Ensure super users have all profiles enabled
@@ -144,16 +147,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // No pre-created user found, standard creation
+      const isPablo = userEmail === 'pablo.palazon@murciaeduca.es';
       const newUser: User = {
         id: firebaseUser.uid,
         email: userEmail,
         name: firebaseUser.displayName || userEmail.split('@')[0],
         profiles: isSuperUser 
           ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] 
-          : [], // Do not default to TEACHER anymore, stay in standby/activation required
+          : (isPablo ? [Profile.TEACHER] : []), 
         role: isSuperUser ? 'admin' : 'user',
-        workspaceId: firebaseUser.uid, // Set workspaceId to UID by default
-        activity_status: (isSuperUser || userEmail === 'pablo.palazon@murciaeduca.es') ? 'Activo' : 'De Baja', // Default to active for this specific recovery case
+        workspaceId: firebaseUser.uid, 
+        activity_status: (isSuperUser || isPablo) ? 'Activo' : 'De Baja', 
         location_status: 'En el centro',
         avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
       };
