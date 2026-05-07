@@ -9,7 +9,10 @@ import { Modal } from '../../components/Modal';
 import { useCompany } from '../../contexts/CompanyContext';
 import { calculateIngredientCost, areUnitsCompatible } from '../../lib/unitConverter';
 import { ALLERGENS_LIST, ALLERGEN_ICONS } from '../../lib/allergens';
-import { AlertTriangle } from 'lucide-react';
+import { compressImage } from '../../lib/imageCompression';
+import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal } from 'lucide-react';
+import { AIHubModal } from '../../components/AIHubModal';
+import { AIDigitalizedRecipe } from '../../services/geminiService';
 
 export const AllergenSelector: React.FC<{ selected: string[], onChange: (allergens: string[]) => void }> = ({ selected, onChange }) => {
     return (
@@ -144,6 +147,7 @@ export const RecipeForm: React.FC = () => {
     });
     const [searchTerm, setSearchTerm] = useState('');
     const [showLabelPreview, setShowLabelPreview] = useState(false);
+    const [showAIHub, setShowAIHub] = useState(false);
 
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
@@ -184,11 +188,22 @@ export const RecipeForm: React.FC = () => {
         }
     };
 
-    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
             const reader = new FileReader();
-            reader.onloadend = () => setFormState(prev => ({ ...prev, photo: reader.result as string }));
-            reader.readAsDataURL(e.target.files[0]);
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                try {
+                    // Compress to max 800px width, 70% quality
+                    const compressed = await compressImage(base64, 800, 0.7);
+                    setFormState(prev => ({ ...prev, photo: compressed }));
+                } catch (error) {
+                    console.error("Error compressing image:", error);
+                    setFormState(prev => ({ ...prev, photo: base64 }));
+                }
+            };
+            reader.readAsDataURL(file);
         }
     };
     
@@ -242,6 +257,52 @@ export const RecipeForm: React.FC = () => {
         return Array.from(allergens);
     }, [formState.ingredients, productsMap]);
 
+    const handleAIImport = (aiRecipe: AIDigitalizedRecipe) => {
+        // Try to match ingredients to existing products
+        const importedIngredients: RecipeIngredient[] = [];
+        
+        aiRecipe.ingredients.forEach(aiIng => {
+            const matchingProduct = products.find(p => 
+                p.name.toLowerCase() === aiIng.name.toLowerCase() ||
+                p.name.toLowerCase().includes(aiIng.name.toLowerCase())
+            );
+
+            if (matchingProduct) {
+                const price = matchingProduct.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
+                const cost = calculateIngredientCost(aiIng.quantity, aiIng.unit, price, matchingProduct.unit);
+                importedIngredients.push({
+                    product_id: matchingProduct.id,
+                    quantity: aiIng.quantity,
+                    unit: aiIng.unit,
+                    cost
+                });
+            } else {
+                // If no matching product found, we could potentially log it or handle it
+                // For now, only adding matched products to keep cost integrity as requested by user
+                console.warn(`Product not found: ${aiIng.name}`);
+            }
+        });
+
+        setFormState(prev => ({
+            ...prev,
+            name: aiRecipe.name || prev.name,
+            description: aiRecipe.clientDescription || prev.description,
+            yield_amount: aiRecipe.yieldQuantity || prev.yield_amount,
+            yield_unit: aiRecipe.yieldUnit || prev.yield_unit,
+            category: categories.includes(aiRecipe.category) ? aiRecipe.category : prev.category,
+            preparation_steps: aiRecipe.instructions || prev.preparation_steps,
+            key_points: aiRecipe.notes || prev.key_points,
+            presentation: aiRecipe.presentation || prev.presentation,
+            temperature: aiRecipe.servingTemp || prev.temperature,
+            client_description: aiRecipe.clientDescription || prev.client_description,
+            service_explanation: aiRecipe.serviceExplanation || prev.service_explanation,
+            service_type: aiRecipe.serviceTechnique || prev.service_type,
+            cutlery_required: aiRecipe.cutleryRequired || prev.cutlery_required,
+            service_time: aiRecipe.serviceTime || prev.service_time,
+            ingredients: [...prev.ingredients, ...importedIngredients]
+        }));
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if(!currentUser) return;
@@ -262,49 +323,152 @@ export const RecipeForm: React.FC = () => {
     };
 
     return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">{recipeId ? 'Editar' : 'Nueva'} Ficha de Receta</h1>
+        <div className="max-w-6xl mx-auto">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{recipeId ? 'Editar' : 'Nueva'} Ficha de Receta</h1>
+                <div className="flex space-x-2">
+                    <button 
+                        type="button" 
+                        onClick={() => setShowAIHub(true)}
+                        className="flex items-center px-4 py-2 bg-gradient-to-r from-primary-600 to-indigo-600 text-white rounded-lg text-sm font-black uppercase tracking-widest hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                        <Wand2 className="w-4 h-4 mr-2" /> AI Hub Gastronómico
+                    </button>
+                    <button 
+                        type="button" 
+                        onClick={() => setShowAIHub(true)}
+                        className="flex items-center px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200 transition-colors"
+                    >
+                        <ScanText className="w-4 h-4 mr-2" /> Digitalizar AI
+                    </button>
+                    <button 
+                        type="button" 
+                        onClick={() => setShowAIHub(true)}
+                        className="flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-200 transition-colors"
+                    >
+                        <Sparkles className="w-4 h-4 mr-2" /> Flavor Lab
+                    </button>
+                </div>
+            </div>
+            
             <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Columna Izquierda y Central */}
                     <div className="lg:col-span-2 space-y-6">
-                        <Card>
-                            <div className="flex flex-col md:flex-row gap-6">
-                                <div className="md:w-1/3">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto de la Ficha</label>
-                                    <div className="mt-1 aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                                        {formState.photo ? <img src={formState.photo} alt="Vista previa" className="object-cover w-full h-full rounded-lg"/> : <span className="text-gray-400">Sin foto</span>}
-                                    </div>
-                                    <input type="file" accept="image/*" onChange={handlePhotoChange} className="mt-2 text-sm"/>
-                                </div>
-                                <div className="md:w-2/3 space-y-4">
-                                    <input type="text" placeholder="Nombre de la Ficha" value={formState.name} onChange={handleFormChange} name="name" required className="w-full text-xl font-bold p-2 border-b-2"/>
-                                    <div className="flex gap-4 items-center">
-                                        <input type="number" placeholder="Raciones" value={formState.yield_amount} onChange={handleFormChange} name="yield_amount" min="1" className="w-1/3 p-2 border rounded"/>
-                                        <input type="text" placeholder="Unidad" value={formState.yield_unit} onChange={handleFormChange} name="yield_unit" className="w-1/3 p-2 border rounded"/>
-                                        <div className="w-1/3 flex items-center space-x-2">
-                                            <select 
-                                                name="category" 
-                                                value={formState.category} 
-                                                onChange={handleFormChange} 
-                                                className="flex-1 p-2 border rounded dark:bg-gray-700"
-                                                required
-                                            >
-                                                <option value="">Categoría</option>
-                                                {categories.map(cat => (
-                                                    <option key={cat} value={cat}>{cat}</option>
-                                                ))}
-                                            </select>
-                                            {formState.category && workspaceSettings?.categoryConfigs?.find(c => c.name === formState.category) && (
-                                                <div className="flex -space-x-2">
-                                                    {workspaceSettings.categoryConfigs.find(c => c.name === formState.category)?.colors.map((color, i) => (
-                                                        <div key={i} className="w-4 h-4 rounded-full border border-white shadow-sm" style={{ backgroundColor: color }} />
-                                                    ))}
+                        <Card noPadding>
+                            <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x dark:divide-gray-700">
+                                {/* Foto de la Ficha */}
+                                <div className="md:w-5/12 p-6 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800/50 rounded-l-xl">
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4 self-start">Foto de la Ficha</h3>
+                                    <div className="relative group w-full aspect-square bg-white dark:bg-gray-700 rounded-xl shadow-inner border-2 border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center overflow-hidden transition-all hover:border-primary-400">
+                                        {formState.photo ? (
+                                            <>
+                                                <img src={formState.photo} alt="Vista previa" className="object-cover w-full h-full"/>
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <label className="cursor-pointer bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-white text-xs font-bold hover:bg-white/30 transition-colors">
+                                                        Cambiar Imagen
+                                                        <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden"/>
+                                                    </label>
                                                 </div>
-                                            )}
+                                            </>
+                                        ) : (
+                                            <label className="cursor-pointer flex flex-col items-center p-8 text-center group">
+                                                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-600 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                                    <ImageIcon className="w-8 h-8 text-gray-400" />
+                                                </div>
+                                                <span className="text-sm font-bold text-gray-400">Sin foto</span>
+                                                <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight">Haz clic para subir</span>
+                                                <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden"/>
+                                            </label>
+                                        )}
+                                    </div>
+                                    <div className="mt-4 w-full">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={handlePhotoChange} 
+                                            id="main-photo-upload"
+                                            className="hidden"
+                                        />
+                                        <label 
+                                            htmlFor="main-photo-upload"
+                                            className="block w-full text-center px-4 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 transition-colors cursor-pointer"
+                                        >
+                                            Seleccionar archivo
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                {/* Info Principal */}
+                                <div className="md:w-7/12 p-6 space-y-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Nombre de la Receta</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Nombre de la Ficha" 
+                                                value={formState.name} 
+                                                onChange={handleFormChange} 
+                                                name="name" 
+                                                required 
+                                                className="w-full text-2xl font-black p-0 border-none focus:ring-0 placeholder:text-gray-300 bg-transparent dark:text-white"
+                                            />
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Producción</label>
+                                                <div className="flex items-center space-x-2">
+                                                    <input 
+                                                        type="number" 
+                                                        value={formState.yield_amount || 0} 
+                                                        onChange={handleFormChange} 
+                                                        name="yield_amount" 
+                                                        min="1" 
+                                                        className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Unidad</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="raciones" 
+                                                    value={formState.yield_unit} 
+                                                    onChange={handleFormChange} 
+                                                    name="yield_unit" 
+                                                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold"
+                                                />
+                                            </div>
+                                            <div className="col-span-2 lg:col-span-1">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Categoría</label>
+                                                <select 
+                                                    name="category" 
+                                                    value={formState.category} 
+                                                    onChange={handleFormChange} 
+                                                    className="w-full p-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold appearance-none"
+                                                    required
+                                                >
+                                                    <option value="">Categoría</option>
+                                                    {categories.map(cat => (
+                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Descripción corta</label>
+                                            <textarea 
+                                                placeholder="Describe brevemente el concepto del plato..." 
+                                                value={formState.description} 
+                                                onChange={handleFormChange} 
+                                                name="description" 
+                                                rows={3} 
+                                                className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm placeholder:text-gray-400"
+                                            />
                                         </div>
                                     </div>
-                                    <textarea placeholder="Descripción corta" value={formState.description} onChange={handleFormChange} name="description" rows={2} className="w-full p-2 border rounded" />
                                 </div>
                             </div>
                         </Card>
@@ -330,8 +494,8 @@ export const RecipeForm: React.FC = () => {
                                             <input 
                                                 type="number" 
                                                 step="0.01" 
-                                                value={ing.quantity} 
-                                                onChange={e => handleIngredientChange(index, 'quantity', parseFloat(e.target.value))} 
+                                                value={ing.quantity || 0} 
+                                                onChange={e => handleIngredientChange(index, 'quantity', parseFloat(e.target.value) || 0)} 
                                                 className="col-span-2 p-1 border rounded dark:bg-gray-700"
                                             />
                                             <select 
@@ -367,35 +531,138 @@ export const RecipeForm: React.FC = () => {
                             <textarea placeholder="Pasos detallados de la receta..." value={formState.preparation_steps} onChange={handleFormChange} name="preparation_steps" rows={10} required className="w-full p-2 border rounded" />
                         </Card>
                         
-                        <Card title="Instrucciones de Servicio">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium">Presentación (plato, copa...)</label>
-                                    <input type="text" name="presentation" value={formState.presentation || ''} onChange={handleFormChange} className="mt-1 block w-full p-2 border rounded" />
+                        <Card noPadding>
+                            <div className="bg-[#121421] text-gray-300 p-8 rounded-xl space-y-8 border border-white/5 shadow-2xl">
+                                <div className="flex items-center space-x-3 mb-2 border-b border-white/10 pb-4">
+                                    <div className="p-2 bg-primary-500/20 rounded-lg">
+                                        <ChefHat className="w-8 h-8 text-primary-400" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Ficha de Servicio (SALA)</h2>
+                                        <p className="text-[10px] font-bold text-primary-400 uppercase tracking-widest">Protocolos de pase, servicio y atención al cliente</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium">Temperatura de Servicio</label>
-                                    <select name="temperature" value={formState.temperature || 'Caliente'} onChange={handleFormChange} className="mt-1 block w-full p-2 border rounded">
-                                        <option value="Caliente">Caliente</option>
-                                        <option value="Frio">Frío</option>
-                                        <option value="Ambiente">Ambiente</option>
-                                    </select>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Izquierda: Comunicación y Protocolo */}
+                                    <div className="space-y-8">
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-2 text-amber-400">
+                                                <AlertTriangle className="w-4 h-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Explicación sugerente del plato</h4>
+                                            </div>
+                                            <textarea 
+                                                name="service_explanation"
+                                                value={formState.service_explanation || ''}
+                                                onChange={handleFormChange}
+                                                placeholder="Describe cómo se le debe presentar el plato al cliente..."
+                                                className="w-full h-32 bg-white/5 border border-white/10 rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary-500/50 transition-all resize-none"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Protocolo de Servicio</h4>
+                                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                                                {['AMERICANA', 'INGLESA', 'FRANCESA', 'GUERIDÓN', 'PLAT DE MILIEU', 'BUFFET', 'SIN SERVICIO'].map(tech => (
+                                                    <button
+                                                        key={tech}
+                                                        type="button"
+                                                        onClick={() => setFormState(prev => ({ ...prev, service_type: tech }))}
+                                                        className={`py-3 px-2 text-[10px] font-black rounded-lg transition-all border ${formState.service_type === tech ? 'bg-primary-500 border-primary-400 text-white shadow-lg shadow-primary-500/20' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+                                                    >
+                                                        {tech}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                                                <div className="flex items-center space-x-2 text-primary-400 mb-1">
+                                                    <ScanText className="w-3 h-3" />
+                                                    <span className="text-[10px] font-bold uppercase">Definición del Protocolo</span>
+                                                </div>
+                                                <p className="text-xs italic opacity-60">
+                                                    {formState.service_type === 'AMERICANA' && 'Práctico, rápido, plato montado en cocina.'}
+                                                    {formState.service_type === 'INGLESA' && 'Servicio desde fuente a plato por la izquierda.'}
+                                                    {formState.service_type === 'FRANCESA' && 'El cliente se sirve de la fuente que el camarero presenta.'}
+                                                    {formState.service_type === 'GUERIDÓN' && 'Trinchado o emplatado frente al cliente.'}
+                                                    {!formState.service_type && 'Selecciona una técnica para ver el protocolo.'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Derecha: Temperatura y Cubertería */}
+                                    <div className="space-y-8">
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-2 text-indigo-400">
+                                                <Terminal className="w-4 h-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Temperatura de Pase</h4>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['CARNES/PESCADOS', 'SOPAS/CREMAS', 'GUISOS/ARROCES', 'FRÍOS', 'HELADOS'].map(temp => (
+                                                    <button
+                                                        key={temp}
+                                                        type="button"
+                                                        onClick={() => setFormState(prev => ({ ...prev, temperature: temp }))}
+                                                        className="py-1 px-3 text-[8px] font-bold rounded-full bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all uppercase tracking-tighter"
+                                                    >
+                                                        {temp}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <input 
+                                                type="text"
+                                                name="temperature"
+                                                value={formState.temperature || ''}
+                                                onChange={handleFormChange}
+                                                placeholder="EJ: 60-65 °C"
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm font-mono text-primary-400 focus:ring-2 focus:ring-primary-500/50 transition-all uppercase"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-2 text-emerald-400">
+                                                <Wand2 className="w-4 h-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Marcaje y Cubertería</h4>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['ENTREMESES', 'TRINCHEROS', 'OSTRAS', 'CAVIAR', 'SOPERA', 'PESCADO', 'MARISCO', 'POSTRE', 'FRUTA'].map(cut => (
+                                                    <button
+                                                        key={cut}
+                                                        type="button"
+                                                        onClick={() => setFormState(prev => ({ ...prev, cutlery_required: prev.cutlery_required ? `${prev.cutlery_required} + ${cut}` : cut }))}
+                                                        className="py-1 px-3 text-[8px] font-bold rounded-full bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all uppercase"
+                                                    >
+                                                        {cut}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <textarea 
+                                                name="cutlery_required"
+                                                value={formState.cutlery_required || ''}
+                                                onChange={handleFormChange}
+                                                placeholder="EJ: TENEDOR TRINCHERO + CUCHILLO..."
+                                                className="w-full h-24 bg-white/5 border border-white/10 rounded-xl p-4 text-sm font-mono text-emerald-400 focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none uppercase"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium">Marcaje Recomendado</label>
-                                    <input type="text" name="recommended_marking" value={formState.recommended_marking || ''} onChange={handleFormChange} className="mt-1 block w-full p-2 border rounded" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium">Tiempo de Pase</label>
-                                    <input type="text" name="service_time" value={formState.service_time || ''} placeholder="Ej: 5 min" onChange={handleFormChange} className="mt-1 block w-full p-2 border rounded" />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium">Tipo de Servicio</label>
-                                    <input type="text" name="service_type" value={formState.service_type || ''} placeholder="Inglesa, salseado, terminado en sala..." onChange={handleFormChange} className="mt-1 block w-full p-2 border rounded" />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium">Breve Descripción para el Cliente</label>
-                                    <textarea name="client_description" value={formState.client_description || ''} rows={3} onChange={handleFormChange} className="mt-1 block w-full p-2 border rounded" />
+
+                                <div className="space-y-4 pt-8 border-t border-white/10">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Instrucciones de Emplatado y Acabado Final</h4>
+                                        <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[8px] font-black text-gray-500 uppercase tracking-widest">
+                                            Alérgenos Extra (0)
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <textarea 
+                                            name="presentation"
+                                            value={formState.presentation || ''}
+                                            onChange={handleFormChange}
+                                            placeholder="Describe el paso final antes del pase..."
+                                            className="w-full h-40 bg-white/5 border-2 border-dashed border-white/10 rounded-2xl p-6 text-sm italic opacity-80 focus:ring-0 focus:border-primary-500/50 transition-all resize-none"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </Card>
@@ -423,7 +690,7 @@ export const RecipeForm: React.FC = () => {
                                 </div>
                                 <div>
                                     <label>Precio de Venta</label>
-                                    <input type="number" step="0.01" placeholder="Precio" value={formState.price} onChange={handleFormChange} name="price" required className="w-full mt-1 p-2 border rounded"/>
+                                    <input type="number" step="0.01" placeholder="Precio" value={formState.price || 0} onChange={handleFormChange} name="price" required className="w-full mt-1 p-2 border rounded"/>
                                 </div>
                                 <div className="border-t pt-4">
                                     <h4 className="font-semibold mb-2">Seleccionar Alérgenos</h4>
@@ -460,6 +727,7 @@ export const RecipeForm: React.FC = () => {
                 </div>
             </form>
             {showLabelPreview && <LabelPreviewModal recipe={formState as Recipe} company={companyInfo} onClose={() => setShowLabelPreview(false)} />}
+            <AIHubModal isOpen={showAIHub} onClose={() => setShowAIHub(false)} onImport={handleAIImport} />
         </div>
     );
 };

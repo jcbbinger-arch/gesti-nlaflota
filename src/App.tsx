@@ -107,9 +107,12 @@ const AppContent: React.FC = () => {
                           target.name.toLowerCase().includes('precio') ||
                           target.name.toLowerCase().includes('cantidad') ||
                           target.name.toLowerCase().includes('cost') ||
+                          target.name.toLowerCase().includes('yield') ||
+                          target.name.toLowerCase().includes('amount') ||
                           target.name.toLowerCase().includes(' rations') ||
                           target.placeholder?.toLowerCase().includes('precio') ||
-                          target.placeholder?.toLowerCase().includes('cantidad');
+                          target.placeholder?.toLowerCase().includes('cantidad') ||
+                          target.placeholder?.toLowerCase().includes('raciones');
 
         if (isNumeric) {
           // If it's type="number", browsers in ES locale might block '.'

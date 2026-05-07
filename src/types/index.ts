@@ -285,11 +285,14 @@ export interface Recipe {
         content: string;
     };
     presentation?: string;
-    temperature?: 'Caliente' | 'Frio' | 'Ambiente';
+    temperature?: string;
     recommended_marking?: string;
     service_type?: string;
     client_description?: string;
     service_time?: string;
+    service_explanation?: string;
+    cutlery_required?: string;
+    service_checklist?: string[];
     selected_allergens?: string[];
 }
 
