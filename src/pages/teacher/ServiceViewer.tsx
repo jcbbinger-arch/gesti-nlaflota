@@ -8,7 +8,7 @@ import { PlusIcon, TrashIcon, PrinterIcon } from '../../components/icons';
 import { useNavigate } from 'react-router-dom';
 import { addHeaderToPdf } from '../../utils/export';
 import { useCompany } from '../../contexts/CompanyContext';
-import { ALLERGENS_LIST, ALLERGEN_ICONS } from '../../lib/allergens';
+import { ALLERGENS_LIST, ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -420,20 +420,26 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                         {ALLERGENS_LIST.map(allergen => {
                             const isSelected = selectedAllergens.includes(allergen);
-                            const icon = (ALLERGEN_ICONS as any)[allergen];
+                            const Icon = ALLERGEN_ICONS[allergen];
+                            const color = ALLERGEN_COLORS[allergen];
                             return (
                                 <button
                                     key={allergen}
                                     type="button"
                                     onClick={() => toggleAllergen(allergen)}
-                                    className={`flex items-center space-x-2 p-2 rounded border text-left transition-colors ${
+                                    className={`flex items-center space-x-2 p-2 rounded-lg border transition-all ${
                                         isSelected 
-                                            ? 'bg-red-50 border-red-200 text-red-700' 
-                                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                                            ? 'bg-white border-primary-500 shadow-sm' 
+                                            : 'bg-gray-50 border-gray-200 opacity-60 grayscale'
                                     }`}
                                 >
-                                    <span className="text-lg">{icon}</span>
-                                    <span className="text-xs font-medium truncate">{allergen}</span>
+                                    <div 
+                                        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                                        style={{ backgroundColor: isSelected ? color : '#9ca3af' }}
+                                    >
+                                        <Icon className="w-4 h-4 text-white" />
+                                    </div>
+                                    <span className="text-[10px] font-bold truncate">{allergen}</span>
                                 </button>
                             );
                         })}

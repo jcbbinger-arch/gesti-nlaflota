@@ -4,7 +4,7 @@ import { db } from '../../firebase';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Reservation, SaleItem } from '../../types';
-import { ALLERGEN_ICONS } from '../../lib/allergens';
+import { ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
 import { AlertTriangle, Calendar, Clock, User as UserIcon, ShoppingCart, X, Plus, Minus, ClipboardList } from 'lucide-react';
 import { Modal } from '../../components/Modal';
 import { AllergenSelector } from '../teacher/RecipeForm';
@@ -238,10 +238,14 @@ export const TakeawayCatalog: React.FC = () => {
                                                 <div className="flex flex-wrap gap-1">
                                                     {item.allergens.length > 0 ? item.allergens.map(allergen => {
                                                         const Icon = ALLERGEN_ICONS[allergen] || AlertTriangle;
+                                                        const color = ALLERGEN_COLORS[allergen];
                                                         return (
                                                             <div key={allergen} className="group relative flex flex-col items-center" title={allergen}>
-                                                                <div className="p-1 bg-gray-50 dark:bg-gray-700 rounded-md group-hover:bg-primary-50 dark:group-hover:bg-primary-900 transition-colors">
-                                                                    <Icon className="w-3 h-3 text-gray-600 dark:text-gray-300 group-hover:text-primary-600" />
+                                                                <div 
+                                                                    className="p-1 rounded-full border border-white dark:border-gray-800 shadow-sm"
+                                                                    style={{ backgroundColor: color }}
+                                                                >
+                                                                    <Icon className="w-3 h-3 text-white" />
                                                                 </div>
                                                             </div>
                                                         );

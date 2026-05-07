@@ -8,7 +8,8 @@ import { PlusIcon, TrashIcon, PrinterIcon } from '../../components/icons';
 import { Modal } from '../../components/Modal';
 import { useCompany } from '../../contexts/CompanyContext';
 import { calculateIngredientCost, areUnitsCompatible } from '../../lib/unitConverter';
-import { ALLERGENS_LIST, ALLERGEN_ICONS } from '../../lib/allergens';
+import { ALLERGENS_LIST, ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
+import { AllergensControl } from '../../components/AllergensControl';
 import { compressImage } from '../../lib/imageCompression';
 import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal } from 'lucide-react';
 import { AIHubModal } from '../../components/AIHubModal';
@@ -16,19 +17,25 @@ import { AIDigitalizedRecipe } from '../../services/geminiService';
 
 export const AllergenSelector: React.FC<{ selected: string[], onChange: (allergens: string[]) => void }> = ({ selected, onChange }) => {
     return (
-        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-4">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-3">
             {ALLERGENS_LIST.map(allergen => {
                 const Icon = ALLERGEN_ICONS[allergen] || AlertTriangle;
+                const color = ALLERGEN_COLORS[allergen];
                 const isSelected = selected.includes(allergen);
                 return (
                     <button
                         key={allergen}
                         type="button"
                         onClick={() => onChange(isSelected ? selected.filter(a => a !== allergen) : [...selected, allergen])}
-                        className={`flex flex-col items-center p-2 rounded-lg border-2 ${isSelected ? 'bg-primary-100 border-primary-500' : 'bg-gray-50 border-gray-200'}`}
+                        className={`flex flex-col items-center p-2 rounded-xl border-2 transition-all group ${isSelected ? 'border-primary-500 bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-700 border-transparent opacity-50'}`}
                     >
-                        <Icon className="w-8 h-8 mb-1" />
-                        <span className="text-xs text-center">{allergen}</span>
+                        <div 
+                            className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 shadow-sm transition-transform group-hover:scale-110 ${!isSelected ? 'grayscale opacity-50' : ''}`}
+                            style={{ backgroundColor: isSelected ? color : '#9ca3af' }}
+                        >
+                            <Icon className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="text-[8px] font-black uppercase text-center text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-white truncate w-full">{allergen}</span>
                     </button>
                 );
             })}
@@ -752,10 +759,13 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                     <div className="flex justify-between items-center">
                                         <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Instrucciones de Emplatado y Acabado Final</h4>
                                         <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[8px] font-black text-gray-500 uppercase tracking-widest">
-                                            Alérgenos Extra (0)
+                                            Alérgenos Detectados ({allAllergens.length})
                                         </div>
                                     </div>
-                                    <div className="relative">
+                                    
+                                    <AllergensControl selected={allAllergens} />
+
+                                    <div className="relative mt-4">
                                         <textarea 
                                             name="presentation"
                                             value={formState.presentation || ''}
@@ -804,7 +814,20 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                     <h4 className="font-semibold mb-2">Alérgenos Detectados (Ingredientes)</h4>
                                     {allAllergens.length > 0 ? (
                                         <div className="flex flex-wrap gap-2">
-                                            {allAllergens.map(a => <span key={a} className="bg-yellow-200 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full">{a}</span>)}
+                                            {allAllergens.map(a => {
+                                                const Icon = ALLERGEN_ICONS[a] || AlertTriangle;
+                                                const color = ALLERGEN_COLORS[a];
+                                                return (
+                                                    <div key={a} className="group relative flex flex-col items-center" title={a}>
+                                                        <div 
+                                                            className="w-8 h-8 rounded-full flex items-center justify-center border border-white dark:border-gray-800 shadow-sm"
+                                                            style={{ backgroundColor: color }}
+                                                        >
+                                                            <Icon className="w-4 h-4 text-white" />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     ) : <p className="text-sm text-gray-500">Sin alérgenos detectados.</p>}
                                 </div>
