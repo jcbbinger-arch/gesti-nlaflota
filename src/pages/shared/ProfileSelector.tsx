@@ -68,12 +68,14 @@ export const ProfileSelector: React.FC = () => {
         <p className="text-gray-600 dark:text-gray-400 mt-2">Por favor, selecciona un perfil para continuar.</p>
       </div>
       <div className="mt-8 flex flex-wrap justify-center gap-4">
-        {[Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.STUDENT, Profile.SALES_MANAGER].map((profile) => {
+        {[Profile.CREATOR, Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.STUDENT, Profile.SALES_MANAGER, Profile.CUSTOMER].map((profile) => {
           const hasProfile = currentUser.profiles.includes(profile);
           // access_profiles is deprecated, rely on profiles and activity_status
           const isEnabled = true; 
           
           if (!hasProfile) return null;
+
+          const isCreator = profile === Profile.CREATOR;
 
           return (
             <button
@@ -88,7 +90,9 @@ export const ProfileSelector: React.FC = () => {
               }}
               className={`px-8 py-4 font-semibold rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 ${
                 isEnabled 
-                  ? 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 hover:bg-primary-500 hover:text-white' 
+                  ? (isCreator 
+                      ? 'bg-red-600 text-white hover:bg-red-700' 
+                      : 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 hover:bg-primary-500 hover:text-white')
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
               }`}
             >

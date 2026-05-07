@@ -268,30 +268,30 @@ export const TeacherDashboard: React.FC = () => {
 
                     <Card title="Análisis de Mis Gastos" icon={<ChartIcon className="w-8 h-8"/>}>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50 text-center shadow-sm">
+                            <div className="p-4 rounded-xl bg-white dark:bg-gray-800 border-t-4 border-gray-400 text-center shadow-sm">
                                 <p className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1">Gasto Total</p>
                                 <p className="text-2xl font-black text-gray-800 dark:text-gray-200">{myTotalSpend.toFixed(2)}€</p>
                             </div>
                             <div 
                                 onClick={() => handleOpenDetail('Regular')}
-                                className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 text-center shadow-sm cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                                className="p-4 rounded-xl bg-white dark:bg-gray-800 border-t-4 border-blue-500 text-center shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all hover:scale-[1.02] active:scale-95 group"
                             >
                                 <p className="text-[11px] text-blue-600 dark:text-blue-400 uppercase font-bold tracking-wider mb-1 whitespace-nowrap overflow-hidden text-ellipsis px-1 group-hover:text-blue-700" title="Módulos (Regular)">Módulos (Reg.)</p>
                                 <p className="text-2xl font-black text-blue-700 dark:text-blue-300">{ (spendByType['Regular'] || 0).toFixed(2) }€</p>
                             </div>
                             <div 
                                 onClick={() => handleOpenDetail('Servicio')}
-                                className="p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800/50 text-center shadow-sm cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                                className="p-4 rounded-xl bg-white dark:bg-gray-800 border-t-4 border-emerald-500 text-center shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all hover:scale-[1.02] active:scale-95 group"
                             >
-                                <p className="text-[11px] text-green-600 dark:text-green-400 uppercase font-bold tracking-wider mb-1 group-hover:text-green-700">Servicios</p>
-                                <p className="text-2xl font-black text-green-700 dark:text-green-300">{ (spendByType['Servicio'] || 0).toFixed(2) }€</p>
+                                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 uppercase font-bold tracking-wider mb-1 group-hover:text-emerald-700">Servicios</p>
+                                <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300">{ (spendByType['Servicio'] || 0).toFixed(2) }€</p>
                             </div>
                             <div 
                                 onClick={() => handleOpenDetail('Extraordinario')}
-                                className="p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/50 text-center shadow-sm cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                                className="p-4 rounded-xl bg-white dark:bg-gray-800 border-t-4 border-rose-500 text-center shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all hover:scale-[1.02] active:scale-95 group"
                             >
-                                <p className="text-[11px] text-red-600 dark:text-red-400 uppercase font-bold tracking-wider mb-1 group-hover:text-red-700">Extraord.</p>
-                                <p className="text-2xl font-black text-red-700 dark:text-red-300">{ (spendByType['Extraordinario'] || 0).toFixed(2) }€</p>
+                                <p className="text-[11px] text-rose-600 dark:text-rose-400 uppercase font-bold tracking-wider mb-1 group-hover:text-rose-700">Extraord.</p>
+                                <p className="text-2xl font-black text-rose-700 dark:text-rose-300">{ (spendByType['Extraordinario'] || 0).toFixed(2) }€</p>
                             </div>
                         </div>
                     </Card>

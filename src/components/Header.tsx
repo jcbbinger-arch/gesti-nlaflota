@@ -44,6 +44,23 @@ export const Header: React.FC = () => {
 
   const academicYearLabel = currentYear ? currentYear.name : 'Cargando...';
 
+  const getProfileTheme = (profile: Profile | null) => {
+    switch (profile) {
+      case Profile.CREATOR:
+        return { bg: 'bg-red-600', hover: 'hover:bg-red-700', text: 'text-red-600' };
+      case Profile.ADMIN:
+        return { bg: 'bg-amber-500', hover: 'hover:bg-amber-600', text: 'text-amber-600' };
+      case Profile.ALMACEN:
+        return { bg: 'bg-emerald-600', hover: 'hover:bg-emerald-700', text: 'text-emerald-600' };
+      case Profile.SALES_MANAGER:
+        return { bg: 'bg-purple-600', hover: 'hover:bg-purple-700', text: 'text-purple-600' };
+      default:
+        return { bg: 'bg-indigo-600', hover: 'hover:bg-indigo-500', text: 'text-gray-500' };
+    }
+  };
+
+  const currentTheme = getProfileTheme(selectedProfile);
+
   if (!currentUser) return null;
 
   return (
@@ -74,7 +91,7 @@ export const Header: React.FC = () => {
               <div className="relative">
                 <button 
                   onClick={() => setIsYearSwitcherOpen(!isYearSwitcherOpen)}
-                  className="hidden lg:flex items-center bg-indigo-600 text-white font-bold text-sm py-2 px-4 rounded-lg shadow hover:bg-indigo-500 transition-colors"
+                  className={`hidden lg:flex items-center text-white font-bold text-sm py-2 px-4 rounded-lg shadow transition-colors ${currentTheme.bg} ${currentTheme.hover}`}
                 >
                     <span>{academicYearLabel}</span>
                     {academic_years.length > 1 && <ChevronDownIcon className="w-4 h-4 ml-2" />}
@@ -87,7 +104,7 @@ export const Header: React.FC = () => {
                       <button
                         key={year.id}
                         onClick={() => { setSelectedYearId(year.id); setIsYearSwitcherOpen(false); }}
-                        className={`block w-full text-left px-4 py-2 text-xs font-semibold ${selectedYearId === year.id ? 'bg-indigo-600 text-white' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
+                        className={`block w-full text-left px-4 py-2 text-xs font-semibold ${selectedYearId === year.id ? `${currentTheme.bg} text-white` : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
                       >
                         <div className="flex items-center justify-between">
                           <span>{year.name}</span>
@@ -98,13 +115,13 @@ export const Header: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="flex items-center space-x-2 bg-indigo-600 text-white font-bold text-sm py-2 px-3 rounded-lg shadow overflow-hidden max-w-[150px] sm:max-w-[200px]">
+              <div className={`flex items-center text-white font-bold text-sm py-2 px-3 rounded-lg shadow overflow-hidden max-w-[150px] sm:max-w-[200px] ${currentTheme.bg}`}>
                   {currentUser.instituteLogo ? (
                       <img src={currentUser.instituteLogo} alt={currentUser.instituteName} className="h-5 w-auto" />
                   ) : (
                       <img src={companyInfo.logo} alt="Logo de la Empresa" className="h-5 w-auto" />
                   )}
-                  <span className="truncate">{currentUser.instituteName || companyInfo.name}</span>
+                  <span className="truncate ml-2">{currentUser.instituteName || companyInfo.name}</span>
               </div>
           </div>
           
@@ -112,7 +129,7 @@ export const Header: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setIsProfileSwitcherOpen(!isProfileSwitcherOpen)}
-                className="flex items-center text-xs font-semibold bg-indigo-600 text-white px-3 py-1.5 rounded-lg shadow space-x-1 hover:bg-indigo-500 transition-colors"
+                className={`flex items-center text-xs font-semibold px-3 py-1.5 rounded-lg shadow space-x-1 transition-colors text-white ${currentTheme.bg} ${currentTheme.hover}`}
               >
                 <span className="truncate max-w-[80px]">{selectedProfile ? getProfileDisplayName(selectedProfile) : 'Seleccionar'}</span>
                 {currentUser.profiles.length > 1 && <ChevronDownIcon className="w-3 h-3" />}
@@ -120,15 +137,24 @@ export const Header: React.FC = () => {
               
               {isProfileSwitcherOpen && currentUser.profiles.length > 1 && (
                 <div className="absolute top-full left-0 mt-2 w-40 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-600">
-                  {currentUser.profiles.map((profile) => (
-                    <button
-                      key={profile}
-                      onClick={() => { selectProfile(profile); setIsProfileSwitcherOpen(false); }}
-                      className={`block w-full text-left px-4 py-2 text-xs font-semibold ${selectedProfile === profile ? 'bg-indigo-600 text-white' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
-                    >
-                      {getProfileDisplayName(profile)}
-                    </button>
-                  ))}
+                  {currentUser.profiles.map((profile) => {
+                    const profileTheme = getProfileTheme(profile);
+                    const isActive = selectedProfile === profile;
+                    
+                    return (
+                      <button
+                        key={profile}
+                        onClick={() => { selectProfile(profile); setIsProfileSwitcherOpen(false); }}
+                        className={`block w-full text-left px-4 py-2 text-xs font-semibold ${
+                            isActive 
+                                ? `${profileTheme.bg} text-white` 
+                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        {getProfileDisplayName(profile)}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -139,7 +165,7 @@ export const Header: React.FC = () => {
         {/* Messages Notification Icon */}
         <button 
           onClick={() => navigate(`/${selectedProfile}/messaging`)}
-          className="relative p-2 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors"
+          className={`relative p-2 transition-colors ${currentTheme.text.startsWith('text-gray') ? 'text-gray-500 hover:text-indigo-600 dark:text-gray-400' : `${currentTheme.text} hover:opacity-80`}`}
           title="Mensajería"
         >
           <MessageIcon className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -158,7 +184,7 @@ export const Header: React.FC = () => {
             <Avatar user={currentUser} className="w-8 h-8 sm:w-10 sm:h-10" />
             <div className="text-left hidden sm:block">
               <p className="font-semibold text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-tight">{currentUser.teacherName || currentUser.name}</p>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
+              <p className={`text-[10px] uppercase tracking-wider font-bold ${currentTheme.text}`}>
                   {selectedProfile ? getProfileDisplayName(selectedProfile) : ''}
               </p>
             </div>

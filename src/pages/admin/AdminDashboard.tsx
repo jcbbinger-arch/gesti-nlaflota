@@ -198,21 +198,21 @@ export const AdminDashboard: React.FC = () => {
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div 
                     onClick={() => handleOpenDetail('Regular')}
-                    className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                    className="p-4 rounded-xl bg-white dark:bg-gray-800 border-t-4 border-blue-500 shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all hover:scale-[1.02] active:scale-95 group"
                   >
                      <p className="text-[10px] text-blue-600 uppercase font-black mb-1 group-hover:text-blue-700">Módulos (Reg.)</p>
                      <p className="text-2xl font-black text-blue-700 dark:text-blue-300">{(spendByType['Regular'] || 0).toFixed(2)}€</p>
                   </div>
                   <div 
                     onClick={() => handleOpenDetail('Servicio')}
-                    className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                    className="p-4 rounded-xl bg-white dark:bg-gray-800 border-t-4 border-emerald-500 shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all hover:scale-[1.02] active:scale-95 group"
                   >
                      <p className="text-[10px] text-emerald-600 uppercase font-black mb-1 group-hover:text-emerald-700">Servicios</p>
                      <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300">{(spendByType['Servicio'] || 0).toFixed(2)}€</p>
                   </div>
                   <div 
                     onClick={() => handleOpenDetail('Extraordinario')}
-                    className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/50 cursor-pointer hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                    className="p-4 rounded-xl bg-white dark:bg-gray-800 border-t-4 border-rose-500 shadow-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all hover:scale-[1.02] active:scale-95 group"
                   >
                      <p className="text-[10px] text-rose-600 uppercase font-black mb-1 group-hover:text-rose-700">Extraord.</p>
                      <p className="text-2xl font-black text-rose-700 dark:text-rose-300">{(spendByType['Extraordinario'] || 0).toFixed(2)}€</p>
