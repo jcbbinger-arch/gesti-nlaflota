@@ -17,77 +17,82 @@ type AggregatedProduct = {
     orders: { order: Order; item: OrderItem }[];
 }
 
-// Main Component
-export const ProcessOrders: React.FC = () => {
-    const { eventId } = useParams<{ eventId: string }>();
+// Selection component when no eventId is provided
+const EventSelectionList: React.FC = () => {
     const { events, orders } = useData();
     const now = new Date();
 
-    // View to select an event if no eventId is in the URL
-    if (!eventId) {
-        const processableEvents = useMemo(() => {
-            const eventStatusMap = new Map<string, { orderCount: number; status: 'Procesado' | 'Enviado' }>();
-            orders.forEach(o => {
-                if (o.status === 'Enviado' || o.status === 'Procesado') {
-                    if (!eventStatusMap.has(o.event_id)) {
-                        eventStatusMap.set(o.event_id, { orderCount: 0, status: 'Enviado' });
-                    }
-                    const info = eventStatusMap.get(o.event_id)!;
-                    info.orderCount++;
-                    if (o.status === 'Procesado') info.status = 'Procesado';
+    const processableEvents = useMemo(() => {
+        const eventStatusMap = new Map<string, { orderCount: number; status: 'Procesado' | 'Enviado' }>();
+        orders.forEach(o => {
+            if (o.status === 'Enviado' || o.status === 'Procesado') {
+                if (!eventStatusMap.has(o.event_id)) {
+                    eventStatusMap.set(o.event_id, { orderCount: 0, status: 'Enviado' });
                 }
-            });
-            const processable = events
-                .filter(e => eventStatusMap.has(e.id))
-                .map(e => ({ 
-                    id: e.id,
-                    name: e.name,
-                    start_date: e.start_date,
-                    end_date: e.end_date,
-                    ...eventStatusMap.get(e.id)! 
-                }));
-            
-            if (eventStatusMap.has('STAFF_MEAL_EVENT')) {
-                processable.push({
-                    id: 'STAFF_MEAL_EVENT',
-                    name: 'Comidas de Familia',
-                    start_date: new Date().toISOString(),
-                    end_date: new Date().toISOString(),
-                    ...eventStatusMap.get('STAFF_MEAL_EVENT')!
-                });
+                const info = eventStatusMap.get(o.event_id)!;
+                info.orderCount++;
+                if (o.status === 'Procesado') info.status = 'Procesado';
             }
-            return processable;
-        }, [events, orders]);
+        });
+        const processable = events
+            .filter(e => eventStatusMap.has(e.id))
+            .map(e => ({ 
+                id: e.id,
+                name: e.name,
+                start_date: e.start_date,
+                end_date: e.end_date,
+                ...eventStatusMap.get(e.id)! 
+            }));
+        
+        if (eventStatusMap.has('STAFF_MEAL_EVENT')) {
+            processable.push({
+                id: 'STAFF_MEAL_EVENT',
+                name: 'Comidas de Familia',
+                start_date: new Date().toISOString(),
+                end_date: new Date().toISOString(),
+                ...eventStatusMap.get('STAFF_MEAL_EVENT')!
+            });
+        }
+        return processable;
+    }, [events, orders]);
 
-        return (
-            <div>
-                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Procesar Pedido General</h1>
-                 <Card title="Selecciona un Evento para Procesar">
-                     <div className="space-y-3">
-                        {processableEvents.length > 0 ? processableEvents.map(e => {
-                            const isEventOpen = new Date(e.start_date) <= now && new Date(e.end_date) >= now;
-                            return (
-                            <Link to={`/almacen/process-orders/${e.id}`} key={e.id} className="block p-4 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <p className="font-bold">{e.name}</p>
-                                        <p className="text-sm">{e.orderCount} pedidos de profesores</p>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${isEventOpen ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                                            {isEventOpen ? 'Abierto' : 'Cerrado'}
-                                        </span>
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${e.status === 'Enviado' ? 'bg-yellow-200 text-yellow-800' : 'bg-blue-200 text-blue-800'}`}>
-                                            {e.status === 'Enviado' ? 'Pendiente' : 'Procesado'}
-                                        </span>
-                                    </div>
+    return (
+        <div>
+             <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Procesar Pedido General</h1>
+             <Card title="Selecciona un Evento para Procesar">
+                 <div className="space-y-3">
+                    {processableEvents.length > 0 ? processableEvents.map(e => {
+                        const isEventOpen = new Date(e.start_date) <= now && new Date(e.end_date) >= now;
+                        return (
+                        <Link to={`/almacen/process-orders/${e.id}`} key={e.id} className="block p-4 bg-gray-50 dark:bg-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-bold">{e.name}</p>
+                                    <p className="text-sm">{e.orderCount} pedidos de profesores</p>
                                 </div>
-                            </Link>
-                        )}) : <p>No hay eventos con pedidos pendientes de procesar.</p>}
-                     </div>
-                 </Card>
-            </div>
-        );
+                                <div className="flex items-center space-x-2">
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${isEventOpen ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                                        {isEventOpen ? 'Abierto' : 'Cerrado'}
+                                    </span>
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${e.status === 'Enviado' ? 'bg-yellow-200 text-yellow-800' : 'bg-blue-200 text-blue-800'}`}>
+                                        {e.status === 'Enviado' ? 'Pendiente' : 'Procesado'}
+                                    </span>
+                                </div>
+                            </div>
+                        </Link>
+                    )}) : <p>No hay eventos con pedidos pendientes de procesar.</p>}
+                 </div>
+             </Card>
+        </div>
+    );
+};
+
+// Main Component
+export const ProcessOrders: React.FC = () => {
+    const { eventId } = useParams<{ eventId: string }>();
+
+    if (!eventId) {
+        return <EventSelectionList />;
     }
     
     // Detailed view for a specific event

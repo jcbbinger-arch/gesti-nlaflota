@@ -16,12 +16,15 @@ const StatCard: React.FC<{ title: string; value: string; }> = ({ title, value })
 );
 
 export const ExpenseManager: React.FC = () => {
-    const { orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock, transfers, events } = useData();
+    const { 
+        orders, sales, users, assignments, groups, modules, training_cycles, 
+        suppliers, products, mini_economato_stock, transfers, events,
+        sale_items, reservations, dining_reservations, dining_services, services: allServices
+    } = useData();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [eventTypeFilter, setEventTypeFilter] = React.useState<'all' | 'Servicio' | 'Extraordinario'>('all');
 
     const analysisData = useMemo(() => {
-        const { sale_items, reservations, dining_reservations, dining_services, services: allServices } = useData();
         const teachers = users.filter(u => 
             u.profiles.includes(Profile.TEACHER) && 
             !u.profiles.includes(Profile.ALMACEN) &&
@@ -241,7 +244,7 @@ export const ExpenseManager: React.FC = () => {
                 })
                 .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         };
-    }, [orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock, transfers, events, searchTerm, eventTypeFilter]);
+    }, [orders, sales, users, assignments, groups, modules, training_cycles, suppliers, products, mini_economato_stock, transfers, events, searchTerm, eventTypeFilter, sale_items, reservations, dining_reservations, dining_services, allServices]);
 
     const currentDateString = new Date().toLocaleDateString('es-ES', { 
         weekday: 'long', 

@@ -49,7 +49,7 @@ Este mensaje ha sido generado automáticamente.
 
 
 export const RecipeManager: React.FC = () => {
-    const { recipes, setRecipes, users, messages, setMessages } = useData();
+    const { recipes, setRecipes, users, messages, setMessages, products } = useData();
     const { currentUser, isOwner } = useAuth();
     const navigate = useNavigate();
 
@@ -59,9 +59,8 @@ export const RecipeManager: React.FC = () => {
 
     const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
     const productsMap = useMemo(() => {
-        const { products } = useData(); // Get latest products
         return new Map(products.map(p => [p.id, p]));
-    }, [useData().products]);
+    }, [products]);
 
     const filteredRecipes = useMemo(() => {
         if (!searchTerm) return recipes;

@@ -16,7 +16,11 @@ const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', '
 
 // --- DETAIL VIEW COMPONENT ---
 const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({ service, onBack }) => {
-    const { services, setServices, service_groups, users, recipes, setRecipes, products, setOrders, events } = useData();
+    const { 
+        services, setServices, service_groups, users, recipes, setRecipes, products, setOrders, events,
+        orders: allOrders, transfers: allTransfers, reservations: allReservations, sale_items: allSaleItems, 
+        dining_reservations: allDiningReservations, dining_services: allDiningServices 
+    } = useData();
     const { companyInfo } = useCompany();
     const { currentUser } = useAuth();
     const [addStep, setAddStep] = useState<null | 'choice' | 'database' | 'manual'>(null);
@@ -28,7 +32,6 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
 
     const group = useMemo(() => service_groups.find((g: any) => g.id === service.service_group_id), [service_groups, service.service_group_id]);
     const teachersInGroup = useMemo(() => group?.teacher_ids.map(id => usersMap.get(id)).filter((u): u is User => !!u) || [], [group, usersMap]);
-    const { orders: allOrders, transfers: allTransfers, reservations: allReservations, sale_items: allSaleItems, dining_reservations: allDiningReservations, dining_services: allDiningServices } = useData();
 
     const serviceCosts = useMemo(() => {
         const event = events.find(e => {
