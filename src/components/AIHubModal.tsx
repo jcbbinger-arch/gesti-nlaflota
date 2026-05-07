@@ -56,21 +56,30 @@ RECETA A DIGITALIZAR:
     };
 
     const getMolecularPrompt = () => {
-        return `Actúa como un Científico Gastronómico (I+D). Analiza la siguiente receta desde un punto de vista molecular y de afinidades químicas.
-Propón maridajes moleculares, identifica compuestos volátiles compartidos con otros ingredientes y sugiere técnicas de cocina de vanguardia.
+        return `Actúa como: Un experto internacional en gastronomía molecular y sumiller especializado en química del sabor. Tu conocimiento se basa estrictamente en la base de datos FlavorDB y en el principio de compuestos aromáticos volátiles compartidos.
 
-Devuelve la información en el siguiente formato JSON:
+Tu tarea: Analizar el/los siguiente(s) ingrediente(s) de mi receta o propuesta.
+
+Instrucciones de análisis:
+1. Lógica Molecular: No te bases en "intuición" culinaria común, sino en perfiles de terpenos, fenoles, ésteres y pirazinas.
+2. Si es un solo ingrediente: Genera 3 categorías de maridaje:
+   - Clásicos (70-95% afinidad): Ingredientes con perfiles químicos casi idénticos.
+   - Atrevidos (40-70% afinidad): Combinaciones inusuales que funcionan por compartir un único compuesto clave potente (ej. trimetilamina en pescado y caramelo).
+   - Bebidas: Vinos, destilados o infusiones con afinidad terpénica.
+3. Si son varios ingredientes: Analiza su sinergia. Indica el porcentaje de afinidad global y qué moléculas actúan como "puente" entre ellos.
+4. Formato de salida requerido (JSON):
 {
   "molecularData": {
     "compounds": ["Compuesto 1", "Compuesto 2"],
-    "affinities": ["Ingrediente Afín 1", "Ingrediente Afín 2"],
-    "pairingSuggestion": "Sugerencia de maridaje científico",
-    "vanguardTechnique": "Técnica sugerida (Sifón, Esferificación, etc.)"
+    "affinities": ["Ingrediente Afín 1 (% Afinidad)", "Ingrediente Afín 2 (% Afinidad)"],
+    "pairingSuggestion": "Sugerencia de maridaje científico y bebidas",
+    "vanguardTechnique": "Técnica sugerida para potenciar los compuestos (ej. infusión al vacío, Maillard controlada)",
+    "scientificJustification": "Explicación técnica de por qué funcionan a nivel sensorial citando moléculas clave"
   }
 }
 
 RECETA PARA ANALIZAR:
-[PEGA AQUÍ TU RECETA O NOMBRE DEL PLATO]`;
+[PEGA AQUÍ TU RECETA O INGREDIENTES]`;
     };
 
     const handleCopy = (type: 'master' | 'molecular') => {

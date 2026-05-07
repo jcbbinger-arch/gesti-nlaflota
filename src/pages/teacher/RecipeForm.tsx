@@ -284,6 +284,7 @@ Compuestos: ${aiData.molecularData.compounds?.join(', ')}
 Afinidades: ${aiData.molecularData.affinities?.join(', ')}
 Maridaje: ${aiData.molecularData.pairingSuggestion}
 Técnica: ${aiData.molecularData.vanguardTechnique}
+Justificación: ${aiData.molecularData.scientificJustification}
 `.trim()
                 }));
                 return;
