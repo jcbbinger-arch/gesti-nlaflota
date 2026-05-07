@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
-import { Recipe, Product, RecipeIngredient, DEFAULT_CATEGORIES } from '../../types';
+import { Recipe, Product, RecipeIngredient, DEFAULT_CATEGORIES, SubPreparation } from '../../types';
 import { PlusIcon, TrashIcon, PrinterIcon } from '../../components/icons';
 import { Modal } from '../../components/Modal';
 import { useCompany } from '../../contexts/CompanyContext';
@@ -58,13 +58,39 @@ const LabelPreviewModal: React.FC<{ recipe: Recipe, company: any, onClose: () =>
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
     const allAllergens = useMemo(() => {
         const allergens = new Set<string>();
+        
+        // Main ingredients
         recipe.ingredients.forEach(ing => {
             const product = productsMap.get(ing.product_id);
             product?.allergens.forEach(a => allergens.add(a));
         });
+
+        // Sub-preparation ingredients
+        recipe.sub_preparations?.forEach(sub => {
+            sub.ingredients.forEach(ing => {
+                const product = productsMap.get(ing.product_id);
+                product?.allergens.forEach(a => allergens.add(a));
+            });
+        });
+
         recipe.selected_allergens?.forEach(a => allergens.add(a));
         return Array.from(allergens);
-    }, [recipe.ingredients, recipe.selected_allergens, productsMap]);
+    }, [recipe.ingredients, recipe.selected_allergens, recipe.sub_preparations, productsMap]);
+
+    const allIngredientsList = useMemo(() => {
+        const names = new Set<string>();
+        recipe.ingredients.forEach(i => {
+            const p = productsMap.get(i.product_id);
+            if (p) names.add(p.name);
+        });
+        recipe.sub_preparations?.forEach(sub => {
+            sub.ingredients.forEach(i => {
+                const p = productsMap.get(i.product_id);
+                if (p) names.add(p.name);
+            });
+        });
+        return Array.from(names).join(', ');
+    }, [recipe.ingredients, recipe.sub_preparations, productsMap]);
 
     const printLabel = () => {
         const printWindow = window.open('', '_blank');
@@ -115,7 +141,7 @@ const LabelPreviewModal: React.FC<{ recipe: Recipe, company: any, onClose: () =>
                     <p><span className="font-bold">Fecha de elaboración:</span> {new Date().toLocaleDateString()}</p>
                 </div>
                 <div className="border-t border-black pt-1">
-                    <p><span className="font-bold">Ingredientes:</span> {recipe.ingredients.map(i => productsMap.get(i.product_id)?.name).join(', ')}.</p>
+                    <p><span className="font-bold">Ingredientes:</span> {allIngredientsList}.</p>
                 </div>
                 {allAllergens.length > 0 && (
                      <div className="border-t border-black pt-1">
@@ -153,10 +179,15 @@ export const RecipeForm: React.FC = () => {
         cutlery_required: '',
         service_time: '',
         selected_allergens: [],
+        service_checklist: [],
+        sub_preparations: [],
+        chemical_analysis: '',
     });
     const [searchTerm, setSearchTerm] = useState('');
     const [showLabelPreview, setShowLabelPreview] = useState(false);
     const [showAIHub, setShowAIHub] = useState(false);
+    const [aiHubTab, setAiHubTab] = useState<'digitalize' | 'molecular'>('digitalize');
+    const [activeElabTab, setActiveElabTab] = useState<-1 | number>(-1); // -1 for main, index for sub_preparations
 
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
@@ -217,43 +248,78 @@ export const RecipeForm: React.FC = () => {
     };
     
     const addIngredient = (product: Product) => {
-        if (!formState.ingredients.some(i => i.product_id === product.id)) {
-            const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
-            const cost = calculateIngredientCost(1, product.unit, price, product.unit);
-            const newIngredient: RecipeIngredient = { 
-                product_id: product.id, 
-                quantity: 1, 
-                unit: product.unit,
-                cost: cost
-            };
-            setFormState(prev => ({...prev, ingredients: [...prev.ingredients, newIngredient]}));
+        const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
+        const cost = calculateIngredientCost(1, product.unit, price, product.unit);
+        const newIngredient: RecipeIngredient = { 
+            product_id: product.id, 
+            quantity: 1, 
+            unit: product.unit,
+            cost: cost
+        };
+
+        if (activeElabTab === -1) {
+            if (!formState.ingredients.some(i => i.product_id === product.id)) {
+                setFormState(prev => ({...prev, ingredients: [...prev.ingredients, newIngredient]}));
+            }
+        } else {
+            const subs = [...(formState.sub_preparations || [])];
+            if (!subs[activeElabTab].ingredients.some(i => i.product_id === product.id)) {
+                subs[activeElabTab].ingredients.push(newIngredient);
+                setFormState(prev => ({...prev, sub_preparations: subs}));
+            }
         }
         setSearchTerm('');
     };
     
     const handleIngredientChange = (index: number, field: 'quantity' | 'unit', value: string | number) => {
-        const newIngredients = [...formState.ingredients];
-        const ing = { ...newIngredients[index], [field]: value };
-        
-        const product = productsMap.get(ing.product_id);
-        if (product) {
-            const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
-            ing.cost = calculateIngredientCost(ing.quantity, ing.unit, price, product.unit);
+        if (activeElabTab === -1) {
+            const newIngredients = [...formState.ingredients];
+            const ing = { ...newIngredients[index], [field]: value };
+            
+            const product = productsMap.get(ing.product_id);
+            if (product) {
+                const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
+                ing.cost = calculateIngredientCost(ing.quantity, ing.unit, price, product.unit);
+            }
+            
+            newIngredients[index] = ing;
+            setFormState(prev => ({...prev, ingredients: newIngredients}));
+        } else {
+            const subs = [...(formState.sub_preparations || [])];
+            const newIngredients = [...subs[activeElabTab].ingredients];
+            const ing = { ...newIngredients[index], [field]: value };
+            
+            const product = productsMap.get(ing.product_id);
+            if (product) {
+                const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
+                ing.cost = calculateIngredientCost(ing.quantity, ing.unit, price, product.unit);
+            }
+            
+            newIngredients[index] = ing;
+            subs[activeElabTab].ingredients = newIngredients;
+            setFormState(prev => ({...prev, sub_preparations: subs}));
         }
-        
-        newIngredients[index] = ing;
-        setFormState(prev => ({...prev, ingredients: newIngredients}));
     };
 
     const removeIngredient = (index: number) => {
-        setFormState(prev => ({...prev, ingredients: prev.ingredients.filter((_, i) => i !== index)}));
+        if (activeElabTab === -1) {
+            setFormState(prev => ({...prev, ingredients: prev.ingredients.filter((_, i) => i !== index)}));
+        } else {
+            const subs = [...(formState.sub_preparations || [])];
+            subs[activeElabTab].ingredients = subs[activeElabTab].ingredients.filter((_, i) => i !== index);
+            setFormState(prev => ({...prev, sub_preparations: subs}));
+        }
     };
     
     const calculatedCost = useMemo(() => {
-        return formState.ingredients.reduce((total, ing) => {
-            return total + (ing.cost || 0);
-        }, 0);
-    }, [formState.ingredients]);
+        let total = formState.ingredients.reduce((acc, ing) => acc + (ing.cost || 0), 0);
+        if (formState.sub_preparations) {
+            formState.sub_preparations.forEach(sub => {
+                total += sub.ingredients.reduce((acc, ing) => acc + (ing.cost || 0), 0);
+            });
+        }
+        return total;
+    }, [formState.ingredients, formState.sub_preparations]);
 
     const costPerServing = (calculatedCost / (formState.yield_amount || 1));
 
@@ -263,8 +329,42 @@ export const RecipeForm: React.FC = () => {
             const product = productsMap.get(ing.product_id);
             product?.allergens.forEach(a => allergens.add(a));
         });
+        if (formState.sub_preparations) {
+            formState.sub_preparations.forEach(sub => {
+                sub.ingredients.forEach(ing => {
+                    const product = productsMap.get(ing.product_id);
+                    product?.allergens.forEach(a => allergens.add(a));
+                });
+            });
+        }
         return Array.from(allergens);
-    }, [formState.ingredients, productsMap]);
+    }, [formState.ingredients, formState.sub_preparations, productsMap]);
+
+    const addSubPreparation = () => {
+        const newSub: SubPreparation = {
+            id: `sub-${Date.now()}`,
+            name: `Nueva Elaboración ${ (formState.sub_preparations?.length || 0) + 2}`,
+            ingredients: [],
+            preparation_steps: ''
+        };
+        setFormState(prev => ({
+            ...prev,
+            sub_preparations: [...(prev.sub_preparations || []), newSub]
+        }));
+        setActiveElabTab((formState.sub_preparations?.length || 0));
+    };
+
+    const removeSubPreparation = (index: number) => {
+        const subs = (formState.sub_preparations || []).filter((_, i) => i !== index);
+        setFormState(prev => ({ ...prev, sub_preparations: subs }));
+        setActiveElabTab(-1);
+    };
+
+    const handleSubPrepChange = (index: number, field: keyof SubPreparation, value: any) => {
+        const subs = [...(formState.sub_preparations || [])];
+        subs[index] = { ...subs[index], [field]: value };
+        setFormState(prev => ({ ...prev, sub_preparations: subs }));
+    };
 
     const handleAIImport = (jsonString: string) => {
         try {
@@ -286,18 +386,18 @@ export const RecipeForm: React.FC = () => {
 
             // Handle Molecular Data if present but don't return early if it also has recipe data
             if (aiData.molecularData) {
-                setFormState(prev => ({
-                    ...prev,
-                    key_points: `
-${prev.key_points || ''}
-
+                const molecularText = `
 --- ANÁLISIS MOLECULAR ---
 Compuestos: ${aiData.molecularData.compounds?.join(', ')}
 Afinidades: ${aiData.molecularData.affinities?.join(', ')}
 Maridaje: ${aiData.molecularData.pairingSuggestion}
 Técnica: ${aiData.molecularData.vanguardTechnique}
 Justificación: ${aiData.molecularData.scientificJustification}
-`.trim()
+`.trim();
+
+                setFormState(prev => ({
+                    ...prev,
+                    chemical_analysis: (prev.chemical_analysis ? prev.chemical_analysis + '\n\n' : '') + molecularText
                 }));
                 // If it ONLY has molecular data, we return. If it has recipe data (like 'name'), we continue.
                 if (!aiData.name && !aiData.nombre) return;
@@ -314,6 +414,7 @@ Justificación: ${aiData.molecularData.scientificJustification}
             const name = getVal('name', 'nombre', 'title', 'titulo');
             const instructions = getVal('instructions', 'instrucciones', 'preparation_steps', 'elaboracion', 'pasos');
             const notes = getVal('notes', 'notas', 'key_points', 'puntos_clave', 'consejos');
+            const checklist = getVal('serviceChecklist', 'checklist', 'mise_en_place', 'comprobaciones');
             const yieldQty = getVal('yieldQuantity', 'yield_amount', 'cantidad_pax', 'pax', 'raciones', 'produccion');
             const yieldUnit = getVal('yieldUnit', 'unidad_produccion', 'unidad');
             const category = getVal('category', 'categoria');
@@ -373,6 +474,7 @@ Justificación: ${aiData.molecularData.scientificJustification}
                 service_type: serviceType || prev.service_type,
                 cutlery_required: cutlery || prev.cutlery_required,
                 service_time: serviceTime || prev.service_time,
+                service_checklist: checklist || prev.service_checklist || [],
                 ingredients: importedIngredients.length > 0 ? importedIngredients : prev.ingredients
             }));
 
@@ -433,22 +535,21 @@ Justificación: ${aiData.molecularData.scientificJustification}
                 <div className="flex space-x-2">
                     <button 
                         type="button" 
-                        onClick={() => setShowAIHub(true)}
-                        className="flex items-center px-4 py-2 bg-gradient-to-r from-primary-600 to-indigo-600 text-white rounded-lg text-sm font-black uppercase tracking-widest hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-                    >
-                        <Wand2 className="w-4 h-4 mr-2" /> AI Hub Gastronómico
-                    </button>
-                    <button 
-                        type="button" 
-                        onClick={() => setShowAIHub(true)}
-                        className="flex items-center px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200 transition-colors"
+                        onClick={() => {
+                            setAiHubTab('digitalize');
+                            setShowAIHub(true);
+                        }}
+                        className="flex items-center px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-200 transition-all"
                     >
                         <ScanText className="w-4 h-4 mr-2" /> Digitalizar AI
                     </button>
                     <button 
                         type="button" 
-                        onClick={() => setShowAIHub(true)}
-                        className="flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-200 transition-colors"
+                        onClick={() => {
+                            setAiHubTab('molecular');
+                            setShowAIHub(true);
+                        }}
+                        className="flex items-center px-4 py-2 bg-purple-100 text-purple-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-purple-200 transition-all"
                     >
                         <Sparkles className="w-4 h-4 mr-2" /> Flavor Lab
                     </button>
@@ -576,67 +677,226 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                                 className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm placeholder:text-gray-400"
                                             />
                                         </div>
+
+                                        {/* ALÉRGENOS DETECTADOS (COMPACTO) */}
+                                        {allAllergens.length > 0 && (
+                                            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 self-start">
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-gray-400 mr-2">Alérgenos detectados:</span>
+                                                <div className="flex -space-x-1">
+                                                    {allAllergens.map(a => {
+                                                        const Icon = ALLERGEN_ICONS[a] || AlertTriangle;
+                                                        const color = ALLERGEN_COLORS[a];
+                                                        return (
+                                                            <div 
+                                                                key={a} 
+                                                                className="w-6 h-6 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900 shadow-sm relative group"
+                                                                style={{ backgroundColor: color }}
+                                                                title={a}
+                                                            >
+                                                                <Icon className="w-3.5 h-3.5 text-white" />
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         </Card>
 
-                        <Card title="Ingredientes (del Almacén Central)">
-                            <div className="relative mb-4">
-                                <input type="text" placeholder="Buscar producto para añadir..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700"/>
-                                {searchTerm && (
-                                    <ul className="absolute z-10 w-full bg-white dark:bg-gray-800 border rounded-b-md shadow-lg max-h-40 overflow-y-auto">
-                                        {filteredProducts.map(p => <li key={p.id} onClick={() => addIngredient(p)} className="p-2 hover:bg-primary-100 cursor-pointer">{p.name}</li>)}
-                                        {filteredProducts.length === 0 && <li className="p-2 text-gray-500">No se encontraron productos</li>}
-                                    </ul>
-                                )}
-                            </div>
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
-                                {formState.ingredients.map((ing, index) => {
-                                    const product = productsMap.get(ing.product_id);
-                                    const isCompatible = areUnitsCompatible(ing.unit, product?.unit || '');
-                                    
-                                    return (
-                                        <div key={ing.product_id} className="grid grid-cols-12 gap-2 items-center">
-                                            <span className="col-span-4 truncate" title={product?.name}>{product?.name}</span>
+                        {/* TABS DE ELABORACIONES */}
+                        <div className="flex items-center space-x-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+                            <button 
+                                type="button"
+                                onClick={() => setActiveElabTab(-1)}
+                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeElabTab === -1 ? 'bg-gray-900 text-white shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-500 hover:bg-gray-50'}`}
+                            >
+                                1. Elaboración Principal
+                            </button>
+                            {(formState.sub_preparations || []).map((sub, idx) => (
+                                <button 
+                                    key={sub.id}
+                                    type="button"
+                                    onClick={() => setActiveElabTab(idx)}
+                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center space-x-2 ${activeElabTab === idx ? 'bg-gray-900 text-white shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-500 hover:bg-gray-50'}`}
+                                >
+                                    <span>{idx + 2}. {sub.name}</span>
+                                    <TrashIcon 
+                                        className="w-3 h-3 text-red-400 hover:text-red-600 ml-1" 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeSubPreparation(idx);
+                                        }}
+                                    />
+                                </button>
+                            ))}
+                            <button 
+                                type="button"
+                                onClick={addSubPreparation}
+                                className="p-2 bg-white dark:bg-gray-800 text-primary-500 rounded-xl hover:bg-primary-50 transition-all border border-dashed border-primary-200"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <Card noPadding>
+                            <div className="p-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div className="flex items-center space-x-2">
+                                        <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center">
+                                            <ChefHat className="w-4 h-4 text-primary-600" />
+                                        </div>
+                                        {activeElabTab === -1 ? (
+                                            <h3 className="text-sm font-black uppercase tracking-widest text-gray-800 dark:text-white">Elaboración Principal</h3>
+                                        ) : (
                                             <input 
-                                                type="number" 
-                                                step="0.01" 
-                                                value={ing.quantity || 0} 
-                                                onChange={e => handleIngredientChange(index, 'quantity', parseFloat(e.target.value) || 0)} 
-                                                className="col-span-2 p-1 border rounded dark:bg-gray-700"
+                                                type="text"
+                                                value={(formState.sub_preparations || [])[activeElabTab].name}
+                                                onChange={(e) => handleSubPrepChange(activeElabTab, 'name', e.target.value)}
+                                                className="bg-transparent text-sm font-black uppercase tracking-widest text-gray-800 dark:text-white border-b border-dashed border-gray-300 focus:border-primary-500 outline-none"
                                             />
-                                            <select 
-                                                value={ing.unit} 
-                                                onChange={e => handleIngredientChange(index, 'unit', e.target.value)} 
-                                                className="col-span-2 p-1 border rounded dark:bg-gray-700"
-                                            >
-                                                <option value="kg">kg</option>
-                                                <option value="g">g</option>
-                                                <option value="l">l</option>
-                                                <option value="ml">ml</option>
-                                                <option value="ud">ud</option>
-                                                <option value="unidad">unidad</option>
-                                            </select>
-                                            <span className={`col-span-2 text-right font-mono text-sm ${!isCompatible ? 'text-red-500' : ''}`}>
-                                                {(ing.cost || 0).toFixed(2)}€
-                                            </span>
-                                            <div className="col-span-2 flex justify-end items-center space-x-1">
-                                                {!isCompatible && (
-                                                    <span className="text-red-500 cursor-help" title="Unidades incompatibles (Peso vs Volumen)">⚠️</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {/* INGREDIENTES */}
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl">
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Escandallo de Ingredientes</h4>
+                                            <div className="relative w-64">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Añadir ingrediente..." 
+                                                    value={searchTerm} 
+                                                    onChange={e => setSearchTerm(e.target.value)} 
+                                                    className="w-full pl-8 pr-4 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs"
+                                                />
+                                                <PlusIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                                {searchTerm && (
+                                                    <ul className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl max-h-48 overflow-y-auto ring-1 ring-black/5">
+                                                        {filteredProducts.map(p => (
+                                                            <li 
+                                                                key={p.id} 
+                                                                onClick={() => addIngredient(p)} 
+                                                                className="p-3 hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex items-center space-x-3 border-b border-gray-50 dark:border-gray-700 last:border-0"
+                                                            >
+                                                                <div className="flex-1">
+                                                                    <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{p.name}</p>
+                                                                    <p className="text-[10px] text-gray-400">{p.category} | {p.family}</p>
+                                                                </div>
+                                                                <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-500 uppercase">{p.unit}</span>
+                                                            </li>
+                                                        ))}
+                                                        {filteredProducts.length === 0 && <li className="p-4 text-xs text-gray-500 italic text-center">Sin resultados</li>}
+                                                    </ul>
                                                 )}
-                                                <button type="button" onClick={() => removeIngredient(index)} className="text-red-500 p-1">
-                                                    <TrashIcon className="w-5 h-5"/>
-                                                </button>
                                             </div>
                                         </div>
-                                    );
-                                })}
+
+                                        <div className="space-y-1">
+                                            {(activeElabTab === -1 ? formState.ingredients : (formState.sub_preparations || [])[activeElabTab].ingredients).map((ing, index) => {
+                                                const product = productsMap.get(ing.product_id);
+                                                const isCompatible = areUnitsCompatible(ing.unit, product?.unit || '');
+                                                
+                                                return (
+                                                    <div key={ing.product_id} className="group flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl hover:border-primary-200 dark:hover:border-primary-800 transition-all">
+                                                        <div className="flex-1 flex items-center space-x-3">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-primary-400" />
+                                                            <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate w-40" title={product?.name}>{product?.name}</span>
+                                                        </div>
+                                                        
+                                                        <div className="flex items-center space-x-2">
+                                                            <input 
+                                                                type="number" 
+                                                                step="0.01" 
+                                                                value={ing.quantity || 0} 
+                                                                onChange={e => handleIngredientChange(index, 'quantity', parseFloat(e.target.value) || 0)} 
+                                                                className="w-16 p-1 bg-gray-50 dark:bg-gray-900 border-none rounded text-xs text-center font-bold"
+                                                            />
+                                                            <select 
+                                                                value={ing.unit} 
+                                                                onChange={e => handleIngredientChange(index, 'unit', e.target.value)} 
+                                                                className="w-14 p-1 bg-gray-50 dark:bg-gray-900 border-none rounded text-[10px] font-black uppercase text-gray-500"
+                                                            >
+                                                                <option value="kg">kg</option>
+                                                                <option value="g">g</option>
+                                                                <option value="l">l</option>
+                                                                <option value="ml">ml</option>
+                                                                <option value="ud">ud</option>
+                                                                <option value="unidad">ud</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div className="w-16 text-right">
+                                                            <span className={`text-[10px] font-mono font-bold ${!isCompatible ? 'text-red-500' : 'text-gray-400'}`}>
+                                                                {(ing.cost || 0).toFixed(2)}€
+                                                            </span>
+                                                        </div>
+
+                                                        <button type="button" onClick={() => removeIngredient(index)} className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all">
+                                                            <TrashIcon className="w-3.5 h-3.5"/>
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                            {(activeElabTab === -1 ? formState.ingredients : (formState.sub_preparations || [])[activeElabTab].ingredients).length === 0 && (
+                                                <div className="py-8 text-center bg-gray-50/50 dark:bg-gray-800/30 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-700">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">No hay ingredientes añadidos</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* PROCEDIMIENTO */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Procedimiento de Cocina</h4>
+                                        <textarea 
+                                            placeholder="Describe paso a paso los procesos técnicos de esta elaboración... (Ej: 1. Paso uno. 2. Paso dos.)" 
+                                            value={activeElabTab === -1 ? formState.preparation_steps : (formState.sub_preparations || [])[activeElabTab].preparation_steps} 
+                                            onChange={(e) => {
+                                                if (activeElabTab === -1) {
+                                                    setFormState(prev => ({ ...prev, preparation_steps: e.target.value }));
+                                                } else {
+                                                    handleSubPrepChange(activeElabTab, 'preparation_steps', e.target.value);
+                                                }
+                                            }} 
+                                            rows={12} 
+                                            className="w-full p-6 bg-gray-50 dark:bg-gray-900/50 border-none rounded-2xl text-sm placeholder:text-gray-300 leading-relaxed ring-1 ring-gray-100 dark:ring-gray-800 focus:ring-2 focus:ring-primary-500/50 transition-all font-medium" 
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </Card>
 
-                        <Card title="Elaboración">
-                            <textarea placeholder="Pasos detallados de la receta..." value={formState.preparation_steps} onChange={handleFormChange} name="preparation_steps" rows={10} required className="w-full p-2 border rounded" />
+                        {/* EXAMEN QUÍMICO */}
+                        <Card title="🔬 Examen Químico y Organoléptico">
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Análisis de Estructura, Texturas y Reacciones</label>
+                                <textarea 
+                                    name="chemical_analysis"
+                                    value={formState.chemical_analysis || ''}
+                                    onChange={handleFormChange}
+                                    placeholder="Detalla reacciones de Maillard, desnaturalización de proteínas, gelificaciones, pH o perfiles aromáticos..." 
+                                    rows={6} 
+                                    className="w-full p-4 bg-indigo-50/30 dark:bg-indigo-900/10 border-none rounded-2xl text-sm italic placeholder:text-indigo-300 leading-relaxed ring-1 ring-indigo-100 dark:ring-indigo-900/30 focus:ring-2 focus:ring-indigo-500/50 transition-all" 
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <p className="text-[8px] font-black uppercase text-gray-400 mb-1">Textura Predominante</p>
+                                        <p className="text-xs font-bold text-indigo-600">Crujiente / Cremosa</p>
+                                    </div>
+                                    <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <p className="text-[8px] font-black uppercase text-gray-400 mb-1">Punto de Acidez (pH)</p>
+                                        <p className="text-xs font-bold text-amber-600">Equilibrado</p>
+                                    </div>
+                                    <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <p className="text-[8px] font-black uppercase text-gray-400 mb-1">Umami / Sabor</p>
+                                        <p className="text-xs font-bold text-emerald-600">Intenso</p>
+                                    </div>
+                                </div>
+                            </div>
                         </Card>
                         
                         <Card noPadding>
@@ -758,14 +1018,9 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                 <div className="space-y-4 pt-8 border-t border-white/10">
                                     <div className="flex justify-between items-center">
                                         <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Instrucciones de Emplatado y Acabado Final</h4>
-                                        <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[8px] font-black text-gray-500 uppercase tracking-widest">
-                                            Alérgenos Detectados ({allAllergens.length})
-                                        </div>
                                     </div>
                                     
-                                    <AllergensControl selected={allAllergens} />
-
-                                    <div className="relative mt-4">
+                                    <div className="relative mt-2">
                                         <textarea 
                                             name="presentation"
                                             value={formState.presentation || ''}
@@ -773,6 +1028,50 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                             placeholder="Describe el paso final antes del pase..."
                                             className="w-full h-40 bg-white/5 border-2 border-dashed border-white/10 rounded-2xl p-6 text-sm italic opacity-80 focus:ring-0 focus:border-primary-500/50 transition-all resize-none"
                                         />
+                                    </div>
+                                </div>
+
+                                {/* MISE EN PLACE CHECKLIST */}
+                                <div className="p-6 bg-amber-500/5 rounded-2xl border border-amber-500/10 space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-amber-500">Checklist de Mise en Place (Repaso Final)</h4>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setFormState(prev => ({ ...prev, service_checklist: [...(prev.service_checklist || []), ''] }))}
+                                            className="p-1 hover:bg-amber-500/20 rounded-lg text-amber-500 transition-colors"
+                                        >
+                                            <PlusIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {(formState.service_checklist || []).map((item, index) => (
+                                            <div key={index} className="flex items-center space-x-2 bg-black/20 p-2 rounded-xl border border-white/5">
+                                                <input 
+                                                    type="text"
+                                                    value={item}
+                                                    onChange={(e) => {
+                                                        const newList = [...(formState.service_checklist || [])];
+                                                        newList[index] = e.target.value;
+                                                        setFormState(prev => ({ ...prev, service_checklist: newList }));
+                                                    }}
+                                                    placeholder="Ej: Repasar copas, Temperatura de salsa..."
+                                                    className="flex-1 bg-transparent text-[10px] text-gray-300 focus:outline-none"
+                                                />
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const newList = (formState.service_checklist || []).filter((_, i) => i !== index);
+                                                        setFormState(prev => ({ ...prev, service_checklist: newList }));
+                                                    }}
+                                                    className="text-gray-500 hover:text-red-500 transition-colors"
+                                                >
+                                                    <TrashIcon className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {(formState.service_checklist || []).length === 0 && (
+                                            <p className="text-[10px] text-gray-500 italic col-span-2">No hay elementos en la lista de comprobación.</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -851,7 +1150,12 @@ Justificación: ${aiData.molecularData.scientificJustification}
                 </div>
             </form>
             {showLabelPreview && <LabelPreviewModal recipe={formState as Recipe} company={companyInfo} onClose={() => setShowLabelPreview(false)} />}
-            <AIHubModal isOpen={showAIHub} onClose={() => setShowAIHub(false)} onImport={handleAIImport} />
+            <AIHubModal 
+                isOpen={showAIHub} 
+                initialTab={aiHubTab}
+                onClose={() => setShowAIHub(false)} 
+                onImport={handleAIImport} 
+            />
         </div>
     );
 };

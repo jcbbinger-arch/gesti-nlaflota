@@ -8,15 +8,23 @@ interface AIHubModalProps {
     isOpen: boolean;
     onClose: () => void;
     onImport: (jsonString: string) => void;
+    initialTab?: 'digitalize' | 'molecular';
 }
 
-export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImport }) => {
+export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImport, initialTab = 'digitalize' }) => {
     const { companyInfo } = useCompany();
     const { creatorInfo } = useCreator();
     const { workspaceSettings } = useData();
     const [jsonInput, setJsonInput] = useState('');
     const [copied, setCopied] = useState<'master' | 'molecular' | null>(null);
-    const [activeView, setActiveView] = useState<'digitalize' | 'molecular'>('digitalize');
+    const [activeView, setActiveView] = useState<'digitalize' | 'molecular'>(initialTab);
+
+    // Sync activeView with initialTab when modal opens
+    React.useEffect(() => {
+        if (isOpen) {
+            setActiveView(initialTab);
+        }
+    }, [isOpen, initialTab]);
 
     const categoriesStr = useMemo(() => {
         return workspaceSettings?.categories?.join('|') || "Entrantes|Ensaladas|Sopas y Cremas|Carnes|Aves|Pescados|Mariscos|Pastas y Arroces|Guarniciones|Salsas|Postres|Panadería/Pastelería|Bebidas|Otros|Sostenible|Fermentados/varios|Decoraciones de platos|Snack|Nuevas Tecnologías|Aperitivos|Bizcochos|Cremas Dulces";
@@ -24,10 +32,10 @@ export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImpor
 
     const getMasterPrompt = () => {
         return `Actúa como un Chef Ejecutivo y experto en digitalización de datos gastronómicos para ${companyInfo.name || 'mi establecimiento'}.
-Tu tarea es convertir el texto o imagen de una receta que te voy a proporcionar en un objeto JSON compatible con el sistema ${creatorInfo.app_name}.
+Tu tarea es convertir el texto o imagen de una RECETA COMPLETA en un objeto JSON compatible con el sistema ${creatorInfo.app_name}.
 
 REGLAS DE FORMATO:
-1. Devuelve ÚNICAMENTE el código JSON, sin explicaciones ni texto adicional.
+1. Devuelve ÚNICAMENTE el código JSON.
 2. Esquema exacto:
 {
   "name": "Nombre de la receta",
@@ -35,30 +43,26 @@ REGLAS DE FORMATO:
   "yieldQuantity": 4, 
   "yieldUnit": "raciones",
   "ingredients": [{"name": "Producto", "quantity": 100, "unit": "g|kg|ml|l|ud"}],
-  "instructions": "Pasos detallados...",
-  "notes": "Alérgenos, puntos críticos o consejos",
-  "presentation": "Cómo emplatar y acabado final",
-  "servingTemp": "Temperatura ideal (ej: 60-65°C)",
-  "cutlery": "Cubiertos necesarios",
-  "serviceTime": "Tiempo estimado",
+  "instructions": "Pasos detallados de elaboración",
+  "notes": "Puntos clave y mise en place",
+  "presentation": "Técnica de emplatado",
+  "servingTemp": "Temperatura de servicio",
+  "cutlery": "Marcaje necesario",
+  "serviceTime": "Tiempo de servicio",
   "serviceType": "AMERICANA|INGLESA|FRANCESA|GUERIDÓN|BUFFET",
-  "clientDescription": "Descripción sugerente y comercial de alta cocina (máximo 2 frases). Resalta texturas y sabores.",
-  "serviceExplanation": "Storytelling para el camarero"
+  "clientDescription": "Descripción comercial atractiva",
+  "serviceExplanation": "Storytelling del plato",
+  "serviceChecklist": ["Elemento 1", "Elemento 2"]
 }
 
-REGLAS TÉCNICAS:
-- "yieldQuantity" SIEMPRE numérico.
-- "ingredients" cantidades numéricas.
-- Si no hay datos de servicio, inventa una propuesta lógica basada en el plato para la "clientDescription".
-
 RECETA A DIGITALIZAR:
-[PEGA AQUÍ TU RECETA O ESCANEO]`;
+[PEGA AQUÍ TU RECETA]`;
     };
 
     const getMolecularPrompt = () => {
         return `Actúa como: Un experto internacional en gastronomía molecular y sumiller especializado en química del sabor. Tu conocimiento se basa estrictamente en la base de datos FlavorDB y en el principio de compuestos aromáticos volátiles compartidos.
 
-Tu tarea: Analizar el/los siguiente(s) ingrediente(s) de mi receta o propuesta.
+Tu tarea: Analizar el/los siguiente(s) ingrediente(s): [INGREDIENTES]
 
 Instrucciones de análisis:
 1. Lógica Molecular: No te bases en "intuición" culinaria común, sino en perfiles de terpenos, fenoles, ésteres y pirazinas.
@@ -66,20 +70,22 @@ Instrucciones de análisis:
    - Clásicos (70-95% afinidad): Ingredientes con perfiles químicos casi idénticos.
    - Atrevidos (40-70% afinidad): Combinaciones inusuales que funcionan por compartir un único compuesto clave potente (ej. trimetilamina en pescado y caramelo).
    - Bebidas: Vinos, destilados o infusiones con afinidad terpénica.
-3. Si son varios ingredientes: Analiza su sinergia. Indica el porcentaje de afinidad global y qué moléculas actúan como "puente" entre ellos.
-4. Formato de salida requerido (JSON):
+3. Si son varios ingredientes: Analiza su sinergia. Indica el porcentaje de afinidad global y qué moléculas actúan como "puente" entre ellos. Si la afinidad es baja, sugiere un ingrediente adicional que actúe como nexo químico.
+4. Recetas: Propón técnicas sugeridas para potenciar los compuestos (ej. Maillard, infusión al vacío).
+
+Devuelve el análisis en este formato JSON EXACTO:
 {
   "molecularData": {
     "compounds": ["Compuesto 1", "Compuesto 2"],
     "affinities": ["Ingrediente Afín 1 (% Afinidad)", "Ingrediente Afín 2 (% Afinidad)"],
     "pairingSuggestion": "Sugerencia de maridaje científico y bebidas",
-    "vanguardTechnique": "Técnica sugerida para potenciar los compuestos (ej. infusión al vacío, Maillard controlada)",
-    "scientificJustification": "Explicación técnica de por qué funcionan a nivel sensorial citando moléculas clave"
+    "vanguardTechnique": "Técnica sugerida",
+    "scientificJustification": "Explicación técnica citando moléculas clave"
   }
 }
 
-RECETA PARA ANALIZAR:
-[PEGA AQUÍ TU RECETA O INGREDIENTES]`;
+INGREDIENTES PARA ANALIZAR:
+[PEGA AQUÍ TUS INGREDIENTES]`;
     };
 
     const handleCopy = (type: 'master' | 'molecular') => {
@@ -147,10 +153,13 @@ RECETA PARA ANALIZAR:
                                 <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mt-6">
                                     <div className="flex items-center space-x-3 text-emerald-400 mb-3">
                                         <Sparkles className="w-4 h-4" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Nuevo: Generación Creativa</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">IA Especializada</span>
                                     </div>
                                     <p className="text-xs text-gray-400 leading-relaxed font-medium">
-                                        Ahora el prompt obliga a la IA a redactar la <span className="text-white font-bold">Explicación Sugerente</span> automáticamente basándose en la receta.
+                                        {activeView === 'digitalize' 
+                                            ? 'Optimizado para extraer gramajes, pasos y storytelling comercial de cualquier imagen o texto.'
+                                            : 'Basado en FlavorDB y perfiles de terpenos para maridajes científicos de vanguardia.'
+                                        }
                                     </p>
                                 </div>
                             </div>
@@ -206,7 +215,7 @@ RECETA PARA ANALIZAR:
                                 className="w-full bg-[#c2c5ca] dark:bg-gray-700 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-500 transition-all flex items-center justify-center space-x-3 shadow-lg disabled:opacity-50 disabled:bg-gray-200"
                             >
                                 <ClipboardPaste className="w-5 h-5" />
-                                <span>LIMPIAR E IMPORTAR RECETA</span>
+                                <span>{activeView === 'digitalize' ? 'SINCRONIZAR FICHA TÉCNICA' : 'ACTUALIZAR ANÁLISIS MOLECULAR'}</span>
                             </button>
                         </div>
                     </div>

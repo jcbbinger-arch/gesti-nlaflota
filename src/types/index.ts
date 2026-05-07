@@ -265,6 +265,14 @@ export interface RecipeIngredient {
   cost?: number;
 }
 
+export interface SubPreparation {
+    id: string;
+    name: string;
+    ingredients: RecipeIngredient[];
+    preparation_steps: string;
+    photo?: string;
+}
+
 export interface Recipe {
     id: string;
     name: string;
@@ -294,6 +302,8 @@ export interface Recipe {
     cutlery_required?: string;
     service_checklist?: string[];
     selected_allergens?: string[];
+    sub_preparations?: SubPreparation[];
+    chemical_analysis?: string;
 }
 
 export interface StockItem {
