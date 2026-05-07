@@ -95,6 +95,57 @@ const AppContent: React.FC = () => {
   const isProfileIncomplete = currentUser && (!currentUser.instituteName || !currentUser.teacherName) && selectedProfile === Profile.TEACHER;
 
   React.useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Intercept dot key (keypad or main) on numeric inputs
+      if ((e.key === '.' || e.key === 'Decimal') && (e.target as HTMLElement).tagName === 'INPUT') {
+        const target = e.target as HTMLInputElement;
+        
+        // Target inputs that are likely numeric
+        const isNumeric = target.type === 'number' || 
+                          target.inputMode === 'decimal' || 
+                          target.classList.contains('numeric-input') ||
+                          target.name.toLowerCase().includes('precio') ||
+                          target.name.toLowerCase().includes('cantidad') ||
+                          target.name.toLowerCase().includes('cost') ||
+                          target.name.toLowerCase().includes(' rations') ||
+                          target.placeholder?.toLowerCase().includes('precio') ||
+                          target.placeholder?.toLowerCase().includes('cantidad');
+
+        if (isNumeric) {
+          // If it's type="number", browsers in ES locale might block '.'
+          // We force the decimal separator if necessary
+          if (target.type !== 'number') {
+            e.preventDefault();
+            const start = target.selectionStart || 0;
+            const end = target.selectionEnd || 0;
+            const value = target.value;
+            
+            // Insert comma instead of dot
+            target.value = value.substring(0, start) + ',' + value.substring(end);
+            
+            // Restore cursor position
+            const newPos = start + 1;
+            target.setSelectionRange(newPos, newPos);
+            
+            // Trigger React state updates
+            target.dispatchEvent(new Event('input', { bubbles: true }));
+            target.dispatchEvent(new Event('change', { bubbles: true }));
+          } else {
+            // For type="number", we can't easily prevent and replace with comma 
+            // if the browser locale expects comma, because target.value only accepts dots in JS.
+            // But usually the browser DOES accept the dot key from keypad and translates it.
+            // If it doesn't, one trick is to briefly change to type text, insert, and change back.
+            // For now, the non-number type fix covers many of our custom forms.
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown, true);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
+  }, []);
+
+  React.useEffect(() => {
     setShowMandatorySettings(!!isProfileIncomplete);
   }, [isProfileIncomplete]);
 

@@ -87,6 +87,12 @@ export const Header: React.FC = () => {
             </span>
           </div>
 
+          {/* Perfil Seleccionado Label */}
+          <div className="hidden lg:flex flex-col items-center px-4 py-1.5 bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-200 dark:border-primary-800 shadow-sm transition-all hover:shadow-md">
+             <span className="text-[9px] font-black text-primary-600 dark:text-primary-400 uppercase tracking-widest leading-none mb-1 opacity-80">Perfil Activo</span>
+             <span className="text-xs font-black text-gray-800 dark:text-gray-100 leading-none">{getProfileDisplayName(selectedProfile || Profile.STUDENT)}</span>
+          </div>
+
           <div className="hidden md:flex items-center space-x-4">
               <div className="relative">
                 <button 
