@@ -1,261 +1,212 @@
-import React, { useState } from 'react';
-import { X, Copy, Check, ScanText, Sparkles, Terminal, Wand2, Loader2, Save } from 'lucide-react';
-import { digitalizeRecipe, generateRecipeIdea, AIDigitalizedRecipe } from '../services/geminiService';
+import React, { useState, useMemo } from 'react';
+import { X, Copy, Check, ClipboardPaste, Wand2, Info, Sparkles, Terminal } from 'lucide-react';
+import { useCompany } from '../contexts/CompanyContext';
+import { useCreator } from '../contexts/CreatorContext';
+import { useData } from '../contexts/DataContext';
 
 interface AIHubModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onImport: (recipe: AIDigitalizedRecipe) => void;
+    onImport: (jsonString: string) => void;
 }
 
 export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImport }) => {
-    const [activeTab, setActiveTab] = useState<'digitalize' | 'architect' | 'prompts'>('digitalize');
-    const [isLoading, setIsLoading] = useState(false);
-    const [copied, setCopied] = useState(false);
-    
-    // Digitalize State
-    const [inputText, setInputText] = useState('');
-    
-    // Architect State
-    const [vibe, setVibe] = useState('');
-    const [keyIngredients, setKeyIngredients] = useState('');
-    const [level, setLevel] = useState('Intermedio');
-    const [objective, setObjective] = useState('');
-    const [restrictions, setRestrictions] = useState('');
+    const { companyInfo } = useCompany();
+    const { creatorInfo } = useCreator();
+    const { workspaceSettings } = useData();
+    const [jsonInput, setJsonInput] = useState('');
+    const [copied, setCopied] = useState<'master' | 'molecular' | null>(null);
+    const [activeView, setActiveView] = useState<'digitalize' | 'molecular'>('digitalize');
 
-    const CUSTOM_PROMPT = `Actúa como un Chef Ejecutivo y experto en digitalización de datos gastronómicos.
-Tu tarea es convertir el texto o imagen de una receta que te voy a proporcionar en un objeto JSON compatible con mi sistema de gestión de cocina.
+    const categoriesStr = useMemo(() => {
+        return workspaceSettings?.categories?.join('|') || "Entrantes|Ensaladas|Sopas y Cremas|Carnes|Aves|Pescados|Mariscos|Pastas y Arroces|Guarniciones|Salsas|Postres|Panadería/Pastelería|Bebidas|Otros|Sostenible|Fermentados/varios|Decoraciones de platos|Snack|Nuevas Tecnologías|Aperitivos|Bizcochos|Cremas Dulces";
+    }, [workspaceSettings]);
+
+    const getMasterPrompt = () => {
+        return `Actúa como un Chef Ejecutivo y experto en digitalización de datos gastronómicos para ${companyInfo.name || 'mi establecimiento'}.
+Tu tarea es convertir el texto o imagen de una receta que te voy a proporcionar en un objeto JSON compatible con el sistema ${creatorInfo.app_name}.
 
 REGLAS DE FORMATO:
 1. Devuelve ÚNICAMENTE el código JSON, sin explicaciones ni texto adicional.
 2. Esquema exacto:
 {
   "name": "Nombre de la receta",
-  "category": "Entrantes|Principales|Postres|Bebidas|Salsas|Guarniciones|Otros",
+  "category": "${categoriesStr}",
   "yieldQuantity": 4, 
   "yieldUnit": "raciones",
-  "elaborations": [
-    {
-      "name": "Nombre de la elaboración",
-      "ingredients": [{"name": "Producto", "quantity": "100", "unit": "g|kg|ml|l|ud"}],
-      "instructions": "Pasos detallados..."
-    }
-  ],
+  "ingredients": [{"name": "Producto", "quantity": 100, "unit": "g|kg|ml|l|ud"}],
+  "instructions": "Pasos detallados...",
   "notes": "Alérgenos, puntos críticos o consejos",
-  "serviceDetails": {
-    "presentation": "Cómo emplatar",
-    "servingTemp": "Caliente|Frio|Ambiente",
-    "cutlery": "",
-    "passTime": "15 min",
-    "serviceType": "A la Americana",
-    "clientDescription": "Descripción sugerente..."
+  "presentation": "Cómo emplatar y acabado final",
+  "servingTemp": "Temperatura ideal (ej: 60-65°C)",
+  "cutlery": "Cubiertos necesarios",
+  "serviceTime": "Tiempo estimado",
+  "serviceType": "AMERICANA|INGLESA|FRANCESA|GUERIDÓN|BUFFET",
+  "clientDescription": "Descripción sugerente y comercial de alta cocina (máximo 2 frases). Resalta texturas y sabores.",
+  "serviceExplanation": "Storytelling para el camarero"
+}
+
+REGLAS TÉCNICAS:
+- "yieldQuantity" SIEMPRE numérico.
+- "ingredients" cantidades numéricas.
+- Si no hay datos de servicio, inventa una propuesta lógica basada en el plato para la "clientDescription".
+
+RECETA A DIGITALIZAR:
+[PEGA AQUÍ TU RECETA O ESCANEO]`;
+    };
+
+    const getMolecularPrompt = () => {
+        return `Actúa como un Científico Gastronómico (I+D). Analiza la siguiente receta desde un punto de vista molecular y de afinidades químicas.
+Propón maridajes moleculares, identifica compuestos volátiles compartidos con otros ingredientes y sugiere técnicas de cocina de vanguardia.
+
+Devuelve la información en el siguiente formato JSON:
+{
+  "molecularData": {
+    "compounds": ["Compuesto 1", "Compuesto 2"],
+    "affinities": ["Ingrediente Afín 1", "Ingrediente Afín 2"],
+    "pairingSuggestion": "Sugerencia de maridaje científico",
+    "vanguardTechnique": "Técnica sugerida (Sifón, Esferificación, etc.)"
   }
-}`;
+}
 
-    const handleCopyPrompt = () => {
-        navigator.clipboard.writeText(CUSTOM_PROMPT);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+RECETA PARA ANALIZAR:
+[PEGA AQUÍ TU RECETA O NOMBRE DEL PLATO]`;
     };
 
-    const handleDigitalize = async () => {
-        if (!inputText.trim()) return;
-        setIsLoading(true);
-        try {
-            const result = await digitalizeRecipe(inputText);
-            onImport(result);
-            onClose();
-        } catch (error) {
-            console.error("AI Error:", error);
-            alert("Error al procesar con IA. Inténtalo de nuevo.");
-        } finally {
-            setIsLoading(false);
-        }
+    const handleCopy = (type: 'master' | 'molecular') => {
+        const prompt = type === 'master' ? getMasterPrompt() : getMolecularPrompt();
+        navigator.clipboard.writeText(prompt);
+        setCopied(type);
+        setTimeout(() => setCopied(null), 2000);
     };
 
-    const handleGenerateIdea = async () => {
-        setIsLoading(true);
-        try {
-            const result = await generateRecipeIdea({
-                vibe,
-                ingredients: keyIngredients,
-                level,
-                objective,
-                restrictions
-            });
-            onImport(result);
-            onClose();
-        } catch (error) {
-            console.error("AI Error:", error);
-            alert("Error al generar idea con IA.");
-        } finally {
-            setIsLoading(false);
-        }
+    const handleImport = () => {
+        if (!jsonInput.trim()) return;
+        onImport(jsonInput);
+        setJsonInput('');
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-gray-800 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-700">
-                {/* Header */}
-                <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-primary-600 to-indigo-600">
-                    <div className="flex items-center space-x-3 text-white">
-                        <Wand2 className="w-8 h-8" />
-                        <div>
-                            <h2 className="text-xl font-black italic uppercase tracking-tighter">AI Hub Gastronómico</h2>
-                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest leading-none">Inteligencia Artificial I+D</p>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 md:p-8 bg-gray-900/90 backdrop-blur-md">
+            <div className="bg-[#f8fafd] dark:bg-gray-900 w-full max-w-6xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-white dark:border-gray-800">
+                {/* Header Estilo "Puente" */}
+                <div className="p-8 border-b dark:border-gray-800 flex justify-between items-center bg-white dark:bg-gray-900">
+                    <div className="flex items-center space-x-4">
+                        <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                            <X className="w-6 h-6 text-gray-400" />
+                        </button>
+                        <div className="flex items-center space-x-3">
+                            <div className="bg-emerald-500 p-2 rounded-xl shadow-lg shadow-emerald-500/20">
+                                <Wand2 className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black text-gray-800 dark:text-white tracking-tighter uppercase">Puente de Digitalización IA</h2>
+                                <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest leading-none">Digitalización inteligente libre de errores de citación.</p>
+                            </div>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
-                        <X className="w-6 h-6" />
-                    </button>
+                    
+                    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                        <button 
+                            onClick={() => setActiveView('digitalize')}
+                            className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'digitalize' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            Digitalizar
+                        </button>
+                        <button 
+                            onClick={() => setActiveView('molecular')}
+                            className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'molecular' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            Análisis Molecular
+                        </button>
+                    </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
-                    <button 
-                        onClick={() => setActiveTab('digitalize')}
-                        className={`flex-1 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center space-x-2 transition-all ${activeTab === 'digitalize' ? 'bg-white dark:bg-gray-800 text-primary-600 border-b-2 border-primary-600' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        <ScanText className="w-4 h-4" />
-                        <span>Digitalizar</span>
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('architect')}
-                        className={`flex-1 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center space-x-2 transition-all ${activeTab === 'architect' ? 'bg-white dark:bg-gray-800 text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        <Sparkles className="w-4 h-4" />
-                        <span>Arquitecto</span>
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('prompts')}
-                        className={`flex-1 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center space-x-2 transition-all ${activeTab === 'prompts' ? 'bg-white dark:bg-gray-800 text-amber-600 border-b-2 border-amber-600' : 'text-gray-400 hover:text-gray-600'}`}
-                    >
-                        <Terminal className="w-4 h-4" />
-                        <span>Prompt Hub</span>
-                    </button>
-                </div>
+                <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-8 p-8">
+                    {/* PASO 1: COPIA */}
+                    <div className="flex-1 bg-[#121421] rounded-[2rem] p-10 flex flex-col justify-between border border-white/5 shadow-inner">
+                        <div className="space-y-8">
+                            <div className="inline-flex items-center space-x-2 bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span>Paso 1</span>
+                            </div>
+                            
+                            <div>
+                                <h3 className="text-4xl font-black text-white leading-tight mb-2">COPIA EL<br/><span className="text-emerald-400">PROMPT MAESTRO</span></h3>
+                                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mt-6">
+                                    <div className="flex items-center space-x-3 text-emerald-400 mb-3">
+                                        <Sparkles className="w-4 h-4" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Nuevo: Generación Creativa</span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 leading-relaxed font-medium">
+                                        Ahora el prompt obliga a la IA a redactar la <span className="text-white font-bold">Explicación Sugerente</span> automáticamente basándose en la receta.
+                                    </p>
+                                </div>
+                            </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-8">
-                    {activeTab === 'digitalize' && (
-                        <div className="space-y-6">
-                            <div className="bg-primary-50 dark:bg-primary-900/20 p-4 rounded-xl border border-primary-100 dark:border-primary-800">
-                                <p className="text-sm font-medium text-primary-800 dark:text-primary-300">
-                                    Pega aquí el texto de tu receta, ingredientes desordenados o descripción. Gemini interpretará todo, extraerá cantidades y organizará la ficha técnica por ti.
+                            <p className="text-sm text-gray-500 font-medium">
+                                Hemos optimizado el prompt para que la IA estructure los datos exactamente como tu sistema los necesita.
+                            </p>
+                        </div>
+
+                        <button 
+                            onClick={() => handleCopy(activeView === 'digitalize' ? 'master' : 'molecular')}
+                            className="w-full bg-white text-[#121421] py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center space-x-3 shadow-xl active:scale-[0.98]"
+                        >
+                            {copied === activeView ? <Check className="w-5 h-5 text-emerald-600" /> : <Copy className="w-5 h-5" />}
+                            <span>{copied === activeView ? 'PROMPT COPIADO' : `COPIAR PROMPT ${activeView === 'digitalize' ? 'MAESTRO' : 'MOLECULAR'}`}</span>
+                        </button>
+                    </div>
+
+                    {/* PASO 2: IMPORTA */}
+                    <div className="flex-1 bg-white dark:bg-gray-800 rounded-[2rem] p-10 flex flex-col border border-gray-100 dark:border-gray-700 shadow-xl">
+                        <div className="space-y-8 flex-1 flex flex-col">
+                            <div className="inline-flex items-center space-x-2 bg-gray-900 text-white dark:bg-gray-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest self-start">
+                                <span>Paso 2</span>
+                            </div>
+
+                            <div>
+                                <h3 className="text-4xl font-black text-gray-900 dark:text-white leading-tight mb-2">IMPORTA EL<br/><span className="text-emerald-500">RESULTADO</span></h3>
+                                <p className="text-sm text-gray-500 font-medium mt-4">
+                                    Pega el código JSON de la IA. El sistema limpiará automáticamente etiquetas inválidas como [cite] o [cite_start].
                                 </p>
                             </div>
-                            <textarea 
-                                value={inputText}
-                                onChange={(e) => setInputText(e.target.value)}
-                                placeholder="Ej: Para el bizcocho necesitamos 4 huevos, 200g de azúcar... Hornear a 180C durante 45 min..."
-                                className="w-full h-64 p-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-2xl focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500 transition-all resize-none font-mono text-sm"
-                            />
+
+                            <div className="flex-1 relative mt-6">
+                                <textarea 
+                                    value={jsonInput}
+                                    onChange={(e) => setJsonInput(e.target.value)}
+                                    placeholder="Pega el código JSON aquí..."
+                                    className="w-full h-full min-h-[300px] p-6 bg-gray-50 dark:bg-gray-900 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-[2rem] focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all resize-none font-mono text-xs text-gray-600 dark:text-gray-300"
+                                />
+                                {jsonInput && (
+                                    <button 
+                                        onClick={() => setJsonInput('')}
+                                        className="absolute top-4 right-4 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:text-red-500 transition-colors"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+
                             <button 
-                                onClick={handleDigitalize}
-                                disabled={isLoading || !inputText.trim()}
-                                className="w-full py-4 bg-primary-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-lg shadow-primary-500/30"
+                                onClick={handleImport}
+                                disabled={!jsonInput.trim()}
+                                className="w-full bg-[#c2c5ca] dark:bg-gray-700 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-500 transition-all flex items-center justify-center space-x-3 shadow-lg disabled:opacity-50 disabled:bg-gray-200"
                             >
-                                {isLoading ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : <ScanText className="w-6 h-6 mr-2" />}
-                                Digitalizar Receta
+                                <ClipboardPaste className="w-5 h-5" />
+                                <span>LIMPIAR E IMPORTAR RECETA</span>
                             </button>
                         </div>
-                    )}
+                    </div>
+                </div>
 
-                    {activeTab === 'architect' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Estilo / Vibe</label>
-                                    <input 
-                                        type="text"
-                                        value={vibe}
-                                        onChange={(e) => setVibe(e.target.value)}
-                                        placeholder="Ej: Minimalismo Nórdico, Street Food..."
-                                        className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Ingredientes Clave</label>
-                                    <input 
-                                        type="text"
-                                        value={keyIngredients}
-                                        onChange={(e) => setKeyIngredients(e.target.value)}
-                                        placeholder="Ej: Pulpo, Vainilla, Lima..."
-                                        className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Complejidad Técnica</label>
-                                    <select 
-                                        value={level}
-                                        onChange={(e) => setLevel(e.target.value)}
-                                        className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold"
-                                    >
-                                        <option>Básico</option>
-                                        <option>Intermedio</option>
-                                        <option>Avanzado</option>
-                                        <option>Experimental (Molecular)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Objetivo / Uso</label>
-                                    <input 
-                                        type="text"
-                                        value={objective}
-                                        onChange={(e) => setObjective(e.target.value)}
-                                        placeholder="Ej: Snack de bienvenida, Postre de gala..."
-                                        className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Restricciones / Alergias</label>
-                                    <input 
-                                        type="text"
-                                        value={restrictions}
-                                        onChange={(e) => setRestrictions(e.target.value)}
-                                        placeholder="Ej: Sin lácteos, Bajo coste..."
-                                        className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl font-bold"
-                                    />
-                                </div>
-                                <div className="pt-5">
-                                    <button 
-                                        onClick={handleGenerateIdea}
-                                        disabled={isLoading}
-                                        className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center shadow-lg shadow-indigo-500/30"
-                                    >
-                                        {isLoading ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : <Sparkles className="w-6 h-6 mr-2" />}
-                                        Generar Propuesta I+D
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'prompts' && (
-                        <div className="space-y-6">
-                            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-800">
-                                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                                    Si prefieres usar ChatGPT, Claude o tu propia IA externa, utiliza este prompt optimizado para que el resultado sea 100% compatible con este sistema.
-                                </p>
-                            </div>
-                            <div className="relative group">
-                                <pre className="p-6 bg-gray-900 text-gray-300 rounded-2xl text-xs font-mono overflow-x-auto whitespace-pre-wrap border border-gray-700">
-                                    {CUSTOM_PROMPT}
-                                </pre>
-                                <button 
-                                    onClick={handleCopyPrompt}
-                                    className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all flex items-center space-x-2"
-                                >
-                                    {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                    <span className="text-[10px] font-bold uppercase tracking-widest">{copied ? 'Copiado' : 'Copiar Prompt'}</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                {/* Footer Info */}
+                <div className="px-8 py-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-800 flex items-center justify-center space-x-4">
+                    <Info className="w-4 h-4 text-gray-400" />
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em]">Compatible con GPT-4, Claude 3.5 Sonnet, Gemini 1.5 Pro y DeepSeek</span>
                 </div>
             </div>
         </div>

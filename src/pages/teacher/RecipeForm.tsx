@@ -138,10 +138,12 @@ export const RecipeForm: React.FC = () => {
         ingredients: [], preparation_steps: '', key_points: '', is_public: false, cost: 0, price: 0,
         custom_section: { title: '', content: '' },
         presentation: '',
-        temperature: 'Caliente',
+        temperature: '',
         recommended_marking: '',
         service_type: '',
         client_description: '',
+        service_explanation: '',
+        cutlery_required: '',
         service_time: '',
         selected_allergens: [],
     });
@@ -257,50 +259,103 @@ export const RecipeForm: React.FC = () => {
         return Array.from(allergens);
     }, [formState.ingredients, productsMap]);
 
-    const handleAIImport = (aiRecipe: AIDigitalizedRecipe) => {
-        // Try to match ingredients to existing products
-        const importedIngredients: RecipeIngredient[] = [];
-        
-        aiRecipe.ingredients.forEach(aiIng => {
-            const matchingProduct = products.find(p => 
-                p.name.toLowerCase() === aiIng.name.toLowerCase() ||
-                p.name.toLowerCase().includes(aiIng.name.toLowerCase())
-            );
+    const handleAIImport = (jsonString: string) => {
+        try {
+            // Clean JSON string from potential markdown backticks or AI citation tags
+            const cleanJson = jsonString
+                .replace(/```json/g, '')
+                .replace(/```/g, '')
+                .replace(/\[cite\]/g, '')
+                .replace(/\[cite_start\]/g, '')
+                .replace(/\[cite_end\]/g, '')
+                .trim();
 
-            if (matchingProduct) {
-                const price = matchingProduct.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
-                const cost = calculateIngredientCost(aiIng.quantity, aiIng.unit, price, matchingProduct.unit);
-                importedIngredients.push({
-                    product_id: matchingProduct.id,
-                    quantity: aiIng.quantity,
-                    unit: aiIng.unit,
-                    cost
-                });
-            } else {
-                // If no matching product found, we could potentially log it or handle it
-                // For now, only adding matched products to keep cost integrity as requested by user
-                console.warn(`Product not found: ${aiIng.name}`);
+            const aiData = JSON.parse(cleanJson);
+
+            // Handle Molecular Data if present
+            if (aiData.molecularData) {
+                setFormState(prev => ({
+                    ...prev,
+                    key_points: `
+${prev.key_points || ''}
+
+--- ANÁLISIS MOLECULAR ---
+Compuestos: ${aiData.molecularData.compounds?.join(', ')}
+Afinidades: ${aiData.molecularData.affinities?.join(', ')}
+Maridaje: ${aiData.molecularData.pairingSuggestion}
+Técnica: ${aiData.molecularData.vanguardTechnique}
+`.trim()
+                }));
+                return;
             }
-        });
 
-        setFormState(prev => ({
-            ...prev,
-            name: aiRecipe.name || prev.name,
-            description: aiRecipe.clientDescription || prev.description,
-            yield_amount: aiRecipe.yieldQuantity || prev.yield_amount,
-            yield_unit: aiRecipe.yieldUnit || prev.yield_unit,
-            category: categories.includes(aiRecipe.category) ? aiRecipe.category : prev.category,
-            preparation_steps: aiRecipe.instructions || prev.preparation_steps,
-            key_points: aiRecipe.notes || prev.key_points,
-            presentation: aiRecipe.presentation || prev.presentation,
-            temperature: aiRecipe.servingTemp || prev.temperature,
-            client_description: aiRecipe.clientDescription || prev.client_description,
-            service_explanation: aiRecipe.serviceExplanation || prev.service_explanation,
-            service_type: aiRecipe.serviceTechnique || prev.service_type,
-            cutlery_required: aiRecipe.cutleryRequired || prev.cutlery_required,
-            service_time: aiRecipe.serviceTime || prev.service_time,
-            ingredients: [...prev.ingredients, ...importedIngredients]
-        }));
+            // Standard Digitalize
+            const importedIngredients: RecipeIngredient[] = [];
+            
+            if (aiData.ingredients) {
+                aiData.ingredients.forEach((aiIng: any) => {
+                    const matchingProduct = products.find(p => 
+                        p.name.toLowerCase() === aiIng.name.toLowerCase() ||
+                        p.name.toLowerCase().includes(aiIng.name.toLowerCase())
+                    );
+
+                    if (matchingProduct) {
+                        const price = matchingProduct.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
+                        const qty = parseFloat(aiIng.quantity) || 0;
+                        const cost = calculateIngredientCost(qty, aiIng.unit, price, matchingProduct.unit);
+                        importedIngredients.push({
+                            product_id: matchingProduct.id,
+                            quantity: qty,
+                            unit: aiIng.unit,
+                            cost
+                        });
+                    }
+                });
+            }
+
+            setFormState(prev => ({
+                ...prev,
+                name: aiData.name || prev.name,
+                yield_amount: parseFloat(aiData.yieldQuantity) || prev.yield_amount || 1,
+                yield_unit: aiData.yieldUnit || prev.yield_unit,
+                category: categories.includes(aiData.category) ? aiData.category : prev.category,
+                preparation_steps: aiData.instructions || prev.preparation_steps,
+                key_points: aiData.notes || prev.key_points,
+                presentation: aiData.presentation || prev.presentation,
+                temperature: aiData.servingTemp || prev.temperature,
+                client_description: aiData.clientDescription || prev.client_description,
+                service_explanation: aiData.serviceExplanation || prev.service_explanation,
+                service_type: aiData.serviceType || aiData.serviceTechnique || prev.service_type,
+                cutlery_required: aiData.cutlery || aiData.cutleryRequired || prev.cutlery_required,
+                service_time: aiData.serviceTime || prev.service_time,
+                ingredients: [...prev.ingredients, ...importedIngredients]
+            }));
+        } catch (error) {
+            console.error("Import Error:", error);
+            alert("El código pegado no es un JSON válido o tiene errores estructurales.");
+        }
+    };
+
+    const handlePasteImage = async (e: React.ClipboardEvent) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const base64 = reader.result as string;
+                        try {
+                            const compressed = await compressImage(base64);
+                            setFormState(prev => ({ ...prev, photo: compressed }));
+                        } catch (error) {
+                            console.error('Paste error:', error);
+                        }
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -360,13 +415,17 @@ export const RecipeForm: React.FC = () => {
                                 {/* Foto de la Ficha */}
                                 <div className="md:w-5/12 p-6 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800/50 rounded-l-xl">
                                     <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4 self-start">Foto de la Ficha</h3>
-                                    <div className="relative group w-full aspect-square bg-white dark:bg-gray-700 rounded-xl shadow-inner border-2 border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center overflow-hidden transition-all hover:border-primary-400">
+                                    <div 
+                                        className="relative group w-full aspect-square bg-white dark:bg-gray-700 rounded-xl shadow-inner border-2 border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center overflow-hidden transition-all hover:border-primary-400"
+                                        onPaste={handlePasteImage}
+                                        tabIndex={0}
+                                    >
                                         {formState.photo ? (
                                             <>
                                                 <img src={formState.photo} alt="Vista previa" className="object-cover w-full h-full"/>
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                     <label className="cursor-pointer bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-white text-xs font-bold hover:bg-white/30 transition-colors">
-                                                        Cambiar Imagen
+                                                        Cambiar Imagen (Ctrl+V)
                                                         <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden"/>
                                                     </label>
                                                 </div>
@@ -377,7 +436,7 @@ export const RecipeForm: React.FC = () => {
                                                     <ImageIcon className="w-8 h-8 text-gray-400" />
                                                 </div>
                                                 <span className="text-sm font-bold text-gray-400">Sin foto</span>
-                                                <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight">Haz clic para subir</span>
+                                                <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight">Haz clic o pega (Ctrl+V)</span>
                                                 <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden"/>
                                             </label>
                                         )}
