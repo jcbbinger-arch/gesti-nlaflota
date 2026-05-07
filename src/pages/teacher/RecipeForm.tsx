@@ -268,11 +268,16 @@ export const RecipeForm: React.FC = () => {
                 .replace(/\[cite\]/g, '')
                 .replace(/\[cite_start\]/g, '')
                 .replace(/\[cite_end\]/g, '')
+                .replace(/\\n/g, '\n') // Handle escaped newlines
                 .trim();
 
-            const aiData = JSON.parse(cleanJson);
+            // Extract just the { ... } part in case there is noise
+            const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+            const finalJson = jsonMatch ? jsonMatch[0] : cleanJson;
+            
+            const aiData = JSON.parse(finalJson);
 
-            // Handle Molecular Data if present
+            // Handle Molecular Data if present but don't return early if it also has recipe data
             if (aiData.molecularData) {
                 setFormState(prev => ({
                     ...prev,
@@ -287,27 +292,59 @@ Técnica: ${aiData.molecularData.vanguardTechnique}
 Justificación: ${aiData.molecularData.scientificJustification}
 `.trim()
                 }));
-                return;
+                // If it ONLY has molecular data, we return. If it has recipe data (like 'name'), we continue.
+                if (!aiData.name && !aiData.nombre) return;
             }
+
+            // Map AI keys to Form keys (Support English and Spanish)
+            const getVal = (...keys: string[]) => {
+                for (const key of keys) {
+                    if (aiData[key] !== undefined) return aiData[key];
+                }
+                return undefined;
+            };
+
+            const name = getVal('name', 'nombre', 'title', 'titulo');
+            const instructions = getVal('instructions', 'instrucciones', 'preparation_steps', 'elaboracion', 'pasos');
+            const notes = getVal('notes', 'notas', 'key_points', 'puntos_clave', 'consejos');
+            const yieldQty = getVal('yieldQuantity', 'yield_amount', 'cantidad_pax', 'pax', 'raciones', 'produccion');
+            const yieldUnit = getVal('yieldUnit', 'unidad_produccion', 'unidad');
+            const category = getVal('category', 'categoria');
+            const presentation = getVal('presentation', 'presentacion', 'emplatado');
+            const temp = getVal('servingTemp', 'temperature', 'temperatura', 'temp');
+            const clientDesc = getVal('clientDescription', 'description', 'descripcion_cliente', 'descripcion');
+            const serviceExp = getVal('serviceExplanation', 'explicacion_servicio', 'storytelling');
+            const serviceType = getVal('serviceType', 'serviceTechnique', 'tipo_servicio', 'tecnica');
+            const cutlery = getVal('cutlery', 'cutlery_required', 'cuberteria', 'marcaje');
+            const serviceTime = getVal('serviceTime', 'service_time', 'tiempo_pase', 'tiempo');
 
             // Standard Digitalize
             const importedIngredients: RecipeIngredient[] = [];
+            const ingList = aiData.ingredients || aiData.ingredientes || [];
             
-            if (aiData.ingredients) {
-                aiData.ingredients.forEach((aiIng: any) => {
+            if (Array.isArray(ingList)) {
+                ingList.forEach((aiIng: any) => {
+                    const ingName = aiIng.name || aiIng.nombre || aiIng.producto || '';
+                    if (!ingName) return;
+
+                    // Try improved matching
                     const matchingProduct = products.find(p => 
-                        p.name.toLowerCase() === aiIng.name.toLowerCase() ||
-                        p.name.toLowerCase().includes(aiIng.name.toLowerCase())
+                        p.name.toLowerCase() === ingName.toLowerCase() ||
+                        p.name.toLowerCase().includes(ingName.toLowerCase()) ||
+                        ingName.toLowerCase().includes(p.name.toLowerCase())
                     );
 
                     if (matchingProduct) {
                         const price = matchingProduct.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
-                        const qty = parseFloat(aiIng.quantity) || 0;
-                        const cost = calculateIngredientCost(qty, aiIng.unit, price, matchingProduct.unit);
+                        const rawQty = aiIng.quantity || aiIng.cantidad || 0;
+                        const qty = typeof rawQty === 'string' ? parseFloat(rawQty) : rawQty;
+                        const unit = aiIng.unit || aiIng.unidad || matchingProduct.unit;
+                        
+                        const cost = calculateIngredientCost(qty, unit, price, matchingProduct.unit);
                         importedIngredients.push({
                             product_id: matchingProduct.id,
                             quantity: qty,
-                            unit: aiIng.unit,
+                            unit: unit,
                             cost
                         });
                     }
@@ -316,21 +353,25 @@ Justificación: ${aiData.molecularData.scientificJustification}
 
             setFormState(prev => ({
                 ...prev,
-                name: aiData.name || prev.name,
-                yield_amount: parseFloat(aiData.yieldQuantity) || prev.yield_amount || 1,
-                yield_unit: aiData.yieldUnit || prev.yield_unit,
-                category: categories.includes(aiData.category) ? aiData.category : prev.category,
-                preparation_steps: aiData.instructions || prev.preparation_steps,
-                key_points: aiData.notes || prev.key_points,
-                presentation: aiData.presentation || prev.presentation,
-                temperature: aiData.servingTemp || prev.temperature,
-                client_description: aiData.clientDescription || prev.client_description,
-                service_explanation: aiData.serviceExplanation || prev.service_explanation,
-                service_type: aiData.serviceType || aiData.serviceTechnique || prev.service_type,
-                cutlery_required: aiData.cutlery || aiData.cutleryRequired || prev.cutlery_required,
-                service_time: aiData.serviceTime || prev.service_time,
-                ingredients: [...prev.ingredients, ...importedIngredients]
+                name: name || prev.name,
+                yield_amount: (typeof yieldQty === 'string' ? parseFloat(yieldQty) : yieldQty) || prev.yield_amount || 1,
+                yield_unit: yieldUnit || prev.yield_unit,
+                category: (category && categories.includes(category)) ? category : prev.category,
+                preparation_steps: instructions || prev.preparation_steps,
+                key_points: notes || (aiData.molecularData ? prev.key_points : prev.key_points), // Molecular already updated key_points
+                presentation: presentation || prev.presentation,
+                temperature: temp || prev.temperature,
+                client_description: clientDesc || prev.client_description,
+                service_explanation: serviceExp || prev.service_explanation,
+                service_type: serviceType || prev.service_type,
+                cutlery_required: cutlery || prev.cutlery_required,
+                service_time: serviceTime || prev.service_time,
+                ingredients: importedIngredients.length > 0 ? importedIngredients : prev.ingredients
             }));
+
+            if (importedIngredients.length === 0 && ingList.length > 0) {
+                alert("Se procesó la receta pero no se encontraron coincidencias exactas para los ingredientes en tu Almacén Central. Por favor, añádelos manualmente.");
+            }
         } catch (error) {
             console.error("Import Error:", error);
             alert("El código pegado no es un JSON válido o tiene errores estructurales.");
