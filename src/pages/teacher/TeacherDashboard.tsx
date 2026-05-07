@@ -5,7 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { EventIcon, PlusIcon, HistoryIcon, RecipeIcon, SaleIcon, DownloadIcon, ChartIcon, CalendarIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
-import { Profile, SUPER_USER_EMAILS, AppEvent } from '../../types';
+import { Profile, SUPER_USER_EMAILS, AppEvent, Order } from '../../types';
+import { DetailExpenseModal } from '../../components/DetailExpenseModal';
 
 // Calendario Compacto
 const CompactCalendar: React.FC<{ events: AppEvent[], selectedDate: Date, onSelectDate: (d: Date) => void }> = ({ events, selectedDate, onSelectDate }) => {
@@ -77,9 +78,39 @@ const CompactCalendar: React.FC<{ events: AppEvent[], selectedDate: Date, onSele
 };
 
 export const TeacherDashboard: React.FC = () => {
-    const { events, orders, users, mini_economato_stock, assignments, groups, modules } = useData();
+    const { events, orders, users, mini_economato_stock, assignments, groups, modules, products } = useData();
     const { currentUser, selectedProfile, effectiveUserId } = useAuth();
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+    // Modal State
+    const [detailModal, setDetailModal] = useState<{
+        isOpen: boolean;
+        type: string;
+        orders: Order[];
+    }>({
+        isOpen: false,
+        type: '',
+        orders: []
+    });
+
+    const handleOpenDetail = (type: 'Regular' | 'Servicio' | 'Extraordinario') => {
+        const typeOrders = myAllOrders.filter(o => {
+            const event = events.find(e => e.id === o.event_id);
+            return event?.type === type;
+        });
+
+        const labelMap: Record<string, string> = {
+            'Regular': 'Módulos Académicos',
+            'Servicio': 'Servicios de Hostelería',
+            'Extraordinario': 'Pedidos Extraordinarios'
+        };
+
+        setDetailModal({
+            isOpen: true,
+            type: labelMap[type],
+            orders: typeOrders
+        });
+    };
 
     const myAssignments = assignments
         .filter(a => a.user_id === effectiveUserId)
@@ -241,16 +272,25 @@ export const TeacherDashboard: React.FC = () => {
                                 <p className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider mb-1">Gasto Total</p>
                                 <p className="text-2xl font-black text-gray-800 dark:text-gray-200">{myTotalSpend.toFixed(2)}€</p>
                             </div>
-                            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 text-center shadow-sm">
-                                <p className="text-[11px] text-blue-600 dark:text-blue-400 uppercase font-bold tracking-wider mb-1 whitespace-nowrap overflow-hidden text-ellipsis px-1" title="Módulos (Regular)">Módulos (Reg.)</p>
+                            <div 
+                                onClick={() => handleOpenDetail('Regular')}
+                                className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 text-center shadow-sm cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                            >
+                                <p className="text-[11px] text-blue-600 dark:text-blue-400 uppercase font-bold tracking-wider mb-1 whitespace-nowrap overflow-hidden text-ellipsis px-1 group-hover:text-blue-700" title="Módulos (Regular)">Módulos (Reg.)</p>
                                 <p className="text-2xl font-black text-blue-700 dark:text-blue-300">{ (spendByType['Regular'] || 0).toFixed(2) }€</p>
                             </div>
-                            <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800/50 text-center shadow-sm">
-                                <p className="text-[11px] text-green-600 dark:text-green-400 uppercase font-bold tracking-wider mb-1">Servicios</p>
+                            <div 
+                                onClick={() => handleOpenDetail('Servicio')}
+                                className="p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800/50 text-center shadow-sm cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                            >
+                                <p className="text-[11px] text-green-600 dark:text-green-400 uppercase font-bold tracking-wider mb-1 group-hover:text-green-700">Servicios</p>
                                 <p className="text-2xl font-black text-green-700 dark:text-green-300">{ (spendByType['Servicio'] || 0).toFixed(2) }€</p>
                             </div>
-                            <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/50 text-center shadow-sm">
-                                <p className="text-[11px] text-red-600 dark:text-red-400 uppercase font-bold tracking-wider mb-1">Extraord.</p>
+                            <div 
+                                onClick={() => handleOpenDetail('Extraordinario')}
+                                className="p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/50 text-center shadow-sm cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                            >
+                                <p className="text-[11px] text-red-600 dark:text-red-400 uppercase font-bold tracking-wider mb-1 group-hover:text-red-700">Extraord.</p>
                                 <p className="text-2xl font-black text-red-700 dark:text-red-300">{ (spendByType['Extraordinario'] || 0).toFixed(2) }€</p>
                             </div>
                         </div>
@@ -291,6 +331,15 @@ export const TeacherDashboard: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            <DetailExpenseModal 
+                isOpen={detailModal.isOpen}
+                onClose={() => setDetailModal(prev => ({ ...prev, isOpen: false }))}
+                type={detailModal.type}
+                orders={detailModal.orders}
+                products={products}
+                events={events}
+            />
         </div>
     );
 };

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { UsersIcon, ProductIcon, SupplierIcon, EventIcon, DownloadIcon, ChartIcon, CalendarIcon, PlusIcon, HistoryIcon } from '../../components/icons';
-import { Profile, AppEvent } from '../../types';
+import { Profile, AppEvent, Order } from '../../types';
+import { DetailExpenseModal } from '../../components/DetailExpenseModal';
 import { printPage } from '../../utils/export';
 
 // Calendario Compacto (Componente compartido conceptualmente)
@@ -88,6 +89,36 @@ export const AdminDashboard: React.FC = () => {
   const { users, products, suppliers, events, orders } = useData();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
+  // Modal State
+  const [detailModal, setDetailModal] = useState<{
+      isOpen: boolean;
+      type: string;
+      orders: Order[];
+  }>({
+      isOpen: false,
+      type: '',
+      orders: []
+  });
+
+  const handleOpenDetail = (type: 'Regular' | 'Servicio' | 'Extraordinario') => {
+      const typeOrders = globalAllOrders.filter(o => {
+          const event = events.find(e => e.id === o.event_id);
+          return event?.type === type;
+      });
+
+      const labelMap: Record<string, string> = {
+          'Regular': 'Módulos Académicos',
+          'Servicio': 'Servicios de Hostelería',
+          'Extraordinario': 'Pedidos Extraordinarios'
+      };
+
+      setDetailModal({
+          isOpen: true,
+          type: labelMap[type],
+          orders: typeOrders
+      });
+  };
+
   const teacherCount = users.filter(u => u.profiles.includes(Profile.TEACHER) && u.activity_status === 'Activo').length;
   const productCount = products.length;
   const supplierCount = suppliers.filter(s => s.status === 'Activo').length;
@@ -165,16 +196,25 @@ export const AdminDashboard: React.FC = () => {
 
           <Card title="Gasto por Categoría de Evento" icon={<ChartIcon className="w-8 h-8"/>}>
                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50">
-                     <p className="text-[10px] text-blue-600 uppercase font-black mb-1">Módulos (Reg.)</p>
+                  <div 
+                    onClick={() => handleOpenDetail('Regular')}
+                    className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                  >
+                     <p className="text-[10px] text-blue-600 uppercase font-black mb-1 group-hover:text-blue-700">Módulos (Reg.)</p>
                      <p className="text-2xl font-black text-blue-700 dark:text-blue-300">{(spendByType['Regular'] || 0).toFixed(2)}€</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50">
-                     <p className="text-[10px] text-emerald-600 uppercase font-black mb-1">Servicios</p>
+                  <div 
+                    onClick={() => handleOpenDetail('Servicio')}
+                    className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                  >
+                     <p className="text-[10px] text-emerald-600 uppercase font-black mb-1 group-hover:text-emerald-700">Servicios</p>
                      <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300">{(spendByType['Servicio'] || 0).toFixed(2)}€</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/50">
-                     <p className="text-[10px] text-rose-600 uppercase font-black mb-1">Extraord.</p>
+                  <div 
+                    onClick={() => handleOpenDetail('Extraordinario')}
+                    className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/50 cursor-pointer hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-all hover:scale-[1.02] active:scale-95 group"
+                  >
+                     <p className="text-[10px] text-rose-600 uppercase font-black mb-1 group-hover:text-rose-700">Extraord.</p>
                      <p className="text-2xl font-black text-rose-700 dark:text-rose-300">{(spendByType['Extraordinario'] || 0).toFixed(2)}€</p>
                   </div>
                </div>
@@ -238,6 +278,15 @@ export const AdminDashboard: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      <DetailExpenseModal 
+          isOpen={detailModal.isOpen}
+          onClose={() => setDetailModal(prev => ({ ...prev, isOpen: false }))}
+          type={detailModal.type}
+          orders={detailModal.orders}
+          products={products}
+          events={events}
+      />
     </div>
   );
 };
