@@ -4,13 +4,14 @@ import { Profile } from '../types';
 
 interface CardProps {
   title?: string | React.ReactNode;
+  subtitle?: string | React.ReactNode;
   icon?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   noPadding?: boolean;
 }
 
-export const Card: React.FC<CardProps> = ({ title, icon, children, className = '', noPadding = false }) => {
+export const Card: React.FC<CardProps> = ({ title, subtitle, icon, children, className = '', noPadding = false }) => {
   const { selectedProfile } = useAuth();
 
   const getProfileColors = () => {
@@ -35,9 +36,12 @@ export const Card: React.FC<CardProps> = ({ title, icon, children, className = '
     <div className={`bg-white dark:bg-gray-800 shadow-lg rounded-lg ${className} ${borderClass}`}>
       <div className={noPadding ? '' : 'p-6'}>
         {title && (
-          <div className={`flex items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-4 ${noPadding ? 'px-6 pt-6' : ''}`}>
-            {icon && <div className={`mr-3 ${colors.icon}`}>{icon}</div>}
-            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 w-full">{title}</h2>
+          <div className={`flex flex-col mb-4 border-b border-gray-200 dark:border-gray-700 pb-4 ${noPadding ? 'px-6 pt-6' : ''}`}>
+            <div className="flex items-center">
+              {icon && <div className={`mr-3 ${colors.icon}`}>{icon}</div>}
+              <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 w-full">{title}</h2>
+            </div>
+            {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>}
           </div>
         )}
         <div>{children}</div>
