@@ -8,36 +8,33 @@ interface PrintHeaderProps {
 }
 
 export const PrintHeader: React.FC<PrintHeaderProps> = ({ companyInfo, managerUser, currentUser }) => {
+  // Use institute logo if available, otherwise company logo
+  const logoSrc = currentUser?.instituteLogo || companyInfo.print_logo;
+  
   return (
     <div className="hidden print:block mb-8 border-b-2 border-black pb-4">
       <div className="flex justify-between items-start">
         <div className="flex flex-col space-y-2">
-          <img 
-            src={companyInfo.print_logo} 
-            alt="Logo Empresa" 
-            className="max-w-[150px] max-h-[75px] w-auto h-auto object-contain" 
-            referrerPolicy="no-referrer"
-          />
-          {currentUser?.instituteLogo && (
+          {logoSrc && (
             <img 
-              src={currentUser.instituteLogo} 
-              alt="Logo Instituto" 
-              className="max-w-[120px] max-h-[60px] w-auto h-auto object-contain" 
+              src={logoSrc} 
+              alt="Logo" 
+              className="max-w-[200px] max-h-[100px] w-auto h-auto object-contain" 
               referrerPolicy="no-referrer"
             />
           )}
         </div>
-        <div className="text-right text-xs">
-          <h2 className="font-bold text-lg">{currentUser?.instituteName || companyInfo.name}</h2>
-          <p>{companyInfo.address}</p>
+        <div className="text-right text-[10px]">
+          <h2 className="font-bold text-base uppercase tracking-tighter">{currentUser?.instituteName || companyInfo.name}</h2>
+          <p className="opacity-70">{companyInfo.address}</p>
           {currentUser?.teacherName && (
-            <p className="mt-1"><strong>Profesor:</strong> {currentUser.teacherName}</p>
+            <div className="mt-2 bg-black text-white px-2 py-1 inline-block rounded">
+              <p className="font-black">PROFESOR: {currentUser.teacherName.toUpperCase()}</p>
+            </div>
           )}
           {managerUser && (
-            <div className="mt-2">
-              <p><strong>Contacto Almacén:</strong> {managerUser.name}</p>
-              <p><strong>Teléfono:</strong> {companyInfo.phone}</p>
-              <p><strong>Email:</strong> {managerUser.email}</p>
+            <div className="mt-2 opacity-60">
+              <p>Ref: {managerUser.name} | {companyInfo.phone}</p>
             </div>
           )}
         </div>

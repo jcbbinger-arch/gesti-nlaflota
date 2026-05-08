@@ -42,6 +42,8 @@
 @media print {
   body {
     background-color: white !important;
+    overflow: visible !important;
+    height: auto !important;
   }
   .no-print {
     display: none !important;
@@ -53,5 +55,9 @@
   }
   aside, header {
     display: none !important;
+  }
+  .break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

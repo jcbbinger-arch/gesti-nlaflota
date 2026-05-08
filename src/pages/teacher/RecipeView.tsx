@@ -32,8 +32,10 @@ export const RecipeView: React.FC = () => {
     const { recipes, products, users } = useData();
     const { companyInfo } = useCompany();
     const { currentUser } = useAuth();
+    const recipe = useMemo(() => recipes.find(r => r.id === recipeId), [recipes, recipeId]);
 
     const [showPrintModal, setShowPrintModal] = React.useState(false);
+    const [currentPax, setCurrentPax] = React.useState(1);
     const [printOptions, setPrintOptions] = React.useState({
         technical: true,
         checklist: true,
@@ -41,7 +43,12 @@ export const RecipeView: React.FC = () => {
         chemical: true
     });
 
-    const recipe = useMemo(() => recipes.find(r => r.id === recipeId), [recipes, recipeId]);
+    React.useEffect(() => {
+        if (recipe?.yield_amount) {
+            setCurrentPax(recipe.yield_amount);
+        }
+    }, [recipe?.yield_amount]);
+
     const author = useMemo(() => users.find(u => u.id === recipe?.author_id), [users, recipe]);
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
@@ -73,6 +80,16 @@ export const RecipeView: React.FC = () => {
     const handlePrint = () => {
         window.print();
         setShowPrintModal(false);
+    };
+
+    const paxMultiplier = useMemo(() => {
+        return currentPax / (recipe.yield_amount || 1);
+    }, [currentPax, recipe.yield_amount]);
+
+    const formatQuantity = (q: number) => {
+        const val = q * paxMultiplier;
+        if (val === 0) return '0';
+        return val % 1 === 0 ? val.toString() : val.toFixed(2);
     };
 
     return (
@@ -182,10 +199,15 @@ export const RecipeView: React.FC = () => {
                                     <div className="space-y-2">
                                         {recipe.ingredients.map((ing, i) => {
                                             const p = productsMap.get(ing.product_id);
+                                            const isSubPrep = recipe.sub_preparations?.some(sub => sub.name.toLowerCase() === ing.product_id.toLowerCase());
+                                            const isUnidentified = !p && !isSubPrep;
+                                            
                                             return (
                                                 <div key={i} className="flex items-center justify-between py-1 border-b border-slate-700/30 print:border-gray-200">
-                                                    <span className="text-xs font-bold text-slate-200 print:text-black">{p?.name || 'Ingrediente'}</span>
-                                                    <span className="text-xs font-mono text-slate-400 print:text-gray-600">{ing.quantity} {ing.unit}</span>
+                                                    <span className={`text-xs font-bold ${isUnidentified ? 'text-red-500 print:text-black print:font-black' : isSubPrep ? 'text-amber-500 print:text-black print:italic' : 'text-slate-200 print:text-black'}`}>
+                                                        {p?.name || ing.product_id}
+                                                    </span>
+                                                    <span className="text-xs font-mono text-slate-400 print:text-gray-600">{formatQuantity(ing.quantity)} {ing.unit}</span>
                                                 </div>
                                             );
                                         })}
@@ -208,8 +230,17 @@ export const RecipeView: React.FC = () => {
                                 )}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="p-4 bg-slate-800/50 print:bg-gray-50 rounded-2xl border border-slate-700 print:border-gray-200">
-                                        <p className="text-[8px] font-black uppercase text-slate-500 mb-1">Rendimiento</p>
-                                        <p className="text-sm font-bold text-white print:text-black">{recipe.yield_amount} {recipe.yield_unit}</p>
+                                        <p className="text-[8px] font-black uppercase text-slate-500 mb-1">Rendimiento Actual (PAX)</p>
+                                        <div className="flex items-center space-x-3">
+                                            <input 
+                                                type="number" 
+                                                value={currentPax}
+                                                onChange={(e) => setCurrentPax(parseFloat(e.target.value) || 1)}
+                                                className="w-16 bg-slate-700/50 print:hidden text-white font-black rounded-lg p-1 text-center border-none ring-1 ring-white/10"
+                                            />
+                                            <p className="text-sm font-bold text-white print:text-black">{currentPax} {recipe.yield_unit}</p>
+                                        </div>
+                                        <p className="text-[7px] text-slate-500 mt-1 no-print">Original: {recipe.yield_amount} {recipe.yield_unit}</p>
                                     </div>
                                     <div className="p-4 bg-slate-800/50 print:bg-gray-50 rounded-2xl border border-slate-700 print:border-gray-200">
                                         <p className="text-[8px] font-black uppercase text-slate-500 mb-1">Categoría</p>
@@ -244,10 +275,15 @@ export const RecipeView: React.FC = () => {
                                                 <div className="grid grid-cols-1 gap-1">
                                                     {sub.ingredients.map((ing, idx) => {
                                                         const p = productsMap.get(ing.product_id);
+                                                        const isSubPrep = recipe.sub_preparations?.some(s => s.name.toLowerCase() === ing.product_id.toLowerCase());
+                                                        const isUnidentified = !p && !isSubPrep;
+
                                                         return (
                                                             <div key={idx} className="flex justify-between text-xs py-1 border-b border-slate-700/50 print:border-gray-100">
-                                                                <span className="font-medium text-slate-300 print:text-black">{p?.name}</span>
-                                                                <span className="font-mono text-slate-500">{ing.quantity} {ing.unit}</span>
+                                                                <span className={`font-bold ${isUnidentified ? 'text-red-500 print:text-black print:font-black' : isSubPrep ? 'text-amber-500 print:text-black print:italic' : 'text-slate-300 print:text-black'}`}>
+                                                                    {p?.name || ing.product_id}
+                                                                </span>
+                                                                <span className="font-mono text-slate-500">{formatQuantity(ing.quantity)} {ing.unit}</span>
                                                             </div>
                                                         );
                                                     })}
@@ -284,18 +320,34 @@ export const RecipeView: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
                             {/* Elaboraciones Checklist */}
                             <div className="bg-slate-800/50 print:bg-white print:border-[3px] print:border-black rounded-3xl p-8 space-y-6">
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 print:text-black pb-4 border-b border-white/5 print:border-black/10">Estado de Elaboraciones</h3>
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 print:text-black pb-4 border-b border-white/5 print:border-black/10">Control de Elaboraciones y Puntos Críticos</h3>
                                 <div className="space-y-4">
                                     <div className="flex items-center space-x-4">
-                                        <div className="w-6 h-6 rounded-lg border-2 border-slate-600 print:border-black flex items-center justify-center" />
-                                        <span className="text-sm font-bold text-white print:text-black uppercase">Elaboración Principal: {recipe.name}</span>
+                                        <div className="w-6 h-6 rounded-lg border-2 border-slate-600 print:border-black flex items-center justify-center shrink-0" />
+                                        <span className="text-sm font-bold text-white print:text-black uppercase">Principal: {recipe.name}</span>
                                     </div>
                                     {recipe.sub_preparations?.map(sub => (
                                         <div key={sub.id} className="flex items-center space-x-4">
-                                            <div className="w-6 h-6 rounded-lg border-2 border-slate-600 print:border-black flex items-center justify-center" />
+                                            <div className="w-6 h-6 rounded-lg border-2 border-slate-600 print:border-black flex items-center justify-center shrink-0" />
                                             <span className="text-sm font-bold text-white print:text-black uppercase">Sub: {sub.name}</span>
                                         </div>
                                     ))}
+                                    {/* MÁS PUNTOS DEL CHECKLIST */}
+                                    {recipe.service_checklist?.map((item, idx) => (
+                                        <div key={idx} className="flex items-center space-x-4">
+                                            <div className="w-6 h-6 rounded-lg border-2 border-slate-600 print:border-black flex items-center justify-center shrink-0" />
+                                            <span className="text-sm font-bold text-white print:text-black uppercase">{item}</span>
+                                        </div>
+                                    ))}
+                                    
+                                    {/* Presentación final en el checklist */}
+                                    <div className="flex items-center space-x-4 pt-4 border-t border-slate-700 print:border-black/20">
+                                        <div className="w-6 h-6 rounded-lg border-2 border-slate-600 print:border-black flex items-center justify-center shrink-0" />
+                                        <div className="space-y-1">
+                                            <span className="text-xs font-black text-amber-500 print:text-amber-600 uppercase tracking-widest">Protocolo de Presentación</span>
+                                            <p className="text-sm font-bold text-white print:text-black leading-tight uppercase">{recipe.presentation || 'Limpieza y temperatura óptima'}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

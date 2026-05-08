@@ -78,18 +78,24 @@ const LabelPreviewModal: React.FC<{ recipe: Recipe, company: any, onClose: () =>
     }, [recipe.ingredients, recipe.selected_allergens, recipe.sub_preparations, productsMap]);
 
     const allIngredientsList = useMemo(() => {
-        const names = new Set<string>();
+        const names: string[] = [];
         recipe.ingredients.forEach(i => {
             const p = productsMap.get(i.product_id);
-            if (p) names.add(p.name);
+            const isSubPrep = recipe.sub_preparations?.some(sub => sub.name.toLowerCase() === i.product_id.toLowerCase());
+            if (p) names.push(p.name);
+            else if (isSubPrep) names.push(i.product_id);
+            else names.push(i.product_id.toUpperCase()); // Bold/Caps for unidentified in label context
         });
         recipe.sub_preparations?.forEach(sub => {
             sub.ingredients.forEach(i => {
                 const p = productsMap.get(i.product_id);
-                if (p) names.add(p.name);
+                const isSubPrep = recipe.sub_preparations?.some(s => s.name.toLowerCase() === i.product_id.toLowerCase());
+                if (p) names.push(p.name);
+                else if (isSubPrep) names.push(i.product_id);
+                else names.push(i.product_id.toUpperCase());
             });
         });
-        return Array.from(names).join(', ');
+        return Array.from(new Set(names)).join(', ');
     }, [recipe.ingredients, recipe.sub_preparations, productsMap]);
 
     const printLabel = () => {
@@ -184,6 +190,7 @@ export const RecipeForm: React.FC = () => {
         chemical_analysis: '',
     });
     const [searchTerm, setSearchTerm] = useState('');
+    const [linkingIndex, setLinkingIndex] = useState<{ tab: number; index: number } | null>(null);
     const [showLabelPreview, setShowLabelPreview] = useState(false);
     const [showAIHub, setShowAIHub] = useState(false);
     const [aiHubTab, setAiHubTab] = useState<'digitalize' | 'molecular'>('digitalize');
@@ -250,23 +257,64 @@ export const RecipeForm: React.FC = () => {
     const addIngredient = (product: Product) => {
         const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
         const cost = calculateIngredientCost(1, product.unit, price, product.unit);
+        
+        if (linkingIndex) {
+            const { tab, index } = linkingIndex;
+            const newIngredient: RecipeIngredient = { 
+                product_id: product.id, 
+                quantity: 1, 
+                unit: product.unit,
+                cost: cost
+            };
+
+            if (tab === -1) {
+                const newIngredients = [...formState.ingredients];
+                newIngredients[index] = newIngredient;
+                setFormState(prev => ({...prev, ingredients: newIngredients}));
+            } else {
+                const subs = [...(formState.sub_preparations || [])];
+                subs[tab].ingredients[index] = newIngredient;
+                setFormState(prev => ({...prev, sub_preparations: subs}));
+            }
+            setLinkingIndex(null);
+        } else {
+            const newIngredient: RecipeIngredient = { 
+                product_id: product.id, 
+                quantity: 1, 
+                unit: product.unit,
+                cost: cost
+            };
+
+            if (activeElabTab === -1) {
+                if (!formState.ingredients.some(i => i.product_id === product.id)) {
+                    setFormState(prev => ({...prev, ingredients: [...prev.ingredients, newIngredient]}));
+                }
+            } else {
+                const subs = [...(formState.sub_preparations || [])];
+                if (!subs[activeElabTab].ingredients.some(i => i.product_id === product.id)) {
+                    subs[activeElabTab].ingredients.push(newIngredient);
+                    setFormState(prev => ({...prev, sub_preparations: subs}));
+                }
+            }
+        }
+        setSearchTerm('');
+    };
+
+    const addGenericIngredient = () => {
+        if (!searchTerm.trim()) return;
         const newIngredient: RecipeIngredient = { 
-            product_id: product.id, 
+            product_id: searchTerm, 
             quantity: 1, 
-            unit: product.unit,
-            cost: cost
+            unit: 'ud',
+            cost: 0
         };
 
         if (activeElabTab === -1) {
-            if (!formState.ingredients.some(i => i.product_id === product.id)) {
-                setFormState(prev => ({...prev, ingredients: [...prev.ingredients, newIngredient]}));
-            }
+            setFormState(prev => ({...prev, ingredients: [...prev.ingredients, newIngredient]}));
         } else {
             const subs = [...(formState.sub_preparations || [])];
-            if (!subs[activeElabTab].ingredients.some(i => i.product_id === product.id)) {
-                subs[activeElabTab].ingredients.push(newIngredient);
-                setFormState(prev => ({...prev, sub_preparations: subs}));
-            }
+            subs[activeElabTab].ingredients.push(newIngredient);
+            setFormState(prev => ({...prev, sub_preparations: subs}));
         }
         setSearchTerm('');
     };
@@ -455,6 +503,16 @@ Justificación: ${aiData.molecularData.scientificJustification}
                             unit: unit,
                             cost
                         });
+                    } else {
+                        // Add as unlinked ingredient
+                        const rawQty = aiIng.quantity || aiIng.cantidad || 0;
+                        const qty = typeof rawQty === 'string' ? parseFloat(rawQty) : rawQty;
+                        importedIngredients.push({
+                            product_id: ingName, // Store name as ID for unlinked
+                            quantity: qty,
+                            unit: aiIng.unit || aiIng.unidad || 'ud',
+                            cost: 0
+                        });
                     }
                 });
             }
@@ -478,8 +536,11 @@ Justificación: ${aiData.molecularData.scientificJustification}
                 ingredients: importedIngredients.length > 0 ? importedIngredients : prev.ingredients
             }));
 
-            if (importedIngredients.length === 0 && ingList.length > 0) {
-                alert("Se procesó la receta pero no se encontraron coincidencias exactas para los ingredientes en tu Almacén Central. Por favor, añádelos manualmente.");
+            if (importedIngredients.length > 0) {
+                const unlinkedCount = importedIngredients.filter(i => !productsMap.has(i.product_id)).length;
+                if (unlinkedCount > 0) {
+                    alert(`Se han importado ${importedIngredients.length} ingredientes, de los cuales ${unlinkedCount} no se han podido vincular automáticamente con productos de tu almacén. Aparecerán en rojo.`);
+                }
             }
         } catch (error) {
             console.error("Import Error:", error);
@@ -789,7 +850,16 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                                                 <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-500 uppercase">{p.unit}</span>
                                                             </li>
                                                         ))}
-                                                        {filteredProducts.length === 0 && <li className="p-4 text-xs text-gray-500 italic text-center">Sin resultados</li>}
+                                                        {filteredProducts.length === 0 && searchTerm.trim() && (
+                                                            <li 
+                                                                onClick={addGenericIngredient}
+                                                                className="p-4 text-xs text-primary-600 font-bold hover:bg-primary-50 cursor-pointer flex items-center justify-center space-x-2"
+                                                            >
+                                                                <PlusIcon className="w-4 h-4" />
+                                                                <span>Añadir "{searchTerm}" como ingrediente genérico</span>
+                                                            </li>
+                                                        )}
+                                                        {filteredProducts.length === 0 && !searchTerm.trim() && <li className="p-4 text-xs text-gray-500 italic text-center">Sin resultados</li>}
                                                     </ul>
                                                 )}
                                             </div>
@@ -799,12 +869,32 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                             {(activeElabTab === -1 ? formState.ingredients : (formState.sub_preparations || [])[activeElabTab].ingredients).map((ing, index) => {
                                                 const product = productsMap.get(ing.product_id);
                                                 const isCompatible = areUnitsCompatible(ing.unit, product?.unit || '');
+                                                const isSubPrep = formState.sub_preparations?.some(sub => sub.name.toLowerCase() === ing.product_id.toLowerCase());
+                                                const isUnidentified = !product && !isSubPrep;
                                                 
                                                 return (
-                                                    <div key={ing.product_id} className="group flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl hover:border-primary-200 dark:hover:border-primary-800 transition-all">
-                                                        <div className="flex-1 flex items-center space-x-3">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-primary-400" />
-                                                            <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate w-40" title={product?.name}>{product?.name}</span>
+                                                    <div key={`${index}-${ing.product_id}`} className={`group flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 border ${isUnidentified ? 'border-red-200 bg-red-50/30' : 'border-gray-100 dark:border-gray-700'} rounded-xl hover:border-primary-200 dark:hover:border-primary-800 transition-all`}>
+                                                        <div 
+                                                            className={`flex-1 flex items-center space-x-3 ${isUnidentified ? 'cursor-pointer' : ''}`}
+                                                            onClick={() => {
+                                                                if (isUnidentified) {
+                                                                    setLinkingIndex({ tab: activeElabTab, index: index });
+                                                                    setSearchTerm(ing.product_id);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${isUnidentified ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : isSubPrep ? 'bg-amber-400' : 'bg-primary-400'}`} />
+                                                            <div className="flex flex-col">
+                                                                <span className={`text-[11px] font-bold truncate w-40 ${isUnidentified ? 'text-red-600' : isSubPrep ? 'text-amber-600' : 'text-gray-700 dark:text-gray-300'}`} title={product?.name || ing.product_id}>
+                                                                    {product?.name || ing.product_id}
+                                                                </span>
+                                                                {isUnidentified && (
+                                                                    <span className="text-[8px] font-black uppercase text-red-400 animate-pulse">Desvinculado - Haz clic para enlazar</span>
+                                                                )}
+                                                                {isSubPrep && (
+                                                                    <span className="text-[8px] font-black uppercase text-amber-500">Sub-elaboración local</span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         
                                                         <div className="flex items-center space-x-2">
