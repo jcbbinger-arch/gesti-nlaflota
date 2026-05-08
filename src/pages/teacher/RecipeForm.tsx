@@ -917,42 +917,53 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                         <div className="space-y-4">
                                             <div className="flex items-center space-x-2 text-amber-400">
                                                 <AlertTriangle className="w-4 h-4" />
-                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Explicación sugerente del plato</h4>
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Explicación sugerente para el Camarero</h4>
                                             </div>
                                             <textarea 
                                                 name="service_explanation"
                                                 value={formState.service_explanation || ''}
                                                 onChange={handleFormChange}
-                                                placeholder="Describe cómo se le debe presentar el plato al cliente..."
+                                                placeholder="Describe cómo se le debe presentar el plato al cliente, destacando texturas o ingredientes clave..."
                                                 className="w-full h-32 bg-white/5 border border-white/10 rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary-500/50 transition-all resize-none"
                                             />
                                         </div>
 
                                         <div className="space-y-4">
-                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Protocolo de Servicio</h4>
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Tipo de Servicio (Protocolo)</h4>
                                             <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                                                {['AMERICANA', 'INGLESA', 'FRANCESA', 'GUERIDÓN', 'PLAT DE MILIEU', 'BUFFET', 'SIN SERVICIO'].map(tech => (
+                                                {[
+                                                    { id: 'AMERICANA', desc: 'Práctico, rápido, plato montado en cocina.' },
+                                                    { id: 'INGLESA', desc: 'Servicio desde fuente a plato por la izquierda.' },
+                                                    { id: 'FRANCESA', desc: 'El cliente se sirve de la fuente que el camarero presenta.' },
+                                                    { id: 'GUERIDÓN', desc: 'Trinchado o emplatado frente al cliente (Sala).' },
+                                                    { id: 'PLAT DE MILIEU', desc: 'El plato se coloca en el centro para compartir.' },
+                                                    { id: 'BUFFET', desc: 'Autoservicio o estaciones asistidas.' },
+                                                    { id: 'VENTA DIRECTA', desc: 'Takeaway o servicio directo en mostrador.' }
+                                                ].map(tech => (
                                                     <button
-                                                        key={tech}
+                                                        key={tech.id}
                                                         type="button"
-                                                        onClick={() => setFormState(prev => ({ ...prev, service_type: tech }))}
-                                                        className={`py-3 px-2 text-[10px] font-black rounded-lg transition-all border ${formState.service_type === tech ? 'bg-primary-500 border-primary-400 text-white shadow-lg shadow-primary-500/20' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+                                                        onClick={() => setFormState(prev => ({ ...prev, service_type: tech.id }))}
+                                                        className={`py-3 px-2 text-[10px] font-black rounded-lg transition-all border ${formState.service_type === tech.id ? 'bg-primary-500 border-primary-400 text-white shadow-lg shadow-primary-500/20' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
                                                     >
-                                                        {tech}
+                                                        {tech.id}
                                                     </button>
                                                 ))}
                                             </div>
                                             <div className="bg-white/5 rounded-xl p-4 border border-white/10">
                                                 <div className="flex items-center space-x-2 text-primary-400 mb-1">
                                                     <ScanText className="w-3 h-3" />
-                                                    <span className="text-[10px] font-bold uppercase">Definición del Protocolo</span>
+                                                    <span className="text-[10px] font-bold uppercase">Definición del Protocolo seleccionado</span>
                                                 </div>
                                                 <p className="text-xs italic opacity-60">
-                                                    {formState.service_type === 'AMERICANA' && 'Práctico, rápido, plato montado en cocina.'}
-                                                    {formState.service_type === 'INGLESA' && 'Servicio desde fuente a plato por la izquierda.'}
-                                                    {formState.service_type === 'FRANCESA' && 'El cliente se sirve de la fuente que el camarero presenta.'}
-                                                    {formState.service_type === 'GUERIDÓN' && 'Trinchado o emplatado frente al cliente.'}
-                                                    {!formState.service_type && 'Selecciona una técnica para ver el protocolo.'}
+                                                    {formState.service_type === 'AMERICANA' && 'Plato sale terminado de cocina. Se sirve por la derecha.'}
+                                                    {formState.service_type === 'INGLESA' && 'Camarero sirve desde fuente con pinza por la izquierda del comensal.'}
+                                                    {formState.service_type === 'FRANCESA' && 'Se presenta fuente por la izquierda y el comensal se sirve solo.'}
+                                                    {formState.service_type === 'GUERIDÓN' && 'Uso de mesa auxiliar para terminar el plato frente al cliente.'}
+                                                    {formState.service_type === 'PLAT DE MILIEU' && 'Ideal para raciones o platos compartidos en centro de mesa.'}
+                                                    {formState.service_type === 'BUFFET' && 'Configuración en línea de servicio o estaciones temáticas.'}
+                                                    {formState.service_type === 'VENTA DIRECTA' && 'Protocolo rápido para consumo externo o barra.'}
+                                                    {!formState.service_type && 'Selecciona una técnica para ver el protocolo detallado.'}
                                                 </p>
                                             </div>
                                         </div>
@@ -963,17 +974,24 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                         <div className="space-y-4">
                                             <div className="flex items-center space-x-2 text-indigo-400">
                                                 <Terminal className="w-4 h-4" />
-                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Temperatura de Pase</h4>
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Temperatura Medida en Pase</h4>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
-                                                {['CARNES/PESCADOS', 'SOPAS/CREMAS', 'GUISOS/ARROCES', 'FRÍOS', 'HELADOS'].map(temp => (
+                                                {[
+                                                    { id: 'CARNES/PESCADOS', val: '60-70ºC' },
+                                                    { id: 'SOPAS/CREMAS', val: '70ºC' },
+                                                    { id: 'GUISOS/ARROCES', val: '60-70ºC' },
+                                                    { id: 'ENTREMESES/QUESOS', val: '18-22ºC' },
+                                                    { id: 'ENSALADAS/FRÍOS', val: '4-10ºC' },
+                                                    { id: 'HELADOS/SORBETES', val: '-1 a 2ºC' }
+                                                ].map(temp => (
                                                     <button
-                                                        key={temp}
+                                                        key={temp.id}
                                                         type="button"
-                                                        onClick={() => setFormState(prev => ({ ...prev, temperature: temp }))}
-                                                        className="py-1 px-3 text-[8px] font-bold rounded-full bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all uppercase tracking-tighter"
+                                                        onClick={() => setFormState(prev => ({ ...prev, temperature: temp.val }))}
+                                                        className="py-1.5 px-3 text-[8px] font-bold rounded-full bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all uppercase tracking-tighter"
                                                     >
-                                                        {temp}
+                                                        {temp.id}
                                                     </button>
                                                 ))}
                                             </div>
@@ -982,7 +1000,7 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                                 name="temperature"
                                                 value={formState.temperature || ''}
                                                 onChange={handleFormChange}
-                                                placeholder="EJ: 60-65 °C"
+                                                placeholder="EJ: 60-70ºC o RANGO ÓPTIMO"
                                                 className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm font-mono text-primary-400 focus:ring-2 focus:ring-primary-500/50 transition-all uppercase"
                                             />
                                         </div>
@@ -990,14 +1008,23 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                         <div className="space-y-4">
                                             <div className="flex items-center space-x-2 text-emerald-400">
                                                 <Wand2 className="w-4 h-4" />
-                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Marcaje y Cubertería</h4>
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Marcaje y Cubertería Necesaria</h4>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
-                                                {['ENTREMESES', 'TRINCHEROS', 'OSTRAS', 'CAVIAR', 'SOPERA', 'PESCADO', 'MARISCO', 'POSTRE', 'FRUTA'].map(cut => (
+                                                {['ENTREMESES', 'TRINCHEROS', 'PESCADO', 'POSTRE', 'OSTRAS', 'CAVIAR', 'CONSOMÉ', 'MARISCO', 'CARNE BLANDA', 'CARNE FIBROSA'].map(cut => (
                                                     <button
                                                         key={cut}
                                                         type="button"
-                                                        onClick={() => setFormState(prev => ({ ...prev, cutlery_required: prev.cutlery_required ? `${prev.cutlery_required} + ${cut}` : cut }))}
+                                                        onClick={() => {
+                                                            const current = formState.cutlery_required || '';
+                                                            const cleanCurrent = current.toUpperCase();
+                                                            if (!cleanCurrent.includes(cut)) {
+                                                                setFormState(prev => ({ 
+                                                                    ...prev, 
+                                                                    cutlery_required: prev.cutlery_required ? `${prev.cutlery_required} + ${cut}` : cut 
+                                                                }));
+                                                            }
+                                                        }}
                                                         className="py-1 px-3 text-[8px] font-bold rounded-full bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all uppercase"
                                                     >
                                                         {cut}
@@ -1008,7 +1035,7 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                                 name="cutlery_required"
                                                 value={formState.cutlery_required || ''}
                                                 onChange={handleFormChange}
-                                                placeholder="EJ: TENEDOR TRINCHERO + CUCHILLO..."
+                                                placeholder="EJ: C. PESCADO + T. PESCADO + PLATO TRINCHERO..."
                                                 className="w-full h-24 bg-white/5 border border-white/10 rounded-xl p-4 text-sm font-mono text-emerald-400 focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none uppercase"
                                             />
                                         </div>

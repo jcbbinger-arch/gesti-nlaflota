@@ -56,6 +56,7 @@ import { ReservationManager } from './pages/teacher/ReservationManager';
 import { NotificationManager } from './pages/teacher/NotificationManager';
 import { RecipeManager } from './pages/teacher/RecipeManager';
 import { RecipeForm } from './pages/teacher/RecipeForm';
+import { RecipeView } from './pages/teacher/RecipeView';
 import { ServiceViewer } from './pages/teacher/ServiceViewer';
 import { TransferPortal } from './pages/teacher/TransferPortal';
 
@@ -248,6 +249,7 @@ const AppContent: React.FC = () => {
               <Route path="recipes" element={<RecipeManager />} />
               <Route path="recipes/new" element={<RecipeForm />} />
               <Route path="recipes/edit/:recipeId" element={<RecipeForm />} />
+              <Route path="recipes/view/:recipeId" element={<RecipeView />} />
               <Route path="mini-economato" element={<MiniEconomato />} />
               <Route path="aula" element={<ClassroomList />} />
               <Route path="messaging" element={<Messaging />} />
@@ -281,6 +283,7 @@ const AppContent: React.FC = () => {
               <Route path="recipes" element={<RecipeManager />} />
               <Route path="recipes/new" element={<RecipeForm />} />
               <Route path="recipes/edit/:recipeId" element={<RecipeForm />} />
+              <Route path="recipes/view/:recipeId" element={<RecipeView />} />
               <Route path="almacen-dashboard" element={<ManagerDashboard />} />
               <Route path="process-orders/:eventId?" element={<ProcessOrders />} />
               <Route path="economato" element={<EconomatoManager />} />

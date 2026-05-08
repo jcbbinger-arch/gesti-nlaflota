@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { ComposeMessageModal } from '../shared/Messaging';
-import { PlusIcon, DownloadIcon, ShareIcon, PencilIcon, CogIcon } from '../../components/icons';
+import { PlusIcon, DownloadIcon, ShareIcon, PencilIcon, CogIcon, EyeIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
 import { Recipe, Message, User } from '../../types';
 import { SettingsModal } from '../../components/SettingsModal';
@@ -165,6 +165,7 @@ export const RecipeManager: React.FC = () => {
                                     </div>
                                     <div className="text-right mt-2 no-print flex justify-end items-center space-x-3">
                                          <button onClick={() => setRecipeToShare(recipe)} title="Compartir" className="text-gray-500 hover:text-primary-600"><ShareIcon className="w-5 h-5"/></button>
+                                         <Link to={`/teacher/recipes/view/${recipe.id}`} title="Ver Ficha de Pase" className="text-amber-600 hover:text-amber-700"><EyeIcon className="w-5 h-5"/></Link>
                                          <Link to={`/teacher/recipes/edit/${recipe.id}`} title="Editar" className="text-primary-600 hover:underline"><PencilIcon className="w-5 h-5"/></Link>
                                     </div>
                                 </div>
@@ -198,6 +199,7 @@ export const RecipeManager: React.FC = () => {
                                     <p className="text-xs text-gray-400 mt-1">Autor: {usersMap.get(recipe.author_id)?.name || 'Desconocido'}</p>
                                     <div className="text-right mt-2 no-print flex justify-end items-center space-x-3">
                                          <button onClick={() => setRecipeToShare(recipe)} title="Compartir" className="text-gray-500 hover:text-primary-600"><ShareIcon className="w-5 h-5"/></button>
+                                         <Link to={`/teacher/recipes/view/${recipe.id}`} title="Ver Ficha de Pase" className="text-amber-600 hover:text-amber-700"><EyeIcon className="w-5 h-5"/></Link>
                                          <button onClick={() => handleDuplicate(recipe)} className="text-sm bg-green-600 text-white py-1 px-3 rounded-md hover:bg-green-700">Hacer Mía</button>
                                     </div>
                                 </div>
