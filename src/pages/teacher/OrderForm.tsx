@@ -240,7 +240,7 @@ export const OrderForm: React.FC = () => {
             // But if the user explicitly wants stock to update now, we keep it.
             
             alert(`Pedido ${status === 'Enviado' ? 'enviado' : 'cerrado'} correctamente.`);
-            navigate(isEconomatoOrder ? '/almacen/mini-economato' : '/teacher/order-portal');
+            navigate(isEconomatoOrder ? '/almacen/mini-economato' : '/teacher/orders-management/portal');
         } catch (error) {
             console.error("Error saving order:", error);
             alert("Error al guardar el pedido. Por favor, revisa tu conexión.");

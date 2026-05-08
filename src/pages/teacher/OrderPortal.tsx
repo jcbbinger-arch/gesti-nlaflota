@@ -7,7 +7,7 @@ import { AppEvent, Profile } from '../../types';
 import { DownloadIcon, ArrowRightLeftIcon } from '../../components/icons';
 import { exportToCsv } from '../../utils/export';
 
-export const OrderPortal: React.FC = () => {
+export const OrderPortal: React.FC<{ hideTitle?: boolean }> = ({ hideTitle = false }) => {
     const { events, orders, service_groups, assignments, dining_services } = useData();
     const { currentUser, selectedProfile, isOwner, effectiveUserId } = useAuth();
     const [searchParams] = useSearchParams();
@@ -94,20 +94,33 @@ export const OrderPortal: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
-                <div className="flex flex-col">
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-                        {isEconomatoMode ? 'Portal de Pedidos: Mini-Economato' : 'Portal de Pedidos'}
-                    </h1>
-                    <span className="text-xs font-bold text-primary-600 tracking-widest mt-1">
+            {!hideTitle && (
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                    <div className="flex flex-col">
+                        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
+                            {isEconomatoMode ? 'Portal de Pedidos: Mini-Economato' : 'Portal de Pedidos'}
+                        </h1>
+                        <span className="text-xs font-bold text-primary-600 tracking-widest mt-1">
+                            {currentDateString}
+                        </span>
+                    </div>
+                    <button onClick={handleExport} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center shadow-sm transition-colors">
+                        <DownloadIcon className="w-5 h-5 mr-2" />
+                        Exportar a CSV
+                    </button>
+                </div>
+            )}
+            {hideTitle && (
+                <div className="flex justify-between items-center no-print">
+                    <span className="text-[10px] font-black text-primary-600 tracking-[0.2em] uppercase">
                         {currentDateString}
                     </span>
+                    <button onClick={handleExport} className="text-gray-500 hover:text-gray-700 flex items-center text-xs font-bold uppercase tracking-widest transition-colors">
+                        <DownloadIcon className="w-4 h-4 mr-1" />
+                        Exportar CSV
+                    </button>
                 </div>
-                <button onClick={handleExport} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center shadow-sm transition-colors">
-                    <DownloadIcon className="w-5 h-5 mr-2" />
-                    Exportar a CSV
-                </button>
-            </div>
+            )}
             {isEconomatoMode && (
                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 shadow-sm">
                     <p className="text-blue-700 font-medium">Modo Reposición Mini-Economato</p>
@@ -164,7 +177,7 @@ export const OrderPortal: React.FC = () => {
                                                         return (
                                                             <div className="mt-2">
                                                                 <Link 
-                                                                    to={`/teacher/order/${event.id}/new?is_family_meal=true&ds_id=${ds.id}`}
+                                                                    to={`/teacher/orders-management/portal/new/${event.id}?is_family_meal=true&ds_id=${ds.id}`}
                                                                     className="inline-flex items-center px-2 py-1 bg-indigo-600 text-white text-[10px] font-bold rounded shadow-sm hover:bg-indigo-700 transition-colors uppercase"
                                                                 >
                                                                     Pedido Comida Familia
@@ -187,7 +200,7 @@ export const OrderPortal: React.FC = () => {
                                                                 {serviceOrder.status}
                                                             </span>
                                                             <Link 
-                                                                to={`/teacher/order-portal/edit/${serviceOrder.id}?order_type=service${linkSuffix}`} 
+                                                                to={`/teacher/orders-management/portal/edit/${serviceOrder.id}?order_type=service${linkSuffix}`} 
                                                                 className="text-primary-600 hover:text-primary-800 text-sm font-bold"
                                                             >
                                                                 {serviceOrder.status === 'Procesado' ? 'Ver' : 'Modificar'}
@@ -195,7 +208,7 @@ export const OrderPortal: React.FC = () => {
                                                         </div>
                                                     ) : (
                                                         <Link 
-                                                            to={`/teacher/order-portal/new/${event.id}?order_type=service${linkSuffix}`} 
+                                                            to={`/teacher/orders-management/portal/new/${event.id}?order_type=service${linkSuffix}`} 
                                                             className="inline-block bg-primary-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-primary-700 shadow-sm"
                                                         >
                                                             Crear Servicio
@@ -217,7 +230,7 @@ export const OrderPortal: React.FC = () => {
                                                                 {weeklyOrder.status}
                                                             </span>
                                                             <Link 
-                                                                to={`/teacher/order-portal/edit/${weeklyOrder.id}?order_type=weekly${linkSuffix}`} 
+                                                                to={`/teacher/orders-management/portal/edit/${weeklyOrder.id}?order_type=weekly${linkSuffix}`} 
                                                                 className="text-primary-600 hover:text-primary-800 text-sm font-bold"
                                                             >
                                                                 {weeklyOrder.status === 'Procesado' ? 'Ver' : 'Modificar'}
@@ -225,7 +238,7 @@ export const OrderPortal: React.FC = () => {
                                                         </div>
                                                     ) : (
                                                         <Link 
-                                                            to={`/teacher/order-portal/new/${event.id}?order_type=weekly${linkSuffix}`} 
+                                                            to={`/teacher/orders-management/portal/new/${event.id}?order_type=weekly${linkSuffix}`} 
                                                             className="inline-block border border-primary-600 text-primary-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-primary-50 transition-colors"
                                                         >
                                                             Crear Semanal
@@ -296,7 +309,7 @@ export const OrderPortal: React.FC = () => {
                                         </td>
                                         <td className="px-4 py-3">
                                             <Link 
-                                                to={`/teacher/order-portal/edit/${order.id}`} 
+                                                to={`/teacher/orders-management/portal/edit/${order.id}`} 
                                                 className="text-primary-600 font-bold hover:underline"
                                             >
                                                 {order.status === 'Borrador' ? 'Rellenar Pedido' : 'Ver/Modificar'}
@@ -323,7 +336,7 @@ export const OrderPortal: React.FC = () => {
                             </div>
                         </div>
                         <Link 
-                            to="/teacher/order-portal/transfers"
+                            to="/teacher/orders-management/portal/transfers"
                             className="bg-indigo-600 text-white px-6 py-2 rounded-md font-bold hover:bg-indigo-700 shadow-sm text-center flex items-center justify-center transition-colors"
                         >
                             <ArrowRightLeftIcon className="w-4 h-4 mr-2" />

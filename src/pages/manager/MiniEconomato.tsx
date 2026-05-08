@@ -226,7 +226,7 @@ export const MiniEconomato: React.FC = () => {
         
         if (activeEvent) {
              // In a real app we might redirect to order portal with state
-             navigate(`/teacher/order-portal?type=economato&productId=${product.id}&quantity=${quantityToOrder}`);
+             navigate(`/teacher/orders-management/portal?type=economato&productId=${product.id}&quantity=${quantityToOrder}`);
         } else {
             alert("No hay un periodo de pedidos activo para realizar el pedido automático.");
         }

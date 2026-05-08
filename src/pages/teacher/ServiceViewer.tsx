@@ -176,7 +176,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         };
         setOrders(prev => [...prev, newOrder]);
         alert('Borrador de pedido generado. Serás redirigido para editarlo.');
-        navigate(`/teacher/order-portal/edit/${newOrder.id}`);
+        navigate(`/teacher/orders-management/portal/edit/${newOrder.id}`);
     };
 
     return (

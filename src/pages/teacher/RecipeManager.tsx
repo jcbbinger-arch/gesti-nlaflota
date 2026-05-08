@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { ComposeMessageModal } from '../shared/Messaging';
-import { PlusIcon, DownloadIcon, ShareIcon, PencilIcon, CogIcon, EyeIcon } from '../../components/icons';
+import { PlusIcon, DownloadIcon, ShareIcon, PencilIcon, CogIcon, EyeIcon, TrashIcon } from '../../components/icons';
 import { printPage } from '../../utils/export';
 import { Recipe, Message, User } from '../../types';
 import { SettingsModal } from '../../components/SettingsModal';
@@ -55,6 +55,8 @@ export const RecipeManager: React.FC = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [recipeToShare, setRecipeToShare] = useState<Recipe | null>(null);
+    const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
+    const [deleteConfirmStep, setDeleteConfirmStep] = useState(0);
     const [showSettings, setShowSettings] = useState(false);
 
     const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
@@ -109,6 +111,13 @@ export const RecipeManager: React.FC = () => {
         setMessages([...messages, fullMessage]);
         setRecipeToShare(null);
         alert('¡Receta compartida!');
+    };
+
+    const handleDelete = () => {
+        if (!recipeToDelete) return;
+        setRecipes(prev => prev.filter(r => r.id !== recipeToDelete.id));
+        setRecipeToDelete(null);
+        setDeleteConfirmStep(0);
     };
 
 
@@ -167,6 +176,16 @@ export const RecipeManager: React.FC = () => {
                                          <button onClick={() => setRecipeToShare(recipe)} title="Compartir" className="text-gray-500 hover:text-primary-600"><ShareIcon className="w-5 h-5"/></button>
                                          <Link to={`/teacher/recipes/view/${recipe.id}`} title="Ver Ficha de Pase" className="text-amber-600 hover:text-amber-700"><EyeIcon className="w-5 h-5"/></Link>
                                          <Link to={`/teacher/recipes/edit/${recipe.id}`} title="Editar" className="text-primary-600 hover:underline"><PencilIcon className="w-5 h-5"/></Link>
+                                         <button 
+                                            onClick={() => {
+                                                setRecipeToDelete(recipe);
+                                                setDeleteConfirmStep(1);
+                                            }} 
+                                            title="Eliminar" 
+                                            className="text-red-500 hover:text-red-700"
+                                          >
+                                            <TrashIcon className="w-5 h-5"/>
+                                          </button>
                                     </div>
                                 </div>
                             );
@@ -222,6 +241,62 @@ export const RecipeManager: React.FC = () => {
 
             {showSettings && (
                 <SettingsModal onClose={() => setShowSettings(false)} />
+            )}
+
+            {recipeToDelete && (
+                <Modal 
+                    isOpen={true} 
+                    onClose={() => { setRecipeToDelete(null); setDeleteConfirmStep(0); }}
+                    title="Confirmar Eliminación"
+                >
+                    <div className="p-6 text-center">
+                        <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <TrashIcon className="w-8 h-8" />
+                        </div>
+                        
+                        <h3 className="text-xl font-black uppercase tracking-tight mb-2">Eliminar Receta</h3>
+                        
+                        {deleteConfirmStep === 1 ? (
+                            <>
+                                <p className="text-gray-500 mb-6">¿Estás seguro de que deseas eliminar <strong>{recipeToDelete.name}</strong>? Esta acción no se puede deshacer.</p>
+                                <div className="flex space-x-3">
+                                    <button 
+                                        onClick={() => { setRecipeToDelete(null); setDeleteConfirmStep(0); }}
+                                        className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold uppercase tracking-widest text-xs"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button 
+                                        onClick={() => setDeleteConfirmStep(2)}
+                                        className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-red-600"
+                                    >
+                                        Sí, estoy seguro
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="bg-red-50 p-4 rounded-xl border border-red-100 mb-6 font-bold text-red-700 text-sm">
+                                    ⚠️ ATENCIÓN: Esta es la confirmación definitiva. La ficha desaparecerá de tu sistema.
+                                </div>
+                                <div className="flex space-x-3">
+                                    <button 
+                                        onClick={() => { setRecipeToDelete(null); setDeleteConfirmStep(0); }}
+                                        className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold uppercase tracking-widest text-xs"
+                                    >
+                                        Mejor no
+                                    </button>
+                                    <button 
+                                        onClick={handleDelete}
+                                        className="flex-1 py-3 bg-red-700 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-red-800 animate-pulse"
+                                    >
+                                        ELIMINAR DEFINITIVAMENTE
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </Modal>
             )}
         </div>
     );

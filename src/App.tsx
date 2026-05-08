@@ -94,6 +94,7 @@ const RedirectHandler: React.FC = () => {
 import { DiningServiceManager } from './pages/admin/DiningServiceManager';
 import { DiningReservations } from './pages/almacen/DiningReservations';
 import { SalesUnifiedDashboard } from './pages/teacher/SalesUnifiedDashboard';
+import { OrdersUnifiedDashboard } from './pages/teacher/OrdersUnifiedDashboard';
 import { DiningServiceView } from './pages/teacher/DiningServiceView';
 import { SalesDashboard } from './pages/sales/SalesDashboard';
 
@@ -236,11 +237,9 @@ const AppContent: React.FC = () => {
           <Route path="/teacher" element={<TeacherLayout />}>
               <Route path="dashboard" element={<TeacherDashboard />} />
               <Route path="service-planner" element={<ServiceViewer />} />
-              <Route path="order-portal" element={<OrderPortal />} />
-              <Route path="order-portal/transfers" element={<TransferPortal />} />
-              <Route path="order-portal/new/:eventId" element={<OrderForm />} />
-              <Route path="order-portal/edit/:orderId" element={<OrderForm />} />
-              <Route path="order-history" element={<TeacherOrderHistory />} />
+              <Route path="orders-management/*" element={<OrdersUnifiedDashboard />} />
+              <Route path="order-portal/*" element={<Navigate to="orders-management/portal" replace />} />
+              <Route path="order-history" element={<Navigate to="orders-management/history" replace />} />
               <Route path="sales-management/*" element={<SalesUnifiedDashboard />} />
               <Route path="sales" element={<Navigate to="sales-management/general" replace />} />
               <Route path="takeaway-sales" element={<Navigate to="sales-management/takeaway" replace />} />
@@ -278,10 +277,11 @@ const AppContent: React.FC = () => {
               <Route path="takeaway-catalog" element={<TakeawayCatalog />} />
               <Route path="my-reservations" element={<MyReservations />} />
               <Route path="teacher-dashboard" element={<TeacherDashboard />} />
-              <Route path="order-portal" element={<OrderPortal />} />
+              <Route path="order-portal" element={<Navigate to="orders-management/portal" replace />} />
+              <Route path="orders-management/*" element={<OrdersUnifiedDashboard />} />
               <Route path="order-portal/new/:eventId" element={<OrderForm />} />
               <Route path="order-portal/edit/:orderId" element={<OrderForm />} />
-              <Route path="order-history" element={<TeacherOrderHistory />} />
+              <Route path="order-history" element={<Navigate to="orders-management/history" replace />} />
               <Route path="recipes" element={<RecipeManager />} />
               <Route path="recipes/new" element={<RecipeForm />} />
               <Route path="recipes/edit/:recipeId" element={<RecipeForm />} />

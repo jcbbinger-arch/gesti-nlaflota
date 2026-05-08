@@ -9,7 +9,7 @@ import { DownloadIcon, PrinterIcon } from '../../components/icons';
 import { printPage, exportIndividualOrderPdf } from '../../utils/export';
 import { PrintHeader } from '../../components/PrintHeader';
 
-export const TeacherOrderHistory: React.FC = () => {
+export const TeacherOrderHistory: React.FC<{ hideTitle?: boolean }> = ({ hideTitle = false }) => {
     const { orders, events, products } = useData();
     const { currentUser, isOwner } = useAuth();
     const { companyInfo } = useCompany();
@@ -55,13 +55,23 @@ export const TeacherOrderHistory: React.FC = () => {
                     currentUser={currentUser || undefined}
                 />
             )}
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Mi Historial de Pedidos</h1>
-                <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
-                    <DownloadIcon className="w-5 h-5 mr-2" />
-                    Descargar PDF
-                </button>
-            </div>
+            {!hideTitle && (
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Mi Historial de Pedidos</h1>
+                    <button onClick={printPage} className="no-print bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
+                        <DownloadIcon className="w-5 h-5 mr-2" />
+                        Descargar PDF
+                    </button>
+                </div>
+            )}
+            {hideTitle && (
+                <div className="flex justify-end mb-4 no-print">
+                    <button onClick={printPage} className="text-gray-500 hover:text-gray-700 flex items-center text-xs font-bold uppercase tracking-widest transition-colors">
+                        <DownloadIcon className="w-4 h-4 mr-1" />
+                        PDF
+                    </button>
+                </div>
+            )}
             
             <Card>
                 {myOrders.length > 0 ? (

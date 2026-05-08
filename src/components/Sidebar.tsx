@@ -51,7 +51,7 @@ const almacenNav = [
   { name: 'Productos', href: '/almacen/products', icon: <AppleIcon /> },
   { name: 'Familias y Categorías', href: '/almacen/product-metadata', icon: <BookIcon /> },
   { name: 'Mini-Economato', href: '/almacen/mini-economato', icon: <HouseIcon /> },
-  { name: 'Reposiciones Economato', href: '/teacher/order-portal?type=economato', icon: <ShoppingCartIcon /> },
+  { name: 'Reposiciones Economato', href: '/teacher/orders-management/portal?type=economato', icon: <ShoppingCartIcon /> },
   { name: 'Reservas Comedor', href: '/almacen/dining-reservations', icon: <ClipboardDocumentListIcon /> },
   { name: 'Vista Comedor', href: '/almacen/dining-view', icon: <UserGroupIcon /> },
   { name: 'Historial de Pedidos', href: '/almacen/order-history', icon: <HistoryIcon /> },
@@ -61,8 +61,7 @@ const almacenNav = [
 const teacherNav = [
   { name: 'Panel de control', href: '/teacher/dashboard', icon: <ComputerDesktopIcon /> },
   { name: 'Planificador de Servicios', href: '/teacher/service-planner', icon: <UserGroupIcon /> },
-  { name: 'Portal de Pedidos', href: '/teacher/order-portal', icon: <ClipboardDocumentListIcon /> },
-  { name: 'Historial de Pedidos', href: '/teacher/order-history', icon: <HistoryIcon /> },
+  { name: 'Portal de Pedidos', href: '/teacher/orders-management', icon: <ClipboardDocumentListIcon /> },
   { name: 'Mis Recetas', href: '/teacher/recipes', icon: <CakeIcon /> },
   { name: 'Gestión de Ventas', href: '/teacher/sales-management', icon: <CurrencyEuroIcon /> },
   { name: 'Vista Comedor', href: '/teacher/dining-view', icon: <UserGroupIcon /> },
@@ -236,7 +235,7 @@ export const Sidebar: React.FC = () => {
       {/* Mobile Bottom Navigation - Robust UX for quick access */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-gray-900 border-t border-gray-800 flex items-center justify-around px-2 z-[60] shadow-2xl">
         <MobileNavLink to={`/${selectedProfile}/dashboard`} icon={<HouseIcon />} label="Inicio" />
-        {selectedProfile === Profile.TEACHER && <MobileNavLink to="/teacher/order-portal" icon={<ClipboardDocumentListIcon />} label="Pedidos" />}
+        {selectedProfile === Profile.TEACHER && <MobileNavLink to="/teacher/orders-management/portal" icon={<ClipboardDocumentListIcon />} label="Pedidos" />}
         {selectedProfile === Profile.ALMACEN && <MobileNavLink to="/almacen/process-orders" icon={<PrinterIcon />} label="Procesar" />}
         <MobileNavLink to={`/${selectedProfile}/profile`} icon={<ProfileIcon />} label="Perfil" />
       </nav>
