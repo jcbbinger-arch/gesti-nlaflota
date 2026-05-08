@@ -11,7 +11,7 @@ import { calculateIngredientCost, areUnitsCompatible } from '../../lib/unitConve
 import { ALLERGENS_LIST, ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
 import { AllergensControl } from '../../components/AllergensControl';
 import { compressImage } from '../../lib/imageCompression';
-import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal, RefreshCcw, CheckCircle2 } from 'lucide-react';
+import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal, RefreshCcw, CheckCircle2, ArrowLeft, Save } from 'lucide-react';
 import { AIHubModal } from '../../components/AIHubModal';
 import { AIDigitalizedRecipe } from '../../services/geminiService';
 
@@ -661,33 +661,57 @@ Justificación: ${aiData.molecularData.scientificJustification}
 
     return (
         <div className="max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{recipeId ? 'Editar' : 'Nueva'} Ficha de Receta</h1>
-                <div className="flex space-x-2">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 sticky top-0 bg-gray-50/80 dark:bg-slate-900/80 backdrop-blur-md py-4 z-30 -mx-4 px-4 border-b border-gray-100 dark:border-white/5">
+                <div className="flex items-center space-x-4">
                     <button 
-                        type="button" 
-                        onClick={() => {
-                            setAiHubTab('digitalize');
-                            setShowAIHub(true);
-                        }}
-                        className="flex items-center px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-200 transition-all"
+                        type="button"
+                        onClick={() => navigate('/teacher/recipes')}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition-colors group"
+                        title="Volver"
                     >
-                        <ScanText className="w-4 h-4 mr-2" /> Digitalizar AI
+                        <ArrowLeft className="w-6 h-6 text-gray-500 group-hover:text-primary-500 transition-colors" />
                     </button>
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-none">{recipeId ? 'Editar' : 'Nueva'} Ficha de Receta</h1>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Gestión Técnica de Cocina</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                    <div className="hidden sm:flex items-center space-x-2 mr-2 pr-4 border-r border-gray-200 dark:border-white/5">
+                        <button 
+                            type="button" 
+                            onClick={() => {
+                                setAiHubTab('digitalize');
+                                setShowAIHub(true);
+                            }}
+                            className="flex items-center px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all"
+                        >
+                            <ScanText className="w-4 h-4 mr-2" /> Digitalizar AI
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => {
+                                setAiHubTab('molecular');
+                                setShowAIHub(true);
+                            }}
+                            className="flex items-center px-4 py-2 bg-purple-100 text-purple-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-200 transition-all"
+                        >
+                            <Sparkles className="w-4 h-4 mr-2" /> Flavor Lab
+                        </button>
+                    </div>
+
                     <button 
-                        type="button" 
-                        onClick={() => {
-                            setAiHubTab('molecular');
-                            setShowAIHub(true);
-                        }}
-                        className="flex items-center px-4 py-2 bg-purple-100 text-purple-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-purple-200 transition-all"
+                        type="submit" 
+                        form="recipe-form"
+                        className="flex items-center px-6 py-2.5 bg-primary-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary-700 transition-all shadow-lg shadow-primary-600/20 active:scale-95"
                     >
-                        <Sparkles className="w-4 h-4 mr-2" /> Flavor Lab
+                        <Save className="w-4 h-4 mr-2" /> Guardar Ficha
                     </button>
                 </div>
             </div>
             
-            <form onSubmit={handleSubmit}>
+            <form id="recipe-form" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Columna Izquierda y Central */}
                     <div className="lg:col-span-2 space-y-6">
@@ -1320,6 +1344,32 @@ Justificación: ${aiData.molecularData.scientificJustification}
 
                     {/* Columna Derecha */}
                     <div className="space-y-6">
+                        {/* Status Card */}
+                        <Card>
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center pb-2 border-b border-gray-100 dark:border-white/5">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Estado de la Ficha</span>
+                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${formState.name ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                                        {formState.name ? 'Lista para guardar' : 'Nombre requerido'}
+                                    </span>
+                                </div>
+                                <button
+                                    type="submit"
+                                    form="recipe-form"
+                                    className="w-full py-4 bg-primary-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-primary-700 transition-all shadow-xl shadow-primary-600/20 active:scale-95 flex items-center justify-center group"
+                                >
+                                    <Save className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" /> Guardar Ficha
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/teacher/recipes')}
+                                    className="w-full py-3 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-white/10 transition-all flex items-center justify-center"
+                                >
+                                    <ArrowLeft className="w-4 h-4 mr-2" /> Cancelar y Volver
+                                </button>
+                            </div>
+                        </Card>
+
                         <Card title="Coste y Alérgenos">
                             <div className="space-y-4">
                                 <div>
