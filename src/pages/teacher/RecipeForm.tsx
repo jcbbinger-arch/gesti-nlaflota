@@ -11,7 +11,7 @@ import { calculateIngredientCost, areUnitsCompatible } from '../../lib/unitConve
 import { ALLERGENS_LIST, ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
 import { AllergensControl } from '../../components/AllergensControl';
 import { compressImage } from '../../lib/imageCompression';
-import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal } from 'lucide-react';
+import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal, RefreshCcw, CheckCircle2 } from 'lucide-react';
 import { AIHubModal } from '../../components/AIHubModal';
 import { AIDigitalizedRecipe } from '../../services/geminiService';
 
@@ -871,15 +871,17 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                                 const isCompatible = areUnitsCompatible(ing.unit, product?.unit || '');
                                                 const isSubPrep = formState.sub_preparations?.some(sub => sub.name.toLowerCase() === ing.product_id.toLowerCase());
                                                 const isUnidentified = !product && !isSubPrep;
+                                                const isBeingLinked = linkingIndex?.tab === activeElabTab && linkingIndex?.index === index;
                                                 
                                                 return (
-                                                    <div key={`${index}-${ing.product_id}`} className={`group flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 border ${isUnidentified ? 'border-red-200 bg-red-50/30' : 'border-gray-100 dark:border-gray-700'} rounded-xl hover:border-primary-200 dark:hover:border-primary-800 transition-all`}>
+                                                    <div key={`${index}-${ing.product_id}`} className={`group flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 border-2 ${isBeingLinked ? 'border-primary-500 bg-primary-50/10' : isUnidentified ? 'border-red-200 bg-red-50/30' : 'border-gray-100 dark:border-gray-700'} rounded-xl transition-all`}>
                                                         <div 
                                                             className={`flex-1 flex items-center space-x-3 ${isUnidentified ? 'cursor-pointer' : ''}`}
                                                             onClick={() => {
                                                                 if (isUnidentified) {
                                                                     setLinkingIndex({ tab: activeElabTab, index: index });
                                                                     setSearchTerm(ing.product_id);
+                                                                    document.querySelector<HTMLInputElement>('input[placeholder="Añadir ingrediente..."]')?.focus();
                                                                 }
                                                             }}
                                                         >
@@ -889,7 +891,7 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                                                     {product?.name || ing.product_id}
                                                                 </span>
                                                                 {isUnidentified && (
-                                                                    <span className="text-[8px] font-black uppercase text-red-400 animate-pulse">Desvinculado - Haz clic para enlazar</span>
+                                                                    <span className="text-[8px] font-black uppercase text-red-500">Sin vincular</span>
                                                                 )}
                                                                 {isSubPrep && (
                                                                     <span className="text-[8px] font-black uppercase text-amber-500">Sub-elaboración local</span>
@@ -898,6 +900,22 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                                         </div>
                                                         
                                                         <div className="flex items-center space-x-2">
+                                                            {/* Botón de Enlace/Cambio */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setLinkingIndex(isBeingLinked ? null : { tab: activeElabTab, index: index });
+                                                                    if (!isBeingLinked) {
+                                                                        setSearchTerm(product?.name || ing.product_id);
+                                                                        document.querySelector<HTMLInputElement>('input[placeholder="Añadir ingrediente..."]')?.focus();
+                                                                    }
+                                                                }}
+                                                                className={`p-1.5 rounded-lg transition-all ${isBeingLinked ? 'bg-primary-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:text-primary-500'}`}
+                                                                title={isUnidentified ? "Vincular a producto" : "Cambiar producto"}
+                                                            >
+                                                                {isBeingLinked ? <CheckCircle2 className="w-3 h-3" /> : <RefreshCcw className={`w-3 h-3 ${isUnidentified ? 'animate-pulse' : ''}`} />}
+                                                            </button>
+
                                                             <input 
                                                                 type="number" 
                                                                 step="0.01" 
