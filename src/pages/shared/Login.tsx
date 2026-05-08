@@ -63,7 +63,11 @@ export const Login: React.FC = () => {
     }
 
     if (!success) {
-      setError(isRegistering ? 'Error al registrarse. Verifica tus datos.' : 'Error al iniciar sesión. Verifica tus credenciales.');
+      if (isRegistering && email) {
+        setError('Es posible que este correo ya esté registrado. Prueba a iniciar sesión o usa otro correo.');
+      } else {
+        setError(isRegistering ? 'Error al registrarse. Verifica tus datos.' : 'Error al iniciar sesión. Verifica tus credenciales.');
+      }
     }
     setIsLoading(false);
   };
@@ -214,7 +218,7 @@ export const Login: React.FC = () => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Tu nombre"
-                      className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      className="w-full p-2 border rounded-xl dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
                   </div>
                   <div>
@@ -225,7 +229,7 @@ export const Login: React.FC = () => {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="600 000 000"
-                      className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      className="w-full p-2 border rounded-xl dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
                   </div>
                 </>
@@ -238,7 +242,7 @@ export const Login: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@email.com"
-                  className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full p-2 border rounded-xl dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
               <div>
@@ -249,7 +253,7 @@ export const Login: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full p-2 border rounded-xl dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
               <button
@@ -260,6 +264,29 @@ export const Login: React.FC = () => {
                 {isLoading ? 'Procesando...' : (isRegistering ? 'Crear Cuenta' : 'Entrar')}
               </button>
             </form>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300 dark:border-gray-600"></span>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-gray-800 px-2 text-gray-500">O también puedes</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+              className="w-full flex justify-center items-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 text-sm font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all font-bold"
+            >
+              <svg className="h-5 w-5 mr-3" viewBox="0 0 24 24">
+                <path d="M12.0003 4.75C13.7703 4.75 15.3553 5.36002 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.86002 8.87028 4.75 12.0003 4.75Z" fill="#EA4335" />
+                <path d="M23.49 12.275C23.49 11.49 23.415 10.73 23.3 10H12V14.51H18.47C18.18 15.99 17.34 17.25 16.08 18.1L19.945 21.1C22.2 19.01 23.49 15.92 23.49 12.275Z" fill="#4285F4" />
+                <path d="M5.26498 14.2949C5.02498 13.5699 4.88501 12.7999 4.88501 11.9999C4.88501 11.1999 5.01998 10.4299 5.26498 9.7049L1.275 6.60986C0.46 8.22986 0 10.0599 0 11.9999C0 13.9399 0.46 15.7699 1.28 17.3899L5.26498 14.2949Z" fill="#FBBC05" />
+                <path d="M12.0004 24.0001C15.2404 24.0001 17.9654 22.935 19.9454 21.095L16.0804 18.095C15.0054 18.82 13.6204 19.245 12.0004 19.245C8.8704 19.245 6.21537 17.135 5.26538 14.29L1.27539 17.385C3.25539 21.31 7.3104 24.0001 12.0004 24.0001Z" fill="#34A853" />
+              </svg>
+              Acceder con Google
+            </button>
 
             <div className="text-center">
               <button

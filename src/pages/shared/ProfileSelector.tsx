@@ -10,6 +10,12 @@ export const ProfileSelector: React.FC = () => {
   console.log('ProfileSelector - isAuthReady:', isAuthReady, 'currentUser:', currentUser?.email, 'access_profiles:', currentUser?.access_profiles);
 
   useEffect(() => {
+    if (isAuthReady && currentUser && !selectedProfile) {
+      if (currentUser.profiles.length === 1) {
+        console.log('ProfileSelector - Only one profile found, auto-selecting:', currentUser.profiles[0]);
+        selectProfile(currentUser.profiles[0]);
+      }
+    }
     if (isAuthReady && currentUser && selectedProfile) {
       if (currentUser.profiles.includes(selectedProfile)) {
         console.log('ProfileSelector - Profile already selected, redirecting to dashboard:', selectedProfile);

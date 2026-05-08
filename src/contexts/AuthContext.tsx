@@ -68,27 +68,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Migration for users created before the change or with missing status
       if (!userData.activity_status && !isSuperUser) {
-        userData.activity_status = 'De Baja';
+        // Customers are always active by default
+        userData.activity_status = userData.profiles.includes(Profile.CUSTOMER) ? 'Activo' : 'De Baja';
         needsUpdate = true;
       }
       
-      // Migration for users created before the change or with missing status
-      if (!userData.activity_status && !isSuperUser) {
-        userData.activity_status = 'De Baja';
-        needsUpdate = true;
-      }
-      
-      // Migration for users created before the change or with missing status
-      if (!userData.activity_status && !isSuperUser) {
-        userData.activity_status = 'De Baja';
-        needsUpdate = true;
-      }
-      
-      // Migration for users created before the change
-      if (userData.profiles && userData.profiles.includes(Profile.STUDENT) && !userData.classroom_id && !isSuperUser) {
-          // Keep as is, do not force TEACHER
-      }
-      // Ensure workspaceId exists
+      // Ensure WorkspaceId exists
       if (!userData.workspaceId) {
         userData.workspaceId = firebaseUser.uid;
         needsUpdate = true;
@@ -176,11 +161,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: userEmail,
         name: firebaseUser.displayName || userEmail.split('@')[0],
         profiles: isSuperUser 
-          ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] 
-          : (isPablo ? [Profile.TEACHER] : []), 
+          ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT, Profile.CUSTOMER] 
+          : (isPablo ? [Profile.TEACHER] : [Profile.CUSTOMER]), // Default to Customer if nothing else
         role: isSuperUser ? 'admin' : 'user',
         workspaceId: firebaseUser.uid, 
-        activity_status: (isSuperUser || isPablo) ? 'Activo' : 'De Baja', 
+        activity_status: (isSuperUser || isPablo || true) ? 'Activo' : 'De Baja', // Make new users active by default, especially customers
         location_status: 'En el centro',
         avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
       };

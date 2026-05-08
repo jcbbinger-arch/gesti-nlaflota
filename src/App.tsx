@@ -80,6 +80,13 @@ const RedirectHandler: React.FC = () => {
     return <Navigate to="/select-profile" replace />;
   }
   
+  if (selectedProfile === Profile.CUSTOMER) {
+    return <Navigate to="/student/takeaway-catalog" replace />;
+  }
+  if (selectedProfile === Profile.STUDENT) {
+    return <Navigate to="/student/dashboard" replace />;
+  }
+  
   return <Navigate to={`/${selectedProfile}/dashboard`} replace />;
 };
 
