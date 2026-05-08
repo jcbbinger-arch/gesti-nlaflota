@@ -256,14 +256,20 @@ export const RecipeForm: React.FC = () => {
     
     const addIngredient = (product: Product) => {
         const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
-        const cost = calculateIngredientCost(1, product.unit, price, product.unit);
         
         if (linkingIndex) {
             const { tab, index } = linkingIndex;
+            // Get existing data to preserve quantity and unit
+            const existingIng = tab === -1 
+                ? formState.ingredients[index] 
+                : formState.sub_preparations![tab].ingredients[index];
+
+            const cost = calculateIngredientCost(existingIng.quantity, existingIng.unit, price, product.unit);
+            
             const newIngredient: RecipeIngredient = { 
                 product_id: product.id, 
-                quantity: 1, 
-                unit: product.unit,
+                quantity: existingIng.quantity, 
+                unit: existingIng.unit,
                 cost: cost
             };
 
@@ -273,11 +279,14 @@ export const RecipeForm: React.FC = () => {
                 setFormState(prev => ({...prev, ingredients: newIngredients}));
             } else {
                 const subs = [...(formState.sub_preparations || [])];
-                subs[tab].ingredients[index] = newIngredient;
+                const newSubIngredients = [...subs[tab].ingredients];
+                newSubIngredients[index] = newIngredient;
+                subs[tab] = { ...subs[tab], ingredients: newSubIngredients };
                 setFormState(prev => ({...prev, sub_preparations: subs}));
             }
             setLinkingIndex(null);
         } else {
+            const cost = calculateIngredientCost(1, product.unit, price, product.unit);
             const newIngredient: RecipeIngredient = { 
                 product_id: product.id, 
                 quantity: 1, 
@@ -292,8 +301,12 @@ export const RecipeForm: React.FC = () => {
             } else {
                 const subs = [...(formState.sub_preparations || [])];
                 if (!subs[activeElabTab].ingredients.some(i => i.product_id === product.id)) {
-                    subs[activeElabTab].ingredients.push(newIngredient);
-                    setFormState(prev => ({...prev, sub_preparations: subs}));
+                    const updatedSubs = [...subs];
+                    updatedSubs[activeElabTab] = {
+                        ...updatedSubs[activeElabTab],
+                        ingredients: [...updatedSubs[activeElabTab].ingredients, newIngredient]
+                    };
+                    setFormState(prev => ({...prev, sub_preparations: updatedSubs}));
                 }
             }
         }
