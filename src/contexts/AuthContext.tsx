@@ -26,6 +26,7 @@ interface AuthContextType {
   impersonateUser: (user: User) => void;
   stopImpersonating: () => void;
   updateCurrentUser: (userData: Partial<User>) => void;
+  syncUserWithProfile: (newProfiles: Profile[]) => Promise<void>;
   isOwner: (userId?: string | null) => boolean;
   effectiveUserId: string | null;
 }
@@ -55,6 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userDoc = await getDoc(userDocRef);
     const userEmail = (firebaseUser.email || '').trim().toLowerCase();
     const isSuperUser = SUPER_USER_EMAILS.includes(userEmail);
+    const isPablo = userEmail === 'pablo.palazon@murciaeduca.es';
 
     if (userDoc.exists()) {
       let userData = userDoc.data() as User;
@@ -68,8 +70,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Migration for users created before the change or with missing status
       if (!userData.activity_status && !isSuperUser) {
-        // Customers are always active by default
-        userData.activity_status = userData.profiles.includes(Profile.CUSTOMER) ? 'Activo' : 'De Baja';
+        // Customers are always active by default. Other profiles depend on manual activation.
+        const isCustomer = userData.profiles.includes(Profile.CUSTOMER);
+        userData.activity_status = (isSuperUser || isPablo || isCustomer) ? 'Activo' : 'De Baja';
+        needsUpdate = true;
+      }
+      
+      // Migration for users without a profile (ensure they get Customer at least)
+      if (!userData.profiles || userData.profiles.length === 0) {
+        userData.profiles = [Profile.CUSTOMER];
+        userData.activity_status = 'Activo';
         needsUpdate = true;
       }
       
@@ -155,7 +165,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // No pre-created user found, standard creation
-      const isPablo = userEmail === 'pablo.palazon@murciaeduca.es';
       const newUser: User = {
         id: firebaseUser.uid,
         email: userEmail,
@@ -402,6 +411,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const effectiveUserId = currentUser?.substituting_user_id || currentUser?.id || null;
+  
+  const syncUserWithProfile = async (newProfiles: Profile[]) => {
+    if (!currentUser) return;
+    try {
+      const userRef = doc(db, 'users', currentUser.id);
+      await setDoc(userRef, { 
+        profiles: newProfiles,
+        activity_status: 'Activo' // Ensure active if they join takeaway
+      }, { merge: true });
+      
+      // Update local state is handled by the onSnapshot listener already
+    } catch (error) {
+      console.error("Error updating profiles:", error);
+    }
+  };
 
   const value = useMemo(
     () => ({
@@ -417,10 +441,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       impersonateUser,
       stopImpersonating,
       updateCurrentUser,
+      syncUserWithProfile,
       isOwner,
       effectiveUserId,
     }),
-    [currentUser, selectedProfile, isImpersonating, isAuthReady]
+    [currentUser, selectedProfile, isImpersonating, isAuthReady, syncUserWithProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

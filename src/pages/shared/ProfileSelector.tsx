@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { User as UserIcon, LogOut, ShoppingCart, ShoppingBag, ShieldCheck, GraduationCap, Store, Box, ChefHat } from 'lucide-react';
 import { getProfileDisplayName, Profile, SUPER_USER_EMAILS } from '../../types';
 
 export const ProfileSelector: React.FC = () => {
-  const { currentUser, selectedProfile, selectProfile, logout, isAuthReady } = useAuth();
+  const { currentUser, selectedProfile, selectProfile, logout, isAuthReady, syncUserWithProfile } = useAuth();
   const navigate = useNavigate();
 
   console.log('ProfileSelector - isAuthReady:', isAuthReady, 'currentUser:', currentUser?.email, 'access_profiles:', currentUser?.access_profiles);
@@ -73,39 +74,60 @@ export const ProfileSelector: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Bienvenido, {currentUser.name}</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">Por favor, selecciona un perfil para continuar.</p>
       </div>
-      <div className="mt-8 flex flex-wrap justify-center gap-4">
+      <div className="mt-8 flex flex-wrap justify-center gap-6 max-w-5xl px-4">
         {[Profile.CREATOR, Profile.ADMIN, Profile.ALMACEN, Profile.TEACHER, Profile.STUDENT, Profile.SALES_MANAGER, Profile.CUSTOMER].map((profile) => {
           const hasProfile = currentUser.profiles.includes(profile);
-          // access_profiles is deprecated, rely on profiles and activity_status
-          const isEnabled = true; 
-          
           if (!hasProfile) return null;
 
-          const isCreator = profile === Profile.CREATOR;
+          let Icon = UserIcon;
+          let colorClass = "text-primary-600";
+          let bgClass = "bg-primary-100 dark:bg-primary-900/30";
+
+          if (profile === Profile.ADMIN) { Icon = ShieldCheck; colorClass = "text-amber-600"; bgClass = "bg-amber-100 dark:bg-amber-900/30"; }
+          if (profile === Profile.TEACHER) { Icon = ChefHat; colorClass = "text-indigo-600"; bgClass = "bg-indigo-100 dark:bg-indigo-900/30"; }
+          if (profile === Profile.STUDENT) { Icon = GraduationCap; colorClass = "text-emerald-600"; bgClass = "bg-emerald-100 dark:bg-emerald-900/30"; }
+          if (profile === Profile.CUSTOMER) { Icon = ShoppingCart; colorClass = "text-purple-600"; bgClass = "bg-purple-100 dark:bg-purple-900/30"; }
+          if (profile === Profile.ALMACEN) { Icon = Box; colorClass = "text-blue-600"; bgClass = "bg-blue-100 dark:bg-blue-900/30"; }
+          if (profile === Profile.SALES_MANAGER) { Icon = Store; colorClass = "text-pink-600"; bgClass = "bg-pink-100 dark:bg-pink-900/30"; }
 
           return (
             <button
               key={profile}
               onClick={() => {
-                if (isEnabled) {
-                  console.log('ProfileSelector - Selecting profile:', profile);
-                  selectProfile(profile);
-                } else {
-                  alert("Este perfil aún no ha sido activado por un administrador.");
-                }
+                console.log('ProfileSelector - Selecting profile:', profile);
+                selectProfile(profile);
               }}
-              className={`px-8 py-4 font-semibold rounded-lg shadow-md transition-all duration-300 transform hover:scale-105 ${
-                isEnabled 
-                  ? (isCreator 
-                      ? 'bg-red-600 text-white hover:bg-red-700' 
-                      : 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 hover:bg-primary-500 hover:text-white')
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-              }`}
+              className="group relative flex flex-col items-center p-8 w-44 bg-white dark:bg-gray-800 rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-2 border-transparent hover:border-primary-500"
             >
-              <span className="text-xl">{getProfileDisplayName(profile)}</span>
+              <div className={`w-20 h-20 ${bgClass} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-inner`}>
+                <Icon className={`w-10 h-10 ${colorClass}`} />
+              </div>
+              <span className="text-xs font-black uppercase tracking-widest text-gray-800 dark:text-white text-center leading-tight">
+                {getProfileDisplayName(profile)}
+              </span>
             </button>
           );
         })}
+
+        {/* BOTÓN INDEPENDIENTE PARA TAKEAWAY SI NO LO TIENE */}
+        {!currentUser.profiles.includes(Profile.CUSTOMER) && (
+          <button
+            onClick={async () => {
+              const newProfiles = [...currentUser.profiles, Profile.CUSTOMER];
+              await syncUserWithProfile(newProfiles);
+              selectProfile(Profile.CUSTOMER);
+            }}
+            className="group relative flex flex-col items-center p-8 w-44 bg-purple-50/50 dark:bg-purple-900/10 border-2 border-dashed border-purple-200 dark:border-purple-800 rounded-3xl hover:border-purple-500 hover:bg-purple-50 transition-all duration-300 transform hover:-translate-y-2 shadow-sm"
+          >
+            <div className="w-20 h-20 bg-purple-100 dark:bg-purple-800/30 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-inner">
+              <ShoppingBag className="w-10 h-10 text-purple-600" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-purple-700 dark:text-purple-400 text-center leading-tight">
+              Activar Perfil Takeaway
+            </span>
+            <p className="text-[8px] text-purple-500 mt-2 font-black uppercase tracking-tighter">Uso comercial independiente</p>
+          </button>
+        )}
       </div>
        <button 
         onClick={logout}
