@@ -54,7 +54,7 @@ const SaleFormModal: React.FC<{ sale: Sale | null; onSave: (sale: Partial<Sale>)
 };
 
 
-export const SalesManager: React.FC = () => {
+export const SalesManager: React.FC<{ hideTitle?: boolean }> = ({ hideTitle = false }) => {
     const { sales, setSales } = useData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -114,17 +114,29 @@ export const SalesManager: React.FC = () => {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Ventas</h1>
-                <div className="no-print flex items-center space-x-2">
-                    <button onClick={printPage} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
-                        <DownloadIcon className="w-5 h-5 mr-1" /> Descargar PDF
+            {!hideTitle && (
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Ventas</h1>
+                    <div className="no-print flex items-center space-x-2">
+                        <button onClick={printPage} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
+                            <DownloadIcon className="w-5 h-5 mr-1" /> Descargar PDF
+                        </button>
+                        <button onClick={() => handleOpenModal()} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
+                            <PlusIcon className="w-5 h-5 mr-1" /> Nueva Venta
+                        </button>
+                    </div>
+                </div>
+            )}
+            {hideTitle && (
+                <div className="flex justify-end mb-4 no-print space-x-2">
+                    <button onClick={printPage} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center text-xs font-bold uppercase tracking-widest">
+                        <DownloadIcon className="w-4 h-4 mr-1" /> PDF
                     </button>
-                    <button onClick={() => handleOpenModal()} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
-                        <PlusIcon className="w-5 h-5 mr-1" /> Nueva Venta
+                    <button onClick={() => handleOpenModal()} className="bg-primary-600 text-white py-1.5 px-4 rounded-xl hover:bg-primary-700 flex items-center text-xs font-bold uppercase tracking-widest shadow-md shadow-primary-500/20">
+                        <PlusIcon className="w-4 h-4 mr-1" /> Registrar Venta
                     </button>
                 </div>
-            </div>
+            )}
 
             <Card title="Historial de Ventas">
                 <div className="overflow-x-auto">

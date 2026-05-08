@@ -136,7 +136,7 @@ const SaleItemFormModal: React.FC<{ saleItem: SaleItem | null; onSave: (item: Pa
     );
 };
 
-export const TakeawaySales: React.FC = () => {
+export const TakeawaySales: React.FC<{ hideTitle?: boolean }> = ({ hideTitle = false }) => {
     const { sale_items, setSaleItems, reservations } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<SaleItem | null>(null);
@@ -184,12 +184,21 @@ export const TakeawaySales: React.FC = () => {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Ventas para Llevar</h1>
-                <button onClick={() => { setSelectedItem(null); setIsModalOpen(true); }} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
-                    <PlusIcon className="w-5 h-5 mr-1" /> Nuevo Plato
-                </button>
-            </div>
+            {!hideTitle && (
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Ventas para Llevar</h1>
+                    <button onClick={() => { setSelectedItem(null); setIsModalOpen(true); }} className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 flex items-center">
+                        <PlusIcon className="w-5 h-5 mr-1" /> Nuevo Plato
+                    </button>
+                </div>
+            )}
+            {hideTitle && (
+                <div className="flex justify-end mb-6 no-print">
+                    <button onClick={() => { setSelectedItem(null); setIsModalOpen(true); }} className="bg-primary-600 text-white py-2 px-6 rounded-2xl hover:bg-primary-700 flex items-center text-xs font-black uppercase tracking-widest shadow-lg shadow-primary-500/20 active:scale-95 transition-all">
+                        <PlusIcon className="w-4 h-4 mr-2" /> Nuevo Plato Take Away
+                    </button>
+                </div>
+            )}
 
             <h2 className="text-xl font-semibold mb-4">En Preparación</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

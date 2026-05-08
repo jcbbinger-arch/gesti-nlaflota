@@ -9,7 +9,7 @@ import { db } from '../../firebase';
 
 type ViewMode = 'by_item' | 'by_person';
 
-export const ReservationManager: React.FC = () => {
+export const ReservationManager: React.FC<{ hideTitle?: boolean }> = ({ hideTitle = false }) => {
     const { sale_items, reservations, setReservations } = useData();
     const { currentUser } = useAuth();
     const [viewMode, setViewMode] = useState<ViewMode>('by_item');
@@ -91,10 +91,11 @@ export const ReservationManager: React.FC = () => {
 
     return (
         <div className="print:m-0 print:p-0">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 print:hidden gap-4">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Reservas</h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                {!hideTitle && <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">Gestión de Reservas</h1>}
+                {hideTitle && <div className="sm:block hidden" />}
                 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3 no-print">
                     <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                         <button 
                             onClick={() => setViewMode('by_item')}

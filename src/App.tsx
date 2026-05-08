@@ -93,6 +93,7 @@ const RedirectHandler: React.FC = () => {
 
 import { DiningServiceManager } from './pages/admin/DiningServiceManager';
 import { DiningReservations } from './pages/almacen/DiningReservations';
+import { SalesUnifiedDashboard } from './pages/teacher/SalesUnifiedDashboard';
 import { DiningServiceView } from './pages/teacher/DiningServiceView';
 import { SalesDashboard } from './pages/sales/SalesDashboard';
 
@@ -240,10 +241,11 @@ const AppContent: React.FC = () => {
               <Route path="order-portal/new/:eventId" element={<OrderForm />} />
               <Route path="order-portal/edit/:orderId" element={<OrderForm />} />
               <Route path="order-history" element={<TeacherOrderHistory />} />
-              <Route path="sales" element={<SalesManager />} />
-              <Route path="takeaway-sales" element={<TakeawaySales />} />
-              <Route path="takeaway-catalog" element={<TakeawayCatalog />} />
-              <Route path="reservations" element={<ReservationManager />} />
+              <Route path="sales-management/*" element={<SalesUnifiedDashboard />} />
+              <Route path="sales" element={<Navigate to="sales-management/general" replace />} />
+              <Route path="takeaway-sales" element={<Navigate to="sales-management/takeaway" replace />} />
+              <Route path="takeaway-catalog" element={<Navigate to="sales-management/catalog" replace />} />
+              <Route path="reservations" element={<Navigate to="sales-management/reservations" replace />} />
               <Route path="dining-view" element={<DiningServiceView />} />
               <Route path="notifications" element={<NotificationManager />} />
               <Route path="recipes" element={<RecipeManager />} />

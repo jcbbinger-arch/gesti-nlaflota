@@ -37,7 +37,7 @@ interface CartItem {
     quantity: number;
 }
 
-export const TakeawayCatalog: React.FC = () => {
+export const TakeawayCatalog: React.FC<{ hideHeader?: boolean }> = ({ hideHeader = false }) => {
     const { sale_items, setSaleItems, reservations, setReservations } = useData();
     const { currentUser } = useAuth();
     
@@ -149,44 +149,46 @@ export const TakeawayCatalog: React.FC = () => {
     const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8 relative">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white text-center flex-1">
-                    Catálogo de Comidas para Llevar
-                </h1>
-                
-                <div className="flex items-center gap-4">
-                    {!currentUser && (
-                        <Link 
-                            to="/login?mode=takeaway"
-                            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
-                        >
-                            <UserIcon className="w-5 h-5 mr-2" />
-                            <span className="font-medium">Identificarse / Registro</span>
-                        </Link>
-                    )}
-                    {currentUser && (
-                        <Link 
-                            to="/student/my-reservations"
-                            className="flex items-center px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm border border-gray-200 dark:border-gray-700"
-                        >
-                            <ClipboardList className="w-5 h-5 mr-2 hidden sm:block" />
-                            <span className="font-medium">Mis Reservas</span>
-                        </Link>
-                    )}
-                    <button 
-                        onClick={() => setIsCartOpen(true)}
-                        className="relative p-3 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors shadow-lg"
-                    >
-                        <ShoppingCart className="w-6 h-6" />
-                        {cartItemsCount > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900">
-                                {cartItemsCount}
-                            </span>
+        <div className={`max-w-7xl mx-auto px-4 py-8 relative ${hideHeader ? '!-mt-8' : ''}`}>
+            {!hideHeader && (
+                <div className="flex justify-between items-center mb-8">
+                    <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white text-center flex-1">
+                        Catálogo de Comidas para Llevar
+                    </h1>
+                    
+                    <div className="flex items-center gap-4">
+                        {!currentUser && (
+                            <Link 
+                                to="/login?mode=takeaway"
+                                className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+                            >
+                                <UserIcon className="w-5 h-5 mr-2" />
+                                <span className="font-medium">Identificarse / Registro</span>
+                            </Link>
                         )}
-                    </button>
+                        {currentUser && (
+                            <Link 
+                                to="/student/my-reservations"
+                                className="flex items-center px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm border border-gray-200 dark:border-gray-700"
+                            >
+                                <ClipboardList className="w-5 h-5 mr-2 hidden sm:block" />
+                                <span className="font-medium">Mis Reservas</span>
+                            </Link>
+                        )}
+                        <button 
+                            onClick={() => setIsCartOpen(true)}
+                            className="relative p-3 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors shadow-lg"
+                        >
+                            <ShoppingCart className="w-6 h-6" />
+                            {cartItemsCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full border-2 border-white dark:border-gray-900">
+                                    {cartItemsCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
             
             {groupedItems.map(({ day, items }) => (
                 <div key={day} className="mb-12">
