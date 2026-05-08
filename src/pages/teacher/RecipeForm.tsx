@@ -430,7 +430,7 @@ export const RecipeForm: React.FC = () => {
     const handleAIImport = (jsonString: string) => {
         try {
             // Clean JSON string from potential markdown backticks or AI citation tags
-            const cleanJson = jsonString
+            let cleanJson = jsonString
                 .replace(/```json/g, '')
                 .replace(/```/g, '')
                 .replace(/\[cite\]/g, '')
@@ -439,11 +439,15 @@ export const RecipeForm: React.FC = () => {
                 .replace(/\\n/g, '\n') // Handle escaped newlines
                 .trim();
 
-            // Extract just the { ... } part in case there is noise
-            const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
-            const finalJson = jsonMatch ? jsonMatch[0] : cleanJson;
+            // Find the first { and the last } to extract the JSON object
+            const firstBrace = cleanJson.indexOf('{');
+            const lastBrace = cleanJson.lastIndexOf('}');
             
-            const aiData = JSON.parse(finalJson);
+            if (firstBrace !== -1 && lastBrace !== -1) {
+                cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+            }
+            
+            const aiData = JSON.parse(cleanJson);
 
             // Handle Molecular Data if present but don't return early if it also has recipe data
             if (aiData.molecularData) {
@@ -548,6 +552,8 @@ Justificación: ${aiData.molecularData.scientificJustification}
                 service_checklist: checklist || prev.service_checklist || [],
                 ingredients: importedIngredients.length > 0 ? importedIngredients : prev.ingredients
             }));
+
+            setShowAIHub(false);
 
             if (importedIngredients.length > 0) {
                 const unlinkedCount = importedIngredients.filter(i => !productsMap.has(i.product_id)).length;

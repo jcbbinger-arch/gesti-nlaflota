@@ -212,7 +212,7 @@ INGREDIENTES PARA ANALIZAR:
                             <button 
                                 onClick={handleImport}
                                 disabled={!jsonInput.trim()}
-                                className="w-full bg-[#c2c5ca] dark:bg-gray-700 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-500 transition-all flex items-center justify-center space-x-3 shadow-lg disabled:opacity-50 disabled:bg-gray-200"
+                                className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center justify-center space-x-3 shadow-lg disabled:opacity-50 disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400 ${jsonInput.trim() ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/20' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                             >
                                 <ClipboardPaste className="w-5 h-5" />
                                 <span>{activeView === 'digitalize' ? 'SINCRONIZAR FICHA TÉCNICA' : 'ACTUALIZAR ANÁLISIS MOLECULAR'}</span>
