@@ -21,7 +21,9 @@ import {
     ChevronRight,
     MapPin,
     Clock,
-    User
+    User,
+    Sparkles,
+    Dna
 } from 'lucide-react';
 import { ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
 import { printPage } from '../../utils/export';
@@ -380,6 +382,42 @@ export const RecipeView: React.FC = () => {
                             <p className="text-lg italic font-medium leading-relaxed text-slate-300 print:text-black">
                                 {recipe.presentation || 'Asegurar limpieza de bordes y temperatura de servicio óptima.'}
                             </p>
+                        </div>
+                    </section>
+                )}
+
+                {/* ANÁLISIS SENSORIAL Y QUÍMICO */}
+                {(recipe.organoleptic_analysis || recipe.chemical_analysis) && (
+                    <section className="print:page-break-before-always p-12 space-y-12 max-w-6xl mx-auto">
+                        <div className="text-center space-y-2">
+                            <Sparkles className="w-12 h-12 text-blue-500 mx-auto" />
+                            <h2 className="text-3xl font-black uppercase italic text-white print:text-black tracking-tighter">Análisis de Producto</h2>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.3em]">Perfil organoléptico y composición avanzada</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {recipe.organoleptic_analysis && (
+                                <div className="bg-slate-800/50 print:bg-white print:border-[3px] print:border-black rounded-3xl p-8 space-y-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 print:text-black pb-4 border-b border-white/5 print:border-black/10 flex items-center">
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        Análisis Organoléptico (Sensorial)
+                                    </h3>
+                                    <p className="text-sm leading-relaxed text-slate-300 print:text-black whitespace-pre-wrap">
+                                        {recipe.organoleptic_analysis}
+                                    </p>
+                                </div>
+                            )}
+                            {recipe.chemical_analysis && (
+                                <div className="bg-slate-800/50 print:bg-white print:border-[3px] print:border-black rounded-3xl p-8 space-y-4">
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 print:text-black pb-4 border-b border-white/5 print:border-black/10 flex items-center">
+                                        <Dna className="w-4 h-4 mr-2" />
+                                        Análisis Químico / Nutricional
+                                    </h3>
+                                    <div className="text-[11px] leading-relaxed text-slate-300 print:text-black whitespace-pre-wrap font-mono bg-black/20 print:bg-gray-50 p-6 rounded-2xl border border-white/5 print:border-gray-200">
+                                        {recipe.chemical_analysis}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </section>
                 )}

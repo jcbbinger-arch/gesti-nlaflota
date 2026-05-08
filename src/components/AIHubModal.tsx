@@ -36,24 +36,38 @@ Tu tarea es convertir el texto o imagen de una RECETA COMPLETA en un objeto JSON
 
 REGLAS DE FORMATO:
 1. Devuelve ÚNICAMENTE el código JSON.
-2. Esquema exacto:
+2. Esquema exacto (Respeta estrictamente los nombres de campos):
 {
   "name": "Nombre de la receta",
   "category": "${categoriesStr}",
   "yieldQuantity": 4, 
   "yieldUnit": "raciones",
   "ingredients": [{"name": "Producto", "quantity": 100, "unit": "g|kg|ml|l|ud"}],
-  "instructions": "Pasos detallados de elaboración",
+  "instructions": "Pasos detallados de elaboración principal",
   "notes": "Puntos clave y mise en place",
-  "presentation": "Técnica de emplatado",
+  "presentation": "Técnica de emplatado y protocolo de servicio",
   "servingTemp": "Temperatura de servicio",
   "cutlery": "Marcaje necesario",
   "serviceTime": "Tiempo de servicio",
   "serviceType": "AMERICANA|INGLESA|FRANCESA|GUERIDÓN|BUFFET",
   "clientDescription": "Descripción comercial atractiva",
-  "serviceExplanation": "Storytelling del plato",
-  "serviceChecklist": ["Elemento 1", "Elemento 2"]
+  "serviceExplanation": "Storytelling del plato para el camarero",
+  "serviceChecklist": ["Elemento de control 1", "Punto crítico 2"],
+  "chemicalAnalysis": "Análisis nutricional/químico resumido",
+  "organolepticAnalysis": "Análisis sensorial (Vista, Olfato, Gusto, Tacto)",
+  "sub_preparations": [
+    {
+      "name": "Nombre de la sub-elaboración (Ej: Salsa X, Masa Y)",
+      "ingredients": [{"name": "Producto", "quantity": 50, "unit": "g"}],
+      "preparation_steps": "Pasos específicos de esta sub-elaboración"
+    }
+  ]
 }
+
+IMPORTANTE: 
+- Si la receta tiene elaboraciones secundarias (salsas, guarniciones complejas, masas), júntalas en el array 'sub_preparations'.
+- Si un ingrediente de la lista principal es una sub-elaboración, usa exactamente el mismo nombre en ambos sitios para vincularlos.
+- No inventes datos, si no aparecen en la receta, deja el campo vacío o con información coherente.
 
 RECETA A DIGITALIZAR:
 [PEGA AQUÍ TU RECETA]`;

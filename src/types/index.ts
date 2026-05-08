@@ -304,6 +304,7 @@ export interface Recipe {
     selected_allergens?: string[];
     sub_preparations?: SubPreparation[];
     chemical_analysis?: string;
+    organoleptic_analysis?: string;
 }
 
 export interface StockItem {

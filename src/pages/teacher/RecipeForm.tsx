@@ -188,6 +188,7 @@ export const RecipeForm: React.FC = () => {
         service_checklist: [],
         sub_preparations: [],
         chemical_analysis: '',
+        organoleptic_analysis: '',
     });
     const [searchTerm, setSearchTerm] = useState('');
     const [linkingIndex, setLinkingIndex] = useState<{ tab: number; index: number } | null>(null);
@@ -490,6 +491,53 @@ Justificación: ${aiData.molecularData.scientificJustification}
             const serviceType = getVal('serviceType', 'serviceTechnique', 'tipo_servicio', 'tecnica');
             const cutlery = getVal('cutlery', 'cutlery_required', 'cuberteria', 'marcaje');
             const serviceTime = getVal('serviceTime', 'service_time', 'tiempo_pase', 'tiempo');
+            const chemAnalysis = getVal('chemicalAnalysis', 'analisis_quimico', 'nutritional_info');
+            const organoAnalysis = getVal('organolepticAnalysis', 'analisis_organoleptico', 'sensorial');
+
+            // Handle Sub-preparations
+            const subPreps: SubPreparation[] = [];
+            const aiSubPreps = aiData.sub_preparations || aiData.elaboraciones_secundarias || [];
+            if (Array.isArray(aiSubPreps)) {
+                aiSubPreps.forEach((aiSub: any, idx: number) => {
+                    const subName = aiSub.name || aiSub.nombre || '';
+                    if (!subName) return;
+
+                    const subIngredients: RecipeIngredient[] = [];
+                    const subIngList = aiSub.ingredients || aiSub.ingredientes || [];
+                    if (Array.isArray(subIngList)) {
+                        subIngList.forEach((si: any) => {
+                            const sIngName = si.name || si.nombre || '';
+                            if (!sIngName) return;
+                            const product = products.find(p => p.name.toLowerCase() === sIngName.toLowerCase() || p.name.toLowerCase().includes(sIngName.toLowerCase()));
+                            const qty = parseFloat(si.quantity || si.cantidad) || 0;
+                            const unit = si.unit || si.unidad || (product?.unit || 'ud');
+                            
+                            if (product) {
+                                subIngredients.push({
+                                    product_id: product.id,
+                                    quantity: qty,
+                                    unit: unit,
+                                    cost: calculateIngredientCost(qty, unit, product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0, product.unit)
+                                });
+                            } else {
+                                subIngredients.push({
+                                    product_id: sIngName,
+                                    quantity: qty,
+                                    unit: unit,
+                                    cost: 0
+                                });
+                            }
+                        });
+                    }
+
+                    subPreps.push({
+                        id: `sub-${Date.now()}-${idx}`,
+                        name: subName,
+                        ingredients: subIngredients,
+                        preparation_steps: aiSub.preparation_steps || aiSub.pasos || aiSub.instructions || ''
+                    });
+                });
+            }
 
             // Standard Digitalize
             const importedIngredients: RecipeIngredient[] = [];
@@ -550,7 +598,10 @@ Justificación: ${aiData.molecularData.scientificJustification}
                 cutlery_required: cutlery || prev.cutlery_required,
                 service_time: serviceTime || prev.service_time,
                 service_checklist: checklist || prev.service_checklist || [],
-                ingredients: importedIngredients.length > 0 ? importedIngredients : prev.ingredients
+                ingredients: importedIngredients.length > 0 ? importedIngredients : prev.ingredients,
+                sub_preparations: subPreps.length > 0 ? subPreps : prev.sub_preparations,
+                chemical_analysis: chemAnalysis || prev.chemical_analysis,
+                organoleptic_analysis: organoAnalysis || prev.organoleptic_analysis
             }));
 
             setShowAIHub(false);
@@ -1227,6 +1278,33 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                             <p className="text-[10px] text-gray-500 italic col-span-2">No hay elementos en la lista de comprobación.</p>
                                         )}
                                     </div>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card title="Análisis de Producto">
+                            <div className="space-y-4">
+                                <div>
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2">Análisis Organoléptico (Sensorial)</h4>
+                                    <textarea 
+                                        name="organoleptic_analysis" 
+                                        placeholder="Describe el aspecto visual, aromas, sabores y texturas (Vista, Olfato, Gusto, Tacto)..." 
+                                        value={formState.organoleptic_analysis || ''} 
+                                        onChange={handleFormChange} 
+                                        rows={4} 
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none" 
+                                    />
+                                </div>
+                                <div>
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-primary-500 mb-2">Análisis Químico / Nutricional</h4>
+                                    <textarea 
+                                        name="chemical_analysis" 
+                                        placeholder="Información sobre compuestos, composición química o aportes nutricionales..." 
+                                        value={formState.chemical_analysis || ''} 
+                                        onChange={handleFormChange} 
+                                        rows={4} 
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary-500/50 transition-all resize-none font-mono" 
+                                    />
                                 </div>
                             </div>
                         </Card>
