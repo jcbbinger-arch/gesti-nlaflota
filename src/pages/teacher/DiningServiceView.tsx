@@ -52,10 +52,28 @@ export const DiningServiceView: React.FC = () => {
         });
 
         const results: (DiningService & { planningName?: string, isPending?: boolean })[] = [];
+        
         relevantPlanning.forEach(ps => {
-            const ds = dining_services.find(d => d.service_id === ps.id);
+            // Find linked dining service
+            let ds = dining_services.find(d => d.service_id === ps.id);
+            
+            // Fallback: search by date if service_id is not set
+            if (!ds) {
+                const psDate = new Date(ps.date).toISOString().split('T')[0];
+                ds = dining_services.find(d => 
+                    (!d.service_id || d.service_id === ps.id) && 
+                    new Date(d.date).toISOString().split('T')[0] === psDate
+                );
+            }
+
             if (ds) {
-                results.push({ ...ds, planningName: ps.name, isPending: false });
+                results.push({ 
+                    ...ds, 
+                    planningName: ps.name, 
+                    isPending: false,
+                    // Ensure the service_id is conceptually linked for the view if it matched by date
+                    service_id: ds.service_id || ps.id 
+                });
             } else {
                 results.push({
                     id: `placeholder-${ps.id}`,
@@ -83,9 +101,28 @@ export const DiningServiceView: React.FC = () => {
     }, [activeServices, selectedServiceId]);
 
     const matchingPlanningService = useMemo(() => {
-        if (!selectedService?.service_id) return null;
-        return services.find(s => s.id === selectedService.service_id);
-    }, [services, selectedService]);
+        if (!selectedService) return null;
+        
+        // Priority 1: Direct link via service_id
+        if (selectedService.service_id) {
+            const found = services.find(s => s.id === selectedService.service_id);
+            if (found) return found;
+        }
+
+        // Priority 2: Fallback to date-based matching
+        const dsDate = new Date(selectedService.date).toISOString().split('T')[0];
+        return services.find(s => {
+            const psDate = new Date(s.date).toISOString().split('T')[0];
+            if (psDate !== dsDate) return false;
+
+            // Ensure the teacher is actually involved in this planning service
+            if (!currentUser) return false;
+            const group = service_groups.find(g => g.id === s.service_group_id);
+            const isInGroup = group?.teacher_ids.includes(currentUser.id);
+            const hasRole = Object.values(s.roles).includes(currentUser.id);
+            return isInGroup || hasRole;
+        });
+    }, [services, selectedService, service_groups, currentUser]);
 
     const serviceReservations = useMemo(() => {
         return dining_reservations.filter((r: DiningReservation) => r.service_id === selectedServiceId);
@@ -123,12 +160,11 @@ export const DiningServiceView: React.FC = () => {
 
     // Menu Management Logic
     const handleAddMenuItem = () => {
-        if (!currentUser?.work_area || !CATEGORIES_BY_AREA[currentUser.work_area]) {
-            alert('Tu área de trabajo no tiene categorías de menú asignadas.');
-            return;
-        }
+        const defaultArea = currentUser?.work_area && CATEGORIES_BY_AREA[currentUser.work_area] 
+            ? currentUser.work_area 
+            : 'Cocina';
 
-        const area = currentUser.work_area;
+        const area = defaultArea as WorkArea;
         const categories = CATEGORIES_BY_AREA[area];
         
         setEditingMenuItem({
@@ -513,10 +549,23 @@ export const DiningServiceView: React.FC = () => {
                                                     className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                                                 >
                                                     <div className="p-4 flex items-start space-x-4">
-                                                        <div className="flex flex-col items-center text-gray-300">
-                                                            <button onClick={() => handleMoveMenuItem(item.id, 'up')} disabled={idx === 0} className="hover:text-primary-500 disabled:opacity-0"><ChevronUp className="w-5 h-5" /></button>
-                                                            <span className="text-sm font-black text-gray-400 my-1">{item.order_number}</span>
-                                                            <button onClick={() => handleMoveMenuItem(item.id, 'down')} disabled={idx === matchingPlanningService.menu.length - 1} className="hover:text-primary-500 disabled:opacity-0"><ChevronDown className="w-5 h-5" /></button>
+                                                        <div className="flex flex-col items-center mr-4 pr-4 border-r dark:border-gray-700 min-w-[60px]">
+                                                            <span className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Orden</span>
+                                                            <input 
+                                                                type="number"
+                                                                value={item.order_number || 0}
+                                                                onChange={(e) => {
+                                                                    const newVal = parseInt(e.target.value) || 0;
+                                                                    const updatedMenu = matchingPlanningService.menu.map(m => m.id === item.id ? { ...m, order_number: newVal } : m);
+                                                                    updatedMenu.sort((a, b) => a.order_number - b.order_number);
+                                                                    setServices(prev => prev.map(s => s.id === matchingPlanningService.id ? { ...s, menu: updatedMenu } : s));
+                                                                }}
+                                                                className="w-12 text-center font-black text-primary-600 bg-transparent border-none focus:ring-0 p-0"
+                                                            />
+                                                            <div className="flex flex-col mt-2">
+                                                                <button onClick={() => handleMoveMenuItem(item.id, 'up')} disabled={idx === 0} className="hover:text-primary-500 disabled:opacity-0"><ChevronUp className="w-4 h-4" /></button>
+                                                                <button onClick={() => handleMoveMenuItem(item.id, 'down')} disabled={idx === matchingPlanningService.menu.length - 1} className="hover:text-primary-500 disabled:opacity-0"><ChevronDown className="w-4 h-4" /></button>
+                                                            </div>
                                                         </div>
 
                                                         <div className="flex-1">
@@ -654,39 +703,69 @@ export const DiningServiceView: React.FC = () => {
                 title={editingMenuItem?.id ? "Editar Plato del Menú" : "Nuevo Plato / Pase"}
             >
                 <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-black uppercase text-gray-400 mb-1">Área de Producción</label>
+                            <select
+                                className="w-full p-2 border rounded dark:bg-gray-700 text-sm font-bold"
+                                value={editingMenuItem?.work_area}
+                                onChange={(e) => {
+                                    const newArea = e.target.value as WorkArea;
+                                    const cats = CATEGORIES_BY_AREA[newArea] || ['Otros'];
+                                    setEditingMenuItem(prev => ({ 
+                                        ...prev!, 
+                                        work_area: newArea,
+                                        category: cats[0],
+                                        is_custom: false
+                                    }));
+                                }}
+                            >
+                                {Object.keys(CATEGORIES_BY_AREA).map(area => (
+                                    <option key={area} value={area}>{area}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-black uppercase text-gray-400 mb-1">Orden en el Menú</label>
+                            <input
+                                type="number"
+                                className="w-full p-2 border rounded dark:bg-gray-700 text-sm font-bold"
+                                value={editingMenuItem?.order_number || 0}
+                                onChange={(e) => setEditingMenuItem(prev => ({ ...prev!, order_number: parseInt(e.target.value) || 0 }))}
+                                min="1"
+                            />
+                        </div>
+                    </div>
+
                     <div>
-                        <label className="block text-xs font-black uppercase text-gray-400 mb-1">Área y Categoría</label>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700 text-sm font-bold">
-                                {editingMenuItem?.work_area}
-                            </div>
-                            <div className="space-y-2">
-                                <select
-                                    className="w-full p-2 border rounded dark:bg-gray-700 text-sm font-bold"
-                                    value={editingMenuItem?.category && CATEGORIES_BY_AREA[editingMenuItem.work_area!].includes(editingMenuItem.category) ? editingMenuItem.category : 'Otros'}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        setEditingMenuItem(prev => ({ 
-                                            ...prev!, 
-                                            category: val === 'Otros' ? '' : val, 
-                                            is_custom: val === 'Otros' 
-                                        }));
-                                    }}
-                                >
-                                    {editingMenuItem?.work_area && CATEGORIES_BY_AREA[editingMenuItem.work_area!].map(cat => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
-                                {editingMenuItem?.is_custom && (
-                                    <input 
-                                        type="text"
-                                        placeholder="Nombre de la categoría personalizada..."
-                                        className="w-full p-2 border rounded dark:bg-gray-700 text-xs font-bold"
-                                        value={editingMenuItem.category}
-                                        onChange={(e) => setEditingMenuItem(prev => ({ ...prev!, category: e.target.value }))}
-                                    />
-                                )}
-                            </div>
+                        <label className="block text-xs font-black uppercase text-gray-400 mb-1">Categoría</label>
+                        <div className="space-y-2">
+                            <select
+                                className="w-full p-2 border rounded dark:bg-gray-700 text-sm font-bold"
+                                value={editingMenuItem?.category && editingMenuItem.work_area && CATEGORIES_BY_AREA[editingMenuItem.work_area].includes(editingMenuItem.category) ? editingMenuItem.category : 'Otros'}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setEditingMenuItem(prev => ({ 
+                                        ...prev!, 
+                                        category: val === 'Otros' ? '' : val, 
+                                        is_custom: val === 'Otros' 
+                                    }));
+                                }}
+                            >
+                                {editingMenuItem?.work_area && CATEGORIES_BY_AREA[editingMenuItem.work_area].map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                                <option value="Otros">Personalizada / Otros...</option>
+                            </select>
+                            {(editingMenuItem?.is_custom || (editingMenuItem?.category && editingMenuItem.work_area && !CATEGORIES_BY_AREA[editingMenuItem.work_area].includes(editingMenuItem.category))) && (
+                                <input 
+                                    type="text"
+                                    placeholder="Nombre de la categoría personalizada (Ej: Aperitivo, Entrante...)"
+                                    className="w-full p-2 border rounded dark:bg-gray-700 text-xs font-bold"
+                                    value={editingMenuItem.category}
+                                    onChange={(e) => setEditingMenuItem(prev => ({ ...prev!, category: e.target.value }))}
+                                />
+                            )}
                         </div>
                     </div>
 
