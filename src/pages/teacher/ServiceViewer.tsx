@@ -13,7 +13,9 @@ import {
     X, 
     Plus,
     Info,
-    AlertTriangle
+    AlertTriangle,
+    Edit2,
+    Save
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { addHeaderToPdf } from '../../utils/export';
@@ -35,6 +37,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     const { currentUser } = useAuth();
     const [addStep, setAddStep] = useState<null | 'choice' | 'database' | 'manual'>(null);
     const [targetMenuItemId, setTargetMenuItemId] = useState<string | null>(null);
+    const [editingMenuItemId, setEditingMenuItemId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const usersMap = useMemo(() => new Map<string, User>(users.map((u: any) => [u.id, u])), [users]);
@@ -209,6 +212,10 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         const doc = new jsPDF();
         const dateStr = new Date(service.date).toLocaleDateString();
         
+        // Find reservations for this service to track allergens
+        const dService = allDiningServices.find(ds => ds.service_id === service.id);
+        const serviceReservations = dService ? allDiningReservations.filter(res => res.service_id === dService.id) : [];
+
         service.menu.forEach((item, index) => {
             if (index > 0) doc.addPage();
             
@@ -216,16 +223,33 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                 doc, 
                 companyInfo, 
                 'FICHA TÉCNICA DE SERVICIO (ALUMNOS)', 
-                `Plato: ${item.name.toUpperCase()}\nCategoría: ${item.category}\nServicio: ${service.name}\nFecha: ${dateStr}`
+                `Plato: ${item.name.toUpperCase()}\nCategoría: ${item.category}\nServicio: ${service.name}\nProtocolo Global: ${service.global_setup?.service_type || 'Estándar'}\nFecha: ${dateStr}`
             );
 
-            let currentY = startY + 15;
+            let currentY = startY + 10;
 
-            // Ingredients / Composition
-            doc.setFontSize(14);
+            // Find diners with allergens matching this dish
+            const dishAllergens = new Set(item.allergens || []);
+            const dinersWithAlerts: { mesa: string; name: string; allergens: string[] }[] = [];
+            
+            serviceReservations.forEach(res => {
+                res.diners_allergens.forEach(diner => {
+                    const matchingAllergens = diner.allergens.filter(a => dishAllergens.has(a));
+                    if (matchingAllergens.length > 0) {
+                        dinersWithAlerts.push({
+                            mesa: res.table_number || 'S/N',
+                            name: diner.diner_name || 'Comensal',
+                            allergens: matchingAllergens
+                        });
+                    }
+                });
+            });
+
+            // 1. Composition
+            doc.setFontSize(10);
             doc.setTextColor(37, 99, 235);
             doc.text('1. COMPOSICIÓN Y RECETAS', 14, currentY);
-            currentY += 8;
+            currentY += 5;
 
             const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
             const itemRecipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
@@ -240,54 +264,74 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                         (r.selected_allergens || []).join(', ') || 'Sin alérgenos'
                     ]),
                     theme: 'grid',
-                    headStyles: { fillColor: [37, 99, 235] },
+                    headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
+                    bodyStyles: { fontSize: 7 },
                     margin: { left: 14, right: 14 }
                 });
-                currentY = (doc as any).lastAutoTable.finalY + 15;
+                currentY = (doc as any).lastAutoTable.finalY + 8;
             } else {
-                doc.setFontSize(10);
+                doc.setFontSize(8);
                 doc.setTextColor(100);
-                doc.text('Este plato no tiene recetas vinculadas (Entrada Manual).', 14, currentY);
-                currentY += 15;
+                doc.text('Sin recetas vinculadas.', 14, currentY);
+                currentY += 8;
             }
 
-            // Service Details
-            doc.setFontSize(14);
-            doc.setTextColor(217, 119, 6); // Amber
+            // 2. Service Details
+            doc.setFontSize(10);
+            doc.setTextColor(217, 119, 6);
             doc.text('2. INSTRUCCIONES DE SERVICIO', 14, currentY);
-            currentY += 8;
+            currentY += 5;
 
             const firstRecipe = itemRecipes[0];
             const serviceData = [
-                ['Explicación Camarero', firstRecipe?.service_explanation || item.description || '-'],
-                ['Temperatura de Servicio', firstRecipe?.temperature || '-'],
-                ['Protocolo / Tipo Servicio', firstRecipe?.service_type || '-'],
-                ['Marcaje / Vajilla', firstRecipe?.cutlery_required || firstRecipe?.recommended_marking || '-'],
-                ['Presentación / Emplatado', firstRecipe?.presentation || '-']
+                ['Explicación', item.service_explanation || firstRecipe?.service_explanation || item.description || '-'],
+                ['Temp/Pase', item.temperature || firstRecipe?.temperature || '-'],
+                ['Protocolo', item.service_type || firstRecipe?.service_type || '-'],
+                ['Marcaje', item.cutlery_required || firstRecipe?.cutlery_required || firstRecipe?.recommended_marking || '-'],
+                ['Acabado', item.presentation || firstRecipe?.presentation || '-']
             ];
 
             (doc as any).autoTable({
                 startY: currentY,
                 body: serviceData,
                 theme: 'striped',
+                bodyStyles: { fontSize: 7 },
                 columnStyles: {
-                    0: { cellWidth: 50, fontStyle: 'bold', fillColor: [243, 244, 246] }
+                    0: { cellWidth: 35, fontStyle: 'bold', fillColor: [243, 244, 246] }
                 },
                 margin: { left: 14, right: 14 }
             });
 
-            currentY = (doc as any).lastAutoTable.finalY + 15;
+            currentY = (doc as any).lastAutoTable.finalY + 8;
 
-            // Alérgenos del Plato
-            doc.setFontSize(14);
-            doc.setTextColor(220, 38, 38); // Red
-            doc.text('3. ALÉRGENOS', 14, currentY);
-            currentY += 8;
-            
-            doc.setFontSize(10);
-            doc.setTextColor(0);
-            const allergensText = (item.allergens || []).length > 0 ? item.allergens!.join(', ') : 'Ninguno declarado.';
-            doc.text(allergensText, 14, currentY, { maxWidth: 180 });
+            // 3. Allergen Alerts
+            if (dinersWithAlerts.length > 0) {
+                doc.setFontSize(10);
+                doc.setTextColor(220, 38, 38);
+                doc.text('(!) ALERTAS DE ALÉRGENOS POR MESA', 14, currentY);
+                currentY += 5;
+
+                (doc as any).autoTable({
+                    startY: currentY,
+                    head: [['Mesa', 'Comensal', 'Alérgenos']],
+                    body: dinersWithAlerts.map(d => [d.mesa, d.name, d.allergens.join(', ')]),
+                    theme: 'grid',
+                    headStyles: { fillColor: [220, 38, 38], fontSize: 8 },
+                    bodyStyles: { fontSize: 7, fontWeight: 'bold' },
+                    margin: { left: 14, right: 14 }
+                });
+                currentY = (doc as any).lastAutoTable.finalY + 8;
+            }
+
+            // 4. Observations
+            if (service.global_setup?.general_observations) {
+                doc.setFontSize(9);
+                doc.setTextColor(100);
+                doc.text('OBSERVACIONES GENERALES:', 14, currentY);
+                currentY += 4;
+                doc.setFontSize(7);
+                doc.text(service.global_setup.general_observations, 14, currentY, { maxWidth: 180 });
+            }
         });
 
         doc.save(`fichas_alumnos_${service.name.replace(/\s+/g, '_')}.pdf`);
@@ -330,6 +374,60 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
             <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-6">
                     <Card title="Menú del Servicio">
+                        <div className="mb-6 pb-6 border-b border-gray-100 dark:border-gray-700/50">
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Configuración General del Servicio</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Tipo de Servicio Global</label>
+                                    <input 
+                                        type="text"
+                                        value={service.global_setup?.service_type || ''}
+                                        placeholder="Ej: Servicio a la Americana"
+                                        onChange={(e) => {
+                                            const updatedService = { 
+                                                ...service, 
+                                                global_setup: { ...(service.global_setup || {}), service_type: e.target.value } 
+                                            };
+                                            setServices(services.map(s => s.id === service.id ? updatedService : s));
+                                        }}
+                                        className="w-full p-2 text-sm font-bold border rounded-lg dark:bg-gray-700"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Título del Menú</label>
+                                    <input 
+                                        type="text"
+                                        value={service.global_setup?.menu_title || ''}
+                                        placeholder="Ej: Menú Degustación Primavera"
+                                        onChange={(e) => {
+                                            const updatedService = { 
+                                                ...service, 
+                                                global_setup: { ...(service.global_setup || {}), menu_title: e.target.value } 
+                                            };
+                                            setServices(services.map(s => s.id === service.id ? updatedService : s));
+                                        }}
+                                        className="w-full p-2 text-sm font-bold border rounded-lg dark:bg-gray-700"
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Observaciones Generales de Sala/Cocina</label>
+                                    <input 
+                                        type="text"
+                                        value={service.global_setup?.general_observations || ''}
+                                        placeholder="Notas importantes para todo el equipo..."
+                                        onChange={(e) => {
+                                            const updatedService = { 
+                                                ...service, 
+                                                global_setup: { ...(service.global_setup || {}), general_observations: e.target.value } 
+                                            };
+                                            setServices(services.map(s => s.id === service.id ? updatedService : s));
+                                        }}
+                                        className="w-full p-2 text-sm border rounded-lg dark:bg-gray-700"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex space-x-2">
                                 <button onClick={() => setAddStep('choice')} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center">
@@ -351,86 +449,161 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                             {service.menu.sort((a, b) => (a.order_number || 0) - (b.order_number || 0)).map((item, idx) => {
                                 const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
                                 const itemsRecipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
-                                
-                                return (
-                                    <div key={item.id} className="flex items-center p-3 bg-white dark:bg-gray-800 border rounded-xl shadow-sm group">
-                                        <div className="flex flex-col items-center mr-4 pr-4 border-r dark:border-gray-700 min-w-[60px]">
-                                            <span className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Orden</span>
-                                            <input 
-                                                type="number"
-                                                value={item.order_number || 0}
-                                                onChange={(e) => {
-                                                    const newVal = parseInt(e.target.value) || 0;
-                                                    const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, order_number: newVal } : m);
-                                                    setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                }}
-                                                className="w-12 text-center font-black text-primary-600 bg-transparent border-none focus:ring-0 p-0"
-                                            />
-                                        </div>
-                                        
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center space-x-2 mb-1">
-                                                <div className="flex space-x-1">
-                                                    <input 
-                                                        type="text"
-                                                        value={item.category || ''}
-                                                        placeholder="Categoría..."
-                                                        onChange={(e) => {
-                                                            const newVal = e.target.value;
-                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, category: newVal } : m);
-                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                        }}
-                                                        className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded border-none focus:ring-0 w-24 h-5"
-                                                    />
-                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                                        {item.work_area}
-                                                    </span>
-                                                </div>
+                                             return (
+                                    <div key={item.id} className="space-y-2 border-b dark:border-gray-700 pb-4 last:border-0 last:pb-0">
+                                        <div className="flex items-center p-3 bg-white dark:bg-gray-800 border rounded-xl shadow-sm group">
+                                            <div className="flex flex-col items-center mr-4 pr-4 border-r dark:border-gray-700 min-w-[60px]">
+                                                <span className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Orden</span>
+                                                <input 
+                                                    type="number"
+                                                    value={item.order_number || 0}
+                                                    onChange={(e) => {
+                                                        const newVal = parseInt(e.target.value) || 0;
+                                                        const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, order_number: newVal } : m);
+                                                        setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                    }}
+                                                    className="w-12 text-center font-black text-primary-600 bg-transparent border-none focus:ring-0 p-0"
+                                                />
                                             </div>
-                                            <input 
-                                                type="text"
-                                                value={item.name}
-                                                onChange={(e) => {
-                                                    const newVal = e.target.value;
-                                                    const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, name: newVal } : m);
-                                                    setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                }}
-                                                className="font-bold text-gray-800 dark:text-white bg-transparent border-none focus:ring-0 p-0 w-full h-auto"
-                                            />
-                                            {itemsRecipes.length > 0 && (
-                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                    {itemsRecipes.map(r => (
-                                                        <span key={r.id} className="text-[9px] bg-gray-100 dark:bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-600 flex items-center group/tag">
-                                                            {r.name}
-                                                            <button 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, recipe_ids: (m.recipe_ids || []).filter(rid => rid !== r.id) } : m);
-                                                                    setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                                }}
-                                                                className="ml-1 text-gray-400 hover:text-red-500 opacity-0 group-hover/tag:opacity-100"
-                                                            >
-                                                                <X className="w-2.5 h-2.5" />
-                                                            </button>
+                                            
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center space-x-2 mb-1">
+                                                    <div className="flex space-x-1">
+                                                        <input 
+                                                            type="text"
+                                                            value={item.category || ''}
+                                                            placeholder="Categoría..."
+                                                            onChange={(e) => {
+                                                                const newVal = e.target.value;
+                                                                const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, category: newVal } : m);
+                                                                setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                            }}
+                                                            className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded border-none focus:ring-0 w-24 h-5"
+                                                        />
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                                                            {item.work_area}
                                                         </span>
-                                                    ))}
+                                                    </div>
+                                                </div>
+                                                <input 
+                                                    type="text"
+                                                    value={item.name}
+                                                    onChange={(e) => {
+                                                        const newVal = e.target.value;
+                                                        const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, name: newVal } : m);
+                                                        setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                    }}
+                                                    className="font-bold text-gray-800 dark:text-white bg-transparent border-none focus:ring-0 p-0 w-full h-auto"
+                                                />
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    {itemsRecipes.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {itemsRecipes.map(r => (
+                                                                <span key={r.id} className="text-[9px] bg-gray-100 dark:bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-600 flex items-center group/tag">
+                                                                    {r.name}
+                                                                    <button 
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, recipe_ids: (m.recipe_ids || []).filter(rid => rid !== r.id) } : m);
+                                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                                        }}
+                                                                        className="ml-1 text-gray-400 hover:text-red-500 opacity-0 group-hover/tag:opacity-100"
+                                                                    >
+                                                                        <X className="w-2.5 h-2.5" />
+                                                                    </button>
+                                                                </span>
+                                                            ))}
+                                                            <button 
+                                                                onClick={() => { setTargetMenuItemId(item.id); setAddStep('database'); }}
+                                                                className="text-[9px] bg-primary-50 dark:bg-primary-900/30 text-primary-600 px-1.5 py-0.5 rounded-full border border-primary-200 dark:border-primary-800 hover:bg-primary-100 transition-colors"
+                                                            >
+                                                                + Añadir Componente
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                     <button 
-                                                        onClick={() => { setTargetMenuItemId(item.id); setAddStep('database'); }}
-                                                        className="text-[9px] bg-primary-50 dark:bg-primary-900/30 text-primary-600 px-1.5 py-0.5 rounded-full border border-primary-200 dark:border-primary-800 hover:bg-primary-100 transition-colors"
+                                                        onClick={() => setEditingMenuItemId(editingMenuItemId === item.id ? null : item.id)}
+                                                        className={`text-[10px] font-bold flex items-center px-2 py-1 rounded-lg transition-colors ${editingMenuItemId === item.id ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
                                                     >
-                                                        + Añadir Componente
+                                                        <Edit2 className="w-3 h-3 mr-1" />
+                                                        Detalles del Pase
                                                     </button>
                                                 </div>
-                                            )}
+                                            </div>
+
+                                            <button 
+                                                onClick={() => handleRemoveRecipe(item.id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                title="Eliminar del menú"
+                                            >
+                                                <TrashIcon className="w-5 h-5" />
+                                            </button>
                                         </div>
 
-                                        <button 
-                                            onClick={() => handleRemoveRecipe(item.id)}
-                                            className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            title="Eliminar del menú"
-                                        >
-                                            <TrashIcon className="w-5 h-5" />
-                                        </button>
+                                        {editingMenuItemId === item.id && (
+                                            <div className="ml-12 p-4 bg-amber-50/30 dark:bg-amber-900/10 rounded-xl border border-amber-100/50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                <div className="lg:col-span-2">
+                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Explicación Camarero / Historia</label>
+                                                    <textarea 
+                                                        value={item.service_explanation || itemsRecipes[0]?.service_explanation || ''}
+                                                        onChange={(e) => {
+                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, service_explanation: e.target.value } : m);
+                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                        }}
+                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800"
+                                                        rows={2}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Temp / Pase</label>
+                                                    <input 
+                                                        type="text"
+                                                        value={item.temperature || itemsRecipes[0]?.temperature || ''}
+                                                        onChange={(e) => {
+                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, temperature: e.target.value } : m);
+                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                        }}
+                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800 font-bold"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Protocolo Específico</label>
+                                                    <input 
+                                                        type="text"
+                                                        value={item.service_type || itemsRecipes[0]?.service_type || ''}
+                                                        onChange={(e) => {
+                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, service_type: e.target.value } : m);
+                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                        }}
+                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800 font-bold"
+                                                    />
+                                                </div>
+                                                <div className="lg:col-span-2">
+                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Marcaje / Cubiertería</label>
+                                                    <input 
+                                                        type="text"
+                                                        value={item.cutlery_required || itemsRecipes[0]?.cutlery_required || itemsRecipes[0]?.recommended_marking || ''}
+                                                        onChange={(e) => {
+                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, cutlery_required: e.target.value } : m);
+                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                        }}
+                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800 font-bold"
+                                                    />
+                                                </div>
+                                                <div className="lg:col-span-2">
+                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Instrucciones de Emplatado</label>
+                                                    <input 
+                                                        type="text"
+                                                        value={item.presentation || itemsRecipes[0]?.presentation || ''}
+                                                        onChange={(e) => {
+                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, presentation: e.target.value } : m);
+                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                        }}
+                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

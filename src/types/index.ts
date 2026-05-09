@@ -417,6 +417,11 @@ export interface ServiceMenuItem {
     allergens: string[];
     description?: string;
     is_custom?: boolean;
+    service_explanation?: string;
+    temperature?: string;
+    service_type?: string;
+    cutlery_required?: string;
+    presentation?: string;
 }
 
 export interface Service {
@@ -428,6 +433,12 @@ export interface Service {
     roles: Partial<Record<ServiceRole, string>>; // string is userId
     status: 'Planificación' | 'Confirmado' | 'Completado';
     event_id?: string;
+    global_setup?: {
+        service_type?: string;
+        dress_code?: string;
+        general_observations?: string;
+        menu_title?: string;
+    };
 }
 
 export interface SaleItem {

@@ -318,6 +318,9 @@ export const DiningServiceView: React.FC = () => {
         const doc = new jsPDF();
         const dateStr = new Date(matchingPlanningService.date).toLocaleDateString();
         
+        // Find reservations for this service to track allergens
+        const serviceReservations = dining_reservations.filter(res => res.service_id === selectedServiceId);
+
         matchingPlanningService.menu.forEach((item, index) => {
             if (index > 0) doc.addPage();
             
@@ -325,16 +328,33 @@ export const DiningServiceView: React.FC = () => {
                 doc, 
                 companyInfo, 
                 'FICHA TÉCNICA DE SERVICIO (ALUMNOS)', 
-                `Plato: ${item.name.toUpperCase()}\nCategoría: ${item.category}\nServicio: ${matchingPlanningService.name}\nFecha: ${dateStr}`
+                `Plato: ${item.name.toUpperCase()}\nCategoría: ${item.category}\nServicio: ${matchingPlanningService.name}\nProtocolo Global: ${matchingPlanningService.global_setup?.service_type || 'Estándar'}\nFecha: ${dateStr}`
             );
 
-            let currentY = startY + 15;
+            let currentY = startY + 10;
 
-            // Ingredients / Composition
-            doc.setFontSize(14);
+            // Find diners with allergens matching this dish
+            const dishAllergens = new Set(item.allergens || []);
+            const dinersWithAlerts: { mesa: string; name: string; allergens: string[] }[] = [];
+            
+            serviceReservations.forEach(res => {
+                res.diners_allergens.forEach(diner => {
+                    const matchingAllergens = diner.allergens.filter(a => dishAllergens.has(a));
+                    if (matchingAllergens.length > 0) {
+                        dinersWithAlerts.push({
+                            mesa: res.table_number || 'S/N',
+                            name: diner.diner_name || 'Comensal',
+                            allergens: matchingAllergens
+                        });
+                    }
+                });
+            });
+
+            // 1. Composition
+            doc.setFontSize(10);
             doc.setTextColor(37, 99, 235);
             doc.text('1. COMPOSICIÓN Y RECETAS', 14, currentY);
-            currentY += 8;
+            currentY += 5;
 
             const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
             const itemRecipes = recipeIds.map(rid => recipes.find(r => r.id === rid)).filter((r): r is any => !!r);
@@ -349,54 +369,74 @@ export const DiningServiceView: React.FC = () => {
                         (r.selected_allergens || []).join(', ') || 'Sin alérgenos'
                     ]),
                     theme: 'grid',
-                    headStyles: { fillColor: [37, 99, 235] },
+                    headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
+                    bodyStyles: { fontSize: 7 },
                     margin: { left: 14, right: 14 }
                 });
-                currentY = (doc as any).lastAutoTable.finalY + 15;
+                currentY = (doc as any).lastAutoTable.finalY + 8;
             } else {
-                doc.setFontSize(10);
+                doc.setFontSize(8);
                 doc.setTextColor(100);
-                doc.text('Este plato no tiene recetas vinculadas (Entrada Manual).', 14, currentY);
-                currentY += 15;
+                doc.text('Sin recetas vinculadas.', 14, currentY);
+                currentY += 8;
             }
 
-            // Service Details
-            doc.setFontSize(14);
-            doc.setTextColor(217, 119, 6); // Amber
+            // 2. Service Details
+            doc.setFontSize(10);
+            doc.setTextColor(217, 119, 6);
             doc.text('2. INSTRUCCIONES DE SERVICIO', 14, currentY);
-            currentY += 8;
+            currentY += 5;
 
             const firstRecipe = itemRecipes[0];
             const serviceData = [
-                ['Explicación Camarero', firstRecipe?.service_explanation || item.description || '-'],
-                ['Temperatura de Servicio', firstRecipe?.temperature || '-'],
-                ['Protocolo / Tipo Servicio', firstRecipe?.service_type || '-'],
-                ['Marcaje / Vajilla', firstRecipe?.cutlery_required || firstRecipe?.recommended_marking || '-'],
-                ['Presentación / Emplatado', firstRecipe?.presentation || '-']
+                ['Explicación', item.service_explanation || firstRecipe?.service_explanation || item.description || '-'],
+                ['Temp/Pase', item.temperature || firstRecipe?.temperature || '-'],
+                ['Protocolo', item.service_type || firstRecipe?.service_type || '-'],
+                ['Marcaje', item.cutlery_required || firstRecipe?.cutlery_required || firstRecipe?.recommended_marking || '-'],
+                ['Acabado', item.presentation || firstRecipe?.presentation || '-']
             ];
 
             (doc as any).autoTable({
                 startY: currentY,
                 body: serviceData,
                 theme: 'striped',
+                bodyStyles: { fontSize: 7 },
                 columnStyles: {
-                    0: { cellWidth: 50, fontStyle: 'bold', fillColor: [243, 244, 246] }
+                    0: { cellWidth: 35, fontStyle: 'bold', fillColor: [243, 244, 246] }
                 },
                 margin: { left: 14, right: 14 }
             });
 
-            currentY = (doc as any).lastAutoTable.finalY + 15;
+            currentY = (doc as any).lastAutoTable.finalY + 8;
 
-            // Alérgenos del Plato
-            doc.setFontSize(14);
-            doc.setTextColor(220, 38, 38); // Red
-            doc.text('3. ALÉRGENOS', 14, currentY);
-            currentY += 8;
-            
-            doc.setFontSize(10);
-            doc.setTextColor(0);
-            const allergensText = item.allergens.length > 0 ? item.allergens.join(', ') : 'Ninguno declarado.';
-            doc.text(allergensText, 14, currentY, { maxWidth: 180 });
+            // 3. Allergen Alerts
+            if (dinersWithAlerts.length > 0) {
+                doc.setFontSize(10);
+                doc.setTextColor(220, 38, 38);
+                doc.text('(!) ALERTAS DE ALÉRGENOS POR MESA', 14, currentY);
+                currentY += 5;
+
+                (doc as any).autoTable({
+                    startY: currentY,
+                    head: [['Mesa', 'Comensal', 'Alérgenos']],
+                    body: dinersWithAlerts.map(d => [d.mesa, d.name, d.allergens.join(', ')]),
+                    theme: 'grid',
+                    headStyles: { fillColor: [220, 38, 38], fontSize: 8 },
+                    bodyStyles: { fontSize: 7, fontWeight: 'bold' },
+                    margin: { left: 14, right: 14 }
+                });
+                currentY = (doc as any).lastAutoTable.finalY + 8;
+            }
+
+            // 4. Observations
+            if (matchingPlanningService.global_setup?.general_observations) {
+                doc.setFontSize(9);
+                doc.setTextColor(100);
+                doc.text('OBSERVACIONES GENERALES:', 14, currentY);
+                currentY += 4;
+                doc.setFontSize(7);
+                doc.text(matchingPlanningService.global_setup.general_observations, 14, currentY, { maxWidth: 180 });
+            }
         });
 
         doc.save(`fichas_alumnos_${matchingPlanningService.name.replace(/\s+/g, '_')}.pdf`);
@@ -642,7 +682,7 @@ export const DiningServiceView: React.FC = () => {
                                             const itemRecipes = recipeIds.map(rid => recipes.find(r => r.id === rid)).filter((r): r is any => !!r);
                                             const firstRecipe = itemRecipes[0] || null;
                                             
-                                            return (
+                                                                            return (
                                                 <motion.div 
                                                     key={item.id}
                                                     initial={{ opacity: 0, x: -10 }}
@@ -727,70 +767,63 @@ export const DiningServiceView: React.FC = () => {
                                                             </div>
 
                                                             {/* Technical Details for FOH */}
-                                                            {firstRecipe ? (
-                                                                <div className="mt-6 pt-6 border-t border-gray-50 dark:border-gray-700/50">
-                                                                    {itemRecipes.length > 1 && (
-                                                                         <div className="mb-4">
-                                                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Composiciones (Recetas)</h5>
-                                                                            <div className="flex flex-wrap gap-2">
-                                                                                {itemRecipes.map(r => (
-                                                                                    <span key={r.id} className="text-[10px] bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded-lg border border-gray-100 dark:border-gray-600 font-bold">
-                                                                                        {r.name}
-                                                                                    </span>
-                                                                                ))}
-                                                                            </div>
-                                                                         </div>
-                                                                    )}
-                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                        <div className="space-y-4">
-                                                                            <div>
-                                                                                <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center">
-                                                                                    <Info className="w-3.5 h-3.5 mr-1.5" />
-                                                                                    Explicación para el Camarero
-                                                                                </h5>
-                                                                                <p className="text-sm text-gray-600 dark:text-gray-400 italic bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100/50">
-                                                                                    {firstRecipe.service_explanation || firstRecipe.description || "Sin explicación específica registrada."}
-                                                                                </p>
-                                                                            </div>
-
-                                                                            <div className="grid grid-cols-2 gap-4">
-                                                                                <div>
-                                                                                    <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Temperatura</h5>
-                                                                                    <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                                                                                        {firstRecipe.temperature || "No definida"}
-                                                                                    </p>
-                                                                                </div>
-                                                                                <div>
-                                                                                    <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Protoclo</h5>
-                                                                                    <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                                                                                        {firstRecipe.service_type || "Estándar"}
-                                                                                    </p>
-                                                                                </div>
-                                                                            </div>
+                                                            <div className="mt-6 pt-6 border-t border-gray-50 dark:border-gray-700/50">
+                                                                {itemRecipes.length > 1 && (
+                                                                     <div className="mb-4">
+                                                                        <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Composiciones (Recetas)</h5>
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            {itemRecipes.map(r => (
+                                                                                <span key={r.id} className="text-[10px] bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded-lg border border-gray-100 dark:border-gray-600 font-bold">
+                                                                                    {r.name}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                     </div>
+                                                                )}
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                    <div className="space-y-4">
+                                                                        <div>
+                                                                            <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center">
+                                                                                <Info className="w-3.5 h-3.5 mr-1.5" />
+                                                                                Explicación para el Camarero
+                                                                            </h5>
+                                                                            <p className="text-sm text-gray-600 dark:text-gray-400 italic bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100/50">
+                                                                                {item.service_explanation || firstRecipe?.service_explanation || item.description || "Sin explicación específica registrada."}
+                                                                            </p>
                                                                         </div>
 
-                                                                        <div className="space-y-4">
+                                                                        <div className="grid grid-cols-2 gap-4">
                                                                             <div>
-                                                                                <h5 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">Marcaje / Cubertería</h5>
-                                                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200 p-3 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl border border-indigo-100/50">
-                                                                                    {firstRecipe.cutlery_required || firstRecipe.recommended_marking || "Cubertería estándar de mesa."}
+                                                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Temperatura</h5>
+                                                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                                                                                    {item.temperature || firstRecipe?.temperature || "No definida"}
                                                                                 </p>
                                                                             </div>
                                                                             <div>
-                                                                                <h5 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Instrucciones de Emplatado</h5>
-                                                                                <p className="text-xs text-gray-600 dark:text-gray-400">
-                                                                                    {firstRecipe.presentation || "Servicio estándar según protocolo."}
+                                                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Protocolo</h5>
+                                                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                                                                                    {item.service_type || firstRecipe?.service_type || "Estándar"}
                                                                                 </p>
                                                                             </div>
                                                                         </div>
                                                                     </div>
+
+                                                                    <div className="space-y-4">
+                                                                        <div>
+                                                                            <h5 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">Marcaje / Cubertería</h5>
+                                                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200 p-3 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl border border-indigo-100/50">
+                                                                                {item.cutlery_required || firstRecipe?.cutlery_required || firstRecipe?.recommended_marking || "Cubertería estándar de mesa."}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <h5 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Instrucciones de Emplatado</h5>
+                                                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                                                {item.presentation || firstRecipe?.presentation || "Servicio estándar según protocolo."}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                            ) : (
-                                                                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
-                                                                    <p className="text-xs text-gray-400 italic">Este es un pase manual. No tiene ficha técnica de cocina vinculada.</p>
-                                                                    {item.description && <p className="text-sm text-gray-600 mt-2">{item.description}</p>}
-                                                                </div>
-                                                            )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </motion.div>
