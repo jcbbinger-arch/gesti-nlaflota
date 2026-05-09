@@ -633,7 +633,7 @@ export const DiningServiceView: React.FC = () => {
                                                     Añadir Pase Manual
                                                 </button>
                                                 <Link 
-                                                    to="/teacher/services" 
+                                                    to="/teacher/service-planner" 
                                                     className="px-6 py-2.5 bg-primary-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary-700 transition-all shadow-lg shadow-primary-100 flex items-center justify-center"
                                                 >
                                                     Ir al Planificador <ChevronRight className="w-3.5 h-3.5 ml-2" />
