@@ -210,7 +210,7 @@ export const RecipeForm: React.FC = () => {
                         const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
                         return {
                             ...ing,
-                            cost: calculateIngredientCost(ing.quantity, ing.unit, price, product.unit)
+                            cost: calculateIngredientCost(ing.quantity, ing.unit, price, product.unit, product.unit_size, product.unit_size_type)
                         };
                     }
                     return ing;
@@ -265,7 +265,7 @@ export const RecipeForm: React.FC = () => {
                 ? formState.ingredients[index] 
                 : formState.sub_preparations![tab].ingredients[index];
 
-            const cost = calculateIngredientCost(existingIng.quantity, existingIng.unit, price, product.unit);
+            const cost = calculateIngredientCost(existingIng.quantity, existingIng.unit, price, product.unit, product.unit_size, product.unit_size_type);
             
             const newIngredient: RecipeIngredient = { 
                 product_id: product.id, 
@@ -287,7 +287,7 @@ export const RecipeForm: React.FC = () => {
             }
             setLinkingIndex(null);
         } else {
-            const cost = calculateIngredientCost(1, product.unit, price, product.unit);
+            const cost = calculateIngredientCost(1, product.unit, price, product.unit, product.unit_size, product.unit_size_type);
             const newIngredient: RecipeIngredient = { 
                 product_id: product.id, 
                 quantity: 1, 
@@ -316,6 +316,14 @@ export const RecipeForm: React.FC = () => {
 
     const addGenericIngredient = () => {
         if (!searchTerm.trim()) return;
+
+        // Auto-link if exact match found
+        const match = products.find(p => p.name.toLowerCase() === searchTerm.trim().toLowerCase() && p.status === 'Activo');
+        if (match) {
+            addIngredient(match);
+            return;
+        }
+
         const newIngredient: RecipeIngredient = { 
             product_id: searchTerm, 
             quantity: 1, 
@@ -332,6 +340,44 @@ export const RecipeForm: React.FC = () => {
         }
         setSearchTerm('');
     };
+
+    // Auto-link effect: try to link unidentified ingredients that have exact name matches
+    useEffect(() => {
+        if (!products.length) return;
+
+        let hasChanges = false;
+        const newState = { ...formState };
+
+        const tryLink = (ing: RecipeIngredient) => {
+            const product = productsMap.get(ing.product_id);
+            if (!product) {
+                // Try to find by name (unidentified store name as product_id)
+                const match = products.find(p => p.name.toLowerCase() === ing.product_id.toLowerCase() && p.status === 'Activo');
+                if (match) {
+                    const price = match.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
+                    hasChanges = true;
+                    return {
+                        ...ing,
+                        product_id: match.id,
+                        cost: calculateIngredientCost(ing.quantity, ing.unit, price, match.unit, match.unit_size, match.unit_size_type)
+                    };
+                }
+            }
+            return ing;
+        };
+
+        newState.ingredients = newState.ingredients.map(tryLink);
+        if (newState.sub_preparations) {
+            newState.sub_preparations = newState.sub_preparations.map(sub => ({
+                ...sub,
+                ingredients: sub.ingredients.map(tryLink)
+            }));
+        }
+
+        if (hasChanges) {
+            setFormState(newState);
+        }
+    }, [products, productsMap]); // Depend on products list
     
     const handleIngredientChange = (index: number, field: 'quantity' | 'unit', value: string | number) => {
         if (activeElabTab === -1) {
@@ -341,7 +387,7 @@ export const RecipeForm: React.FC = () => {
             const product = productsMap.get(ing.product_id);
             if (product) {
                 const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
-                ing.cost = calculateIngredientCost(ing.quantity, ing.unit, price, product.unit);
+                ing.cost = calculateIngredientCost(ing.quantity, ing.unit, price, product.unit, product.unit_size, product.unit_size_type);
             }
             
             newIngredients[index] = ing;
@@ -354,7 +400,7 @@ export const RecipeForm: React.FC = () => {
             const product = productsMap.get(ing.product_id);
             if (product) {
                 const price = product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0;
-                ing.cost = calculateIngredientCost(ing.quantity, ing.unit, price, product.unit);
+                ing.cost = calculateIngredientCost(ing.quantity, ing.unit, price, product.unit, product.unit_size, product.unit_size_type);
             }
             
             newIngredients[index] = ing;
@@ -517,7 +563,7 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                     product_id: product.id,
                                     quantity: qty,
                                     unit: unit,
-                                    cost: calculateIngredientCost(qty, unit, product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0, product.unit)
+                                    cost: calculateIngredientCost(qty, unit, product.suppliers.sort((a,b) => a.price - b.price)[0]?.price || 0, product.unit, product.unit_size, product.unit_size_type)
                                 });
                             } else {
                                 subIngredients.push({
@@ -561,7 +607,7 @@ Justificación: ${aiData.molecularData.scientificJustification}
                         const qty = typeof rawQty === 'string' ? parseFloat(rawQty) : rawQty;
                         const unit = aiIng.unit || aiIng.unidad || matchingProduct.unit;
                         
-                        const cost = calculateIngredientCost(qty, unit, price, matchingProduct.unit);
+                        const cost = calculateIngredientCost(qty, unit, price, matchingProduct.unit, matchingProduct.unit_size, matchingProduct.unit_size_type);
                         importedIngredients.push({
                             product_id: matchingProduct.id,
                             quantity: qty,
