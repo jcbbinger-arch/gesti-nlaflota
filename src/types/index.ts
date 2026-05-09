@@ -407,7 +407,15 @@ export interface ServiceGroup {
 }
 
 export interface ServiceMenuItem {
-    recipe_id: string;
+    id: string;
+    recipe_id?: string;
+    name: string;
+    category: string;
+    order_number: number;
+    work_area: WorkArea;
+    allergens: string[];
+    description?: string;
+    is_custom?: boolean;
 }
 
 export interface Service {

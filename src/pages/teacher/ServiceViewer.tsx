@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
-import { Service, ServiceGroup, User, Profile, ServiceRole, Recipe, Order, AppEvent } from '../../types';
+import { Service, ServiceGroup, User, Profile, ServiceRole, Recipe, Order, AppEvent, ServiceMenuItem } from '../../types';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, TrashIcon, PrinterIcon } from '../../components/icons';
 import { useNavigate } from 'react-router-dom';
@@ -81,15 +81,43 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     };
 
     const handleAddRecipe = (recipe_id: string) => {
+        const recipe = recipesMap.get(recipe_id);
+        if (!recipe) return;
+
         if (service.menu.some(item => item.recipe_id === recipe_id)) return;
-        const updatedService = { ...service, menu: [...service.menu, { recipe_id }] };
+        
+        const newItem: ServiceMenuItem = {
+            id: `item-${Date.now()}`,
+            recipe_id: recipe.id,
+            name: recipe.name,
+            category: recipe.category || 'Otros',
+            order_number: service.menu.length + 1,
+            work_area: currentUser?.work_area || 'Cocina',
+            allergens: recipe.ingredients.flatMap((ing: any) => productsMap.get(ing.product_id)?.allergens || []),
+            description: recipe.description
+        };
+
+        const updatedService = { ...service, menu: [...service.menu, newItem] };
         setServices(services.map(s => s.id === service.id ? updatedService : s));
         setAddStep(null);
     };
 
     const handleAddManualRecipe = (newRecipe: Recipe) => {
         setRecipes([...recipes, newRecipe]);
-        const updatedService = { ...service, menu: [...service.menu, { recipe_id: newRecipe.id }] };
+        
+        const newItem: ServiceMenuItem = {
+            id: `item-${Date.now()}`,
+            recipe_id: newRecipe.id,
+            name: newRecipe.name,
+            category: newRecipe.category || 'Otros',
+            order_number: service.menu.length + 1,
+            work_area: currentUser?.work_area || 'Cocina',
+            allergens: newRecipe.selected_allergens || [],
+            description: newRecipe.description,
+            is_custom: true
+        };
+
+        const updatedService = { ...service, menu: [...service.menu, newItem] };
         setServices(services.map(s => s.id === service.id ? updatedService : s));
         setAddStep(null);
     };
@@ -105,15 +133,12 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         const startY = addHeaderToPdf(doc, companyInfo, 'INFORME DE ALÉRGENOS', `Servicio: ${service.name}\nFecha: ${date}`);
 
         const body = service.menu.flatMap(item => {
-            const recipe = recipesMap.get(item.recipe_id);
-            if (!recipe) return [];
-            const allergens = new Set<string>();
-            recipe.ingredients.forEach((ing: any) => {
-                productsMap.get(ing.product_id)?.allergens.forEach((a: string) => allergens.add(a));
-            });
+            const recipe = recipesMap.get(item.recipe_id || '');
+            if (!recipe && !item.name) return [];
+            
             return {
-                name: recipe.name,
-                allergens: Array.from(allergens).join(', ') || 'Ninguno'
+                name: item.name || recipe?.name || 'Plato',
+                allergens: (item.allergens || []).join(', ') || 'Ninguno'
             };
         }).map(r => [r.name, r.allergens]);
 
@@ -127,20 +152,16 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         const startY = addHeaderToPdf(doc, companyInfo, 'ORDEN DE SERVICIO', `Servicio: ${service.name}\nFecha: ${date}`);
 
         const body = service.menu.map(item => {
-            const r = recipesMap.get(item.recipe_id);
-            if (!r) return ['Receta no encontrada', '', '', '', '', '', ''];
-            const allergens = new Set<string>();
-            r.ingredients.forEach((ing: any) => {
-                productsMap.get(ing.product_id)?.allergens.forEach((a: string) => allergens.add(a));
-            });
+            const r = recipesMap.get(item.recipe_id || '');
+            
             return [
-                r.name,
-                Array.from(allergens).join(', ') || '-',
-                r.presentation || '-',
-                `${r.temperature || '-'} / ${r.service_time || '-'}`,
-                r.recommended_marking || '-',
-                r.service_type || '-',
-                r.client_description || '-'
+                item.name || r?.name || 'Receta no encontrada',
+                (item.allergens || []).join(', ') || '-',
+                r?.presentation || '-',
+                `${r?.temperature || '-'} / ${r?.service_time || '-'}`,
+                r?.recommended_marking || '-',
+                r?.service_type || '-',
+                item.description || r?.client_description || '-'
             ];
         });
 
@@ -187,9 +208,8 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                     <Card title="Menú del Servicio">
                         <button onClick={() => setAddStep('choice')} className="bg-blue-500 text-white px-3 py-1 rounded mb-4">Añadir Plato</button>
                         {service.menu.map(item => {
-                            const recipe = recipesMap.get(item.recipe_id);
-                            if (!recipe) return null;
-                            return <div key={item.recipe_id} className="flex justify-between items-center p-2 border-b dark:border-gray-600">{recipe.name}<button onClick={() => handleRemoveRecipe(item.recipe_id)}><TrashIcon className="w-4 h-4 text-red-500"/></button></div>
+                            const recipe = recipesMap.get(item.recipe_id || '');
+                            return <div key={item.id} className="flex justify-between items-center p-2 border-b dark:border-gray-600">{item.name || recipe?.name}<button onClick={() => handleRemoveRecipe(item.recipe_id || '')}><TrashIcon className="w-4 h-4 text-red-500"/></button></div>
                         })}
                         {service.menu.length === 0 && <p className="text-gray-500">Aún no se han añadido platos al menú.</p>}
                     </Card>

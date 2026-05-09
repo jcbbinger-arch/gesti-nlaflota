@@ -2,24 +2,47 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
-import { Users, Calendar, Download, AlertTriangle, ArrowRight, CheckCircle, Clock, ChefHat } from 'lucide-react';
+import { Modal } from '../../components/Modal';
+import { 
+    Users, Calendar, Download, AlertTriangle, ArrowRight, 
+    CheckCircle, Clock, ChefHat, Edit2, Save, X, Plus, Trash2, 
+    ChevronUp, ChevronDown, Info
+} from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { motion, AnimatePresence } from 'motion/react';
 import 'jspdf-autotable';
 import { useCompany } from '../../contexts/CompanyContext';
 import { addHeaderToPdf } from '../../utils/export';
-import { DiningService, DiningReservation } from '../../types';
+import { DiningService, DiningReservation, ServiceMenuItem, WorkArea } from '../../types';
+
+const CATEGORIES_BY_AREA: Record<string, string[]> = {
+    'Cocina': ['Aperitivo', 'Entrante', 'Pescado', 'Carne', 'Otros'],
+    'Pastelería': ['Prepostre', 'Postre', 'Bombones', 'Pastas', 'Otros'],
+    'Panadería': ['Pan del servicio', 'Otros'],
+    'Servicios': ['Cóctel', 'Plato a la vista', 'Otros']
+};
 
 export const DiningServiceView: React.FC = () => {
-    const { dining_services, dining_reservations, services, service_groups } = useData();
+    const { 
+        dining_services, dining_reservations, services, service_groups, recipes,
+        setDiningReservations, setServices 
+    } = useData();
     const { currentUser } = useAuth();
     const { companyInfo } = useCompany();
     const [selectedServiceId, setSelectedServiceId] = useState<string>('');
+    const [activeTab, setActiveTab] = useState<'reservas' | 'menu'>('reservas');
+    
+    // Reservations Editing
+    const [editingTableId, setEditingTableId] = useState<string | null>(null);
+    const [tempTableNumber, setTempTableNumber] = useState<string>('');
+
+    // Menu Editing
+    const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
+    const [editingMenuItem, setEditingMenuItem] = useState<Partial<ServiceMenuItem> | null>(null);
 
     const teacherServices = useMemo(() => {
         if (!currentUser) return [];
 
-        // 1. Get relevant planning services
         const relevantPlanning = services.filter(ps => {
             const group = service_groups.find(g => g.id === ps.service_group_id);
             const isInGroup = group?.teacher_ids.includes(currentUser.id);
@@ -27,9 +50,7 @@ export const DiningServiceView: React.FC = () => {
             return isInGroup || hasRole;
         });
 
-        // 2. Map to display objects (actual or placeholder)
         const results: (DiningService & { planningName?: string, isPending?: boolean })[] = [];
-        
         relevantPlanning.forEach(ps => {
             const ds = dining_services.find(d => d.service_id === ps.id);
             if (ds) {
@@ -60,6 +81,11 @@ export const DiningServiceView: React.FC = () => {
         return activeServices.find(s => s.id === selectedServiceId);
     }, [activeServices, selectedServiceId]);
 
+    const matchingPlanningService = useMemo(() => {
+        if (!selectedService?.service_id) return null;
+        return services.find(s => s.id === selectedService.service_id);
+    }, [services, selectedService]);
+
     const serviceReservations = useMemo(() => {
         return dining_reservations.filter((r: DiningReservation) => r.service_id === selectedServiceId);
     }, [dining_reservations, selectedServiceId]);
@@ -80,6 +106,98 @@ export const DiningServiceView: React.FC = () => {
         return serviceReservations.filter((r: DiningReservation) => r.diners_allergens.length > 0);
     }, [serviceReservations]);
 
+    // Table Number Logic
+    const handleStartEditTable = (res: DiningReservation) => {
+        if (currentUser?.work_area !== 'Servicios') return;
+        setEditingTableId(res.id);
+        setTempTableNumber(res.table_number || '');
+    };
+
+    const handleSaveTable = (resId: string) => {
+        setDiningReservations(prev => prev.map(r => 
+            r.id === resId ? { ...r, table_number: tempTableNumber } : r
+        ));
+        setEditingTableId(null);
+    };
+
+    // Menu Management Logic
+    const handleAddMenuItem = () => {
+        if (!currentUser?.work_area || !CATEGORIES_BY_AREA[currentUser.work_area]) {
+            alert('Tu área de trabajo no tiene categorías de menú asignadas.');
+            return;
+        }
+
+        const area = currentUser.work_area;
+        const categories = CATEGORIES_BY_AREA[area];
+        
+        setEditingMenuItem({
+            id: crypto.randomUUID(),
+            work_area: area,
+            category: categories[0],
+            order_number: (matchingPlanningService?.menu.length || 0) + 1,
+            allergens: [],
+            name: '',
+            is_custom: false
+        });
+        setIsMenuModalOpen(true);
+    };
+
+    const handleSaveMenuItem = () => {
+        if (!editingMenuItem || !matchingPlanningService || !selectedService?.service_id) return;
+        
+        const newItem = editingMenuItem as ServiceMenuItem;
+        const updatedMenu = [...(matchingPlanningService.menu || [])];
+        const index = updatedMenu.findIndex(i => i.id === newItem.id);
+        
+        if (index >= 0) {
+            updatedMenu[index] = newItem;
+        } else {
+            updatedMenu.push(newItem);
+        }
+
+        // Sort by order_number
+        updatedMenu.sort((a, b) => a.order_number - b.order_number);
+
+        setServices(prev => prev.map(s => 
+            s.id === matchingPlanningService.id ? { ...s, menu: updatedMenu } : s
+        ));
+        
+        setIsMenuModalOpen(false);
+        setEditingMenuItem(null);
+    };
+
+    const handleDeleteMenuItem = (itemId: string) => {
+        if (!matchingPlanningService) return;
+        if (!confirm('¿Estás seguro de eliminar este plato del menú?')) return;
+
+        setServices(prev => prev.map(s => 
+            s.id === matchingPlanningService.id 
+                ? { ...s, menu: s.menu.filter(item => item.id !== itemId) } 
+                : s
+        ));
+    };
+
+    const handleMoveMenuItem = (itemId: string, direction: 'up' | 'down') => {
+        if (!matchingPlanningService) return;
+        const menu = [...matchingPlanningService.menu];
+        const index = menu.findIndex(i => i.id === itemId);
+        if (index === -1) return;
+
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= menu.length) return;
+
+        // Swap order numbers
+        const tempOrder = menu[index].order_number;
+        menu[index].order_number = menu[targetIndex].order_number;
+        menu[targetIndex].order_number = tempOrder;
+
+        menu.sort((a, b) => a.order_number - b.order_number);
+
+        setServices(prev => prev.map(s => 
+            s.id === matchingPlanningService.id ? { ...s, menu } : s
+        ));
+    };
+
     const handleExportPDF = () => {
         if (!selectedService) return;
 
@@ -95,8 +213,30 @@ export const DiningServiceView: React.FC = () => {
 
         let currentY = startY + 10;
 
+        // NEW: Bloque 0: Menú del Día
+        if (matchingPlanningService?.menu && matchingPlanningService.menu.length > 0) {
+            doc.setFontSize(14);
+            doc.text('MENÚ DEL DÍA', 14, currentY);
+            
+            (doc as any).autoTable({
+                startY: currentY + 5,
+                head: [['Orden', 'Categoría', 'Plato', 'Alérgenos']],
+                body: matchingPlanningService.menu.map(item => [
+                    item.order_number.toString(),
+                    item.category,
+                    item.name,
+                    item.allergens.join(', ') || 'Sin alérgenos'
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: [37, 99, 235] },
+                margin: { left: 14, right: 14 }
+            });
+            currentY = (doc as any).lastAutoTable.finalY + 15;
+        }
+
         // Bloque 1: Matriz de Alérgenos
         if (allergenMatrix.length > 0) {
+            if (currentY > 250) { doc.addPage(); currentY = 20; }
             doc.setFontSize(14);
             doc.text('Resumen de Alérgenos (Para Cocina)', 14, currentY);
             
@@ -105,63 +245,32 @@ export const DiningServiceView: React.FC = () => {
                 head: [['Alérgeno', 'Cantidad Total']],
                 body: allergenMatrix.map(([allergen, count]) => [allergen, count.toString()]),
                 theme: 'grid',
-                headStyles: { fillColor: [220, 38, 38] }, // Red header for allergens
+                headStyles: { fillColor: [220, 38, 38] },
                 margin: { left: 14, right: 14 }
             });
             currentY = (doc as any).lastAutoTable.finalY + 15;
         }
 
         // Bloque 2: Listado de Reservas
+        if (currentY > 250) { doc.addPage(); currentY = 20; }
         doc.setFontSize(14);
-        doc.text('Listado de Reservas (Para Sala/Recepción)', 14, currentY);
+        doc.text('Control de Reservas y Mesas', 14, currentY);
         
         (doc as any).autoTable({
             startY: currentY + 5,
-            head: [['Nombre', 'Cliente', 'Pax', 'Teléfono', 'Total']],
+            head: [['Mesa', 'Referencia', 'Cliente', 'Pax', 'Teléfono']],
             body: serviceReservations.map(res => [
+                res.table_number || '-',
                 res.reference_name,
                 res.client_entity || '-',
                 res.pax.toString(),
-                res.phone_1,
-                `${res.total_price.toFixed(2)} €`
+                res.phone_1
             ]),
             theme: 'striped',
-            headStyles: { fillColor: [37, 99, 235] }, // Blue header
+            headStyles: { fillColor: [79, 70, 229] },
             margin: { left: 14, right: 14 }
         });
         currentY = (doc as any).lastAutoTable.finalY + 15;
-
-        // Bloque 3: Detalle de Intolerancias
-        if (reservationsWithAllergens.length > 0) {
-            // Check if we need a new page
-            if (currentY > 250) {
-                doc.addPage();
-                currentY = 20;
-            }
-
-            doc.setFontSize(14);
-            doc.text('Detalle de Intolerancias', 14, currentY);
-            
-            const allergenBody: string[][] = [];
-            reservationsWithAllergens.forEach(res => {
-                res.diners_allergens.forEach(diner => {
-                    allergenBody.push([
-                        res.reference_name,
-                        diner.diner_name || 'Comensal sin nombre',
-                        diner.allergens.join(', ')
-                    ]);
-                });
-            });
-
-            (doc as any).autoTable({
-                startY: currentY + 5,
-                head: [['Reserva', 'Comensal', 'Alérgenos']],
-                body: allergenBody,
-                theme: 'grid',
-                headStyles: { fillColor: [245, 158, 11] }, // Yellow/Orange header
-                margin: { left: 14, right: 14 }
-            });
-        }
 
         doc.save(`servicio_comedor_${selectedService.date.replace(/-/g, '')}.pdf`);
     };
@@ -169,14 +278,14 @@ export const DiningServiceView: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Vista de Servicio de Comedor</h1>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Gestión de Servicio de Comedor</h1>
                 {selectedService && (
                     <button
                         onClick={handleExportPDF}
-                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 shadow-sm transition-colors"
                     >
                         <Download className="w-5 h-5 mr-2" />
-                        Exportar PDF
+                        Exportar Hoja de Servicio
                     </button>
                 )}
             </div>
@@ -185,18 +294,13 @@ export const DiningServiceView: React.FC = () => {
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center">
                         <Calendar className="w-5 h-5 mr-2 text-primary-500" />
-                        Próximos Servicios
+                        Próximos Servicios Asignados
                     </h2>
-                    <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full uppercase tracking-wider">
-                        {activeServices.length} Servicios Planificados
-                    </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {activeServices.map((ds) => {
                         const isActive = selectedServiceId === ds.id;
-                        const isPast = new Date(ds.date) < new Date(new Date().setHours(0,0,0,0));
-                        
                         return (
                             <motion.div
                                 key={ds.id}
@@ -214,7 +318,7 @@ export const DiningServiceView: React.FC = () => {
                                     ds.status === 'abierto' ? 'bg-green-500' : 
                                     ds.status === 'cerrado' ? 'bg-blue-500' : 'bg-gray-300'
                                 }`} />
-                                                        <div className="p-2">
+                                <div className="p-2">
                                     <div className="flex justify-between items-start mb-1">
                                         <div className="flex flex-col">
                                             <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none mb-0.5">
@@ -245,23 +349,14 @@ export const DiningServiceView: React.FC = () => {
                                             ds.isPending ? 'text-amber-600' : 
                                             ds.status === 'abierto' ? 'text-green-600' : 'text-gray-500'
                                         }`}>
-                                            {ds.isPending ? (
-                                                <><Clock className="w-2.5 h-2.5 mr-0.5" /> Pendiente</>
-                                            ) : ds.status === 'abierto' ? (
-                                                <><CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Activo</>
-                                            ) : ds.status}
+                                            {ds.isPending ? 'PENDIENTE' : ds.status.toUpperCase()}
                                         </div>
                                     </div>
                                 </div>
 
                                 {isActive && (
-                                    <motion.div 
-                                        layoutId="active-indicator"
-                                        className="absolute right-2 top-10"
-                                    >
-                                        <div className="bg-primary-500 text-white p-1 rounded-full">
-                                            <ArrowRight className="w-3 h-3" />
-                                        </div>
+                                    <motion.div layoutId="active-indicator" className="absolute right-2 top-10">
+                                        <div className="bg-primary-500 text-white p-1 rounded-full"><ArrowRight className="w-3 h-3" /></div>
                                     </motion.div>
                                 )}
                             </motion.div>
@@ -277,159 +372,289 @@ export const DiningServiceView: React.FC = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3 }}
                         className="space-y-6"
                     >
-                        <div className={`grid grid-cols-1 md:grid-cols-3 gap-3 ${selectedService.isPending ? 'opacity-70' : ''}`}>
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border-2 border-primary-50 dark:border-primary-900/30 flex items-center shadow-sm">
-                                <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg mr-3">
-                                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <div>
-                                    <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mb-0.5">Aforo Actual</p>
-                                    <p className="text-lg font-black text-gray-800 dark:text-white leading-tight">
-                                        {selectedService.isPending ? '0' : selectedService.current_pax} 
-                                        <span className="text-[10px] text-gray-400 font-normal ml-1">/ {selectedService.isPending ? '?' : selectedService.max_capacity}</span>
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border-2 border-primary-50 dark:border-primary-900/30 flex items-center shadow-sm">
-                                <div className="p-1.5 bg-green-100 dark:bg-green-900/40 rounded-lg mr-3">
-                                    <Calendar className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                </div>
-                                <div>
-                                    <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mb-0.5">Estado</p>
-                                    <p className="text-lg font-black text-gray-800 dark:text-white capitalize leading-tight">
-                                        {selectedService.isPending ? 'Planificado' : selectedService.status}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border-2 border-primary-50 dark:border-primary-900/30 flex items-center shadow-sm">
-                                <div className="p-1.5 bg-orange-100 dark:bg-orange-900/40 rounded-lg mr-3">
-                                    <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                                </div>
-                                <div>
-                                    <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mb-0.5">Alertas Alérgenos</p>
-                                    <p className="text-lg font-black text-gray-800 dark:text-white leading-tight">
-                                        {allergenMatrix.length} <span className="text-[10px] text-gray-400 font-normal ml-1">Tipos</span>
-                                    </p>
-                                </div>
-                            </div>
+                        <div className="flex border-b border-gray-200 dark:border-gray-700">
+                            <button
+                                onClick={() => setActiveTab('reservas')}
+                                className={`px-6 py-3 text-sm font-black uppercase tracking-widest border-b-2 transition-colors ${
+                                    activeTab === 'reservas' 
+                                        ? 'border-primary-500 text-primary-600 dark:text-primary-400' 
+                                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                Reservas y Comensales
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('menu')}
+                                className={`px-6 py-3 text-sm font-black uppercase tracking-widest border-b-2 transition-colors ${
+                                    activeTab === 'menu' 
+                                        ? 'border-primary-500 text-primary-600 dark:text-primary-400' 
+                                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                Menú del Servicio
+                            </button>
                         </div>
 
-                        {selectedService?.isPending && (
-                            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-100 dark:border-amber-800 rounded-xl flex items-center text-amber-800 dark:text-amber-200 text-sm font-bold shadow-sm">
-                                <Clock className="w-6 h-6 mr-3 text-amber-500 animate-pulse" />
-                                <div>
-                                    <p>Este servicio está planificado pero no ha sido activado para reservas todavía.</p>
-                                    <p className="text-xs font-normal opacity-70 mt-0.5">Se activará automáticamente al llegar la fecha o mediante gestión manual.</p>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2 space-y-6">
-                                <Card 
-                                    title="Listado de Reservas" 
-                                    subtitle={`Mostrando ${serviceReservations.length} reservas registradas`}
-                                >
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="text-[10px] text-gray-400 uppercase tracking-widest font-black border-b border-gray-100 dark:border-gray-800">
-                                                <tr>
-                                                    <th className="px-4 py-4">Referencia / Cliente</th>
-                                                    <th className="px-4 py-4 text-center">Pax</th>
-                                                    <th className="px-4 py-4">Teléfono</th>
-                                                    <th className="px-4 py-4">Alérgenos / Observaciones</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
-                                                {serviceReservations.map((res: DiningReservation) => (
-                                                    <tr key={res.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                                        <td className="px-4 py-4">
-                                                            <div className="font-bold text-gray-900 dark:text-white leading-tight">
-                                                                {res.reference_name}
-                                                            </div>
-                                                            {res.client_entity && <div className="text-[10px] text-gray-400 uppercase font-bold mt-0.5 tracking-tighter">{res.client_entity}</div>}
-                                                        </td>
-                                                        <td className="px-4 py-4 text-center">
-                                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 font-bold text-gray-800 dark:text-gray-200">
-                                                                {res.pax}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-4 font-mono text-xs text-gray-500">
-                                                            {res.phone_1}
-                                                        </td>
-                                                        <td className="px-4 py-4">
-                                                            {res.diners_allergens.length > 0 ? (
-                                                                <div className="space-y-1.5">
+                        {activeTab === 'reservas' ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-2 space-y-6">
+                                    <Card 
+                                        title="Gestión de Reservas" 
+                                        subtitle="Asignación de mesas y control de alérgenos"
+                                    >
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="text-[10px] text-gray-400 uppercase tracking-widest font-black border-b border-gray-100 dark:border-gray-800">
+                                                    <tr>
+                                                        <th className="px-4 py-4 w-20">Mesa</th>
+                                                        <th className="px-4 py-4">Referencia / Cliente</th>
+                                                        <th className="px-4 py-4 text-center">Pax</th>
+                                                        <th className="px-4 py-4">Obs. Alérgenos</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
+                                                    {serviceReservations.map((res: DiningReservation) => (
+                                                        <tr key={res.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                                                            <td className="px-4 py-4">
+                                                                {editingTableId === res.id ? (
+                                                                    <div className="flex items-center space-x-1">
+                                                                        <input 
+                                                                            type="text"
+                                                                            value={tempTableNumber}
+                                                                            onChange={(e) => setTempTableNumber(e.target.value)}
+                                                                            className="w-12 p-1 border rounded dark:bg-gray-700 font-bold text-center"
+                                                                            autoFocus
+                                                                        />
+                                                                        <button onClick={() => handleSaveTable(res.id)} className="text-green-500"><Save className="w-4 h-4" /></button>
+                                                                        <button onClick={() => setEditingTableId(null)} className="text-red-500"><X className="w-4 h-4" /></button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex items-center space-x-2 group">
+                                                                        <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full border-2 font-bold ${res.table_number ? 'border-primary-500 text-primary-600 bg-primary-50' : 'border-gray-200 text-gray-400 border-dashed'}`}>
+                                                                            {res.table_number || '?'}
+                                                                        </span>
+                                                                        {currentUser?.work_area === 'Servicios' && (
+                                                                            <button 
+                                                                                onClick={() => handleStartEditTable(res)}
+                                                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-500 transition-opacity"
+                                                                            >
+                                                                                <Edit2 className="w-3.5 h-3.5" />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                <div className="font-bold text-gray-900 dark:text-white">{res.reference_name}</div>
+                                                                {res.client_entity && <div className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">{res.client_entity}</div>}
+                                                            </td>
+                                                            <td className="px-4 py-4 text-center">
+                                                                <span className="font-bold">{res.pax}</span>
+                                                            </td>
+                                                            <td className="px-4 py-4">
+                                                                {res.diners_allergens.length > 0 && (
                                                                     <div className="flex flex-wrap gap-1">
                                                                         {Array.from(new Set(res.diners_allergens.flatMap(d => d.allergens))).map(a => (
-                                                                            <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                                                            <span key={a} className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
                                                                                 {a}
                                                                             </span>
                                                                         ))}
                                                                     </div>
-                                                                    <div className="text-[10px] text-gray-500 italic leading-tight">
-                                                                        {res.diners_allergens.map(d => `${d.diner_name || 'Comensal'}: ${d.allergens.join(', ')}`).join(' • ')}
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-gray-300 text-xs">Sin alérgenos</span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                {serviceReservations.length === 0 && (
-                                                    <tr>
-                                                        <td colSpan={4} className="px-4 py-12 text-center text-gray-400 italic">
-                                                            <Users className="w-10 h-10 mx-auto opacity-20 mb-2" />
-                                                            No hay reservas para este servicio.
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </Card>
+                                </div>
+                                <div className="lg:col-span-1">
+                                    <Card title="Alérgenos Consolidados">
+                                        {allergenMatrix.map(([a, count]) => (
+                                            <div key={a} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/10 rounded-lg mb-2">
+                                                <span className="text-xs font-bold text-red-700 dark:text-red-300">{a}</span>
+                                                <span className="bg-red-500 text-white text-xs font-black px-2 py-0.5 rounded-full">{count}</span>
+                                            </div>
+                                        ))}
+                                    </Card>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-lg font-bold text-gray-800 dark:text-white">Menú Integrado del Servicio</h3>
+                                    <button 
+                                        onClick={handleAddMenuItem}
+                                        className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-primary-700"
+                                    >
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Añadir Plato / Pase
+                                    </button>
+                                </div>
+
+                                <Card noPadding>
+                                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                        {matchingPlanningService?.menu && matchingPlanningService.menu.length > 0 ? (
+                                            matchingPlanningService.menu.map((item, idx) => (
+                                                <div key={item.id} className="p-4 flex items-center group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                                                    <div className="flex flex-col items-center mr-6 text-gray-300 group-hover:text-primary-500 transition-colors">
+                                                        <button onClick={() => handleMoveMenuItem(item.id, 'up')} disabled={idx === 0} className="hover:scale-125 disabled:opacity-30 disabled:pointer-events-none"><ChevronUp className="w-5 h-5" /></button>
+                                                        <span className="text-sm font-black my-0.5">{item.order_number}</span>
+                                                        <button onClick={() => handleMoveMenuItem(item.id, 'down')} disabled={idx === matchingPlanningService.menu.length - 1} className="hover:scale-125 disabled:opacity-30 disabled:pointer-events-none"><ChevronDown className="w-5 h-5" /></button>
+                                                    </div>
+                                                    
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center space-x-2 mb-1">
+                                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary-500 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded">
+                                                                {item.category}
+                                                            </span>
+                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+                                                                {item.work_area}
+                                                            </span>
+                                                        </div>
+                                                        <h4 className="text-base font-bold text-gray-800 dark:text-white leading-tight">{item.name}</h4>
+                                                        {item.description && (
+                                                            <p className="text-xs text-gray-500 mt-1 dark:text-gray-400 flex items-start">
+                                                                <Info className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                                                                {item.description}
+                                                            </p>
+                                                        )}
+                                                        <div className="flex flex-wrap gap-1 mt-2">
+                                                            {item.allergens.map(a => (
+                                                                <span key={a} className="text-[9px] font-black uppercase bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100">
+                                                                    {a}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button 
+                                                            onClick={() => { setEditingMenuItem(item); setIsMenuModalOpen(true); }}
+                                                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"
+                                                            disabled={item.work_area !== currentUser?.work_area}
+                                                            title={item.work_area !== currentUser?.work_area ? "Sólo el autor puede editar" : ""}
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteMenuItem(item.id)}
+                                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                                                            disabled={item.work_area !== currentUser?.work_area}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="p-12 text-center text-gray-400 italic">
+                                                <ChefHat className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                                                No se ha configurado el menú para este servicio todavía.
+                                            </div>
+                                        )}
                                     </div>
                                 </Card>
                             </div>
-
-                            <div className="lg:col-span-1 space-y-6">
-                                <Card 
-                                    title="Matriz de Alérgenos" 
-                                    subtitle="Consolidado para Cocina"
-                                    className="border-2 border-red-50 dark:border-red-900/20 shadow-lg shadow-red-500/5"
-                                >
-                                    {allergenMatrix.length > 0 ? (
-                                        <div className="space-y-2">
-                                            {allergenMatrix.map(([allergen, count]) => (
-                                                <div key={allergen} className="flex justify-between items-center p-4 bg-red-50/50 dark:bg-red-900/10 rounded-xl border border-red-100/50 dark:border-red-800/30 group hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors">
-                                                    <span className="font-bold text-sm text-red-800 dark:text-red-200 uppercase tracking-tighter flex items-center">
-                                                        <AlertTriangle className="w-4 h-4 mr-2 text-red-500" />
-                                                        {allergen}
-                                                    </span>
-                                                    <span className="bg-red-500 text-white min-w-[28px] h-7 flex items-center justify-center rounded-full font-black text-sm shadow-md shadow-red-500/20">
-                                                        {count}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                            <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-[10px] text-gray-500 leading-tight">
-                                                * Estas cantidades corresponden al total de raciones específicas a preparar según las fichas de reserva.
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-12 text-gray-400">
-                                            <CheckCircle className="w-12 h-12 mx-auto text-gray-200 mb-3" />
-                                            <p className="font-medium">Servicio Libre de Alérgenos</p>
-                                            <p className="text-xs opacity-70">No se han registrado intolerancias dietéticas.</p>
-                                        </div>
-                                    )}
-                                </Card>
-                            </div>
-                        </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <Modal
+                isOpen={isMenuModalOpen}
+                onClose={() => setIsMenuModalOpen(false)}
+                title={editingMenuItem?.id ? "Editar Plato del Menú" : "Nuevo Plato / Pase"}
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-black uppercase text-gray-400 mb-1">Área y Categoría</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700 text-sm font-bold">
+                                {editingMenuItem?.work_area}
+                            </div>
+                            <div className="space-y-2">
+                                <select
+                                    className="w-full p-2 border rounded dark:bg-gray-700 text-sm font-bold"
+                                    value={editingMenuItem?.category && CATEGORIES_BY_AREA[editingMenuItem.work_area!].includes(editingMenuItem.category) ? editingMenuItem.category : 'Otros'}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setEditingMenuItem(prev => ({ 
+                                            ...prev!, 
+                                            category: val === 'Otros' ? '' : val, 
+                                            is_custom: val === 'Otros' 
+                                        }));
+                                    }}
+                                >
+                                    {editingMenuItem?.work_area && CATEGORIES_BY_AREA[editingMenuItem.work_area!].map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                                {editingMenuItem?.is_custom && (
+                                    <input 
+                                        type="text"
+                                        placeholder="Nombre de la categoría personalizada..."
+                                        className="w-full p-2 border rounded dark:bg-gray-700 text-xs font-bold"
+                                        value={editingMenuItem.category}
+                                        onChange={(e) => setEditingMenuItem(prev => ({ ...prev!, category: e.target.value }))}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-black uppercase text-gray-400 mb-1">Nombre del Plato / Pase</label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                className="w-full p-3 border rounded-xl dark:bg-gray-700 text-base font-bold text-gray-800 dark:text-white pr-10"
+                                value={editingMenuItem?.name}
+                                onChange={(e) => setEditingMenuItem(prev => ({ ...prev!, name: e.target.value }))}
+                                placeholder={editingMenuItem?.category === 'Pan del servicio' ? "Ej: Pan de Centeno y Trigo" : "Introduce el nombre..."}
+                            />
+                            {editingMenuItem?.is_custom && (
+                                <div className="absolute right-3 top-3 text-[10px] font-black text-primary-500 uppercase">Custom</div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-black uppercase text-gray-400 mb-1">Alérgenos (Separados por coma)</label>
+                        <input
+                            type="text"
+                            className="w-full p-2 border rounded dark:bg-gray-700 text-sm"
+                            value={editingMenuItem?.allergens?.join(', ')}
+                            onChange={(e) => setEditingMenuItem(prev => ({ ...prev!, allergens: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+                            placeholder="Gluten, Lácteos..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-black uppercase text-gray-400 mb-1">Comentarios / Explicación para Sala</label>
+                        <textarea
+                            className="w-full p-2 border rounded dark:bg-gray-700 text-sm h-24"
+                            value={editingMenuItem?.description}
+                            onChange={(e) => setEditingMenuItem(prev => ({ ...prev!, description: e.target.value }))}
+                            placeholder="Explica el origen, ingredientes clave o forma de servicio..."
+                        />
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <button onClick={() => setIsMenuModalOpen(false)} className="px-4 py-2 text-gray-500 font-bold">Cancelar</button>
+                        <button 
+                            onClick={handleSaveMenuItem} 
+                            className="px-6 py-2 bg-primary-600 text-white rounded-lg font-black uppercase tracking-widest text-xs hover:bg-primary-700"
+                            disabled={!editingMenuItem?.name}
+                        >
+                            Guardar Plato
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

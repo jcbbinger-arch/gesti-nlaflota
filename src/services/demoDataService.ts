@@ -44,7 +44,26 @@ const demoServiceGroups: ServiceGroup[] = [
 ];
 
 const demoServices: Service[] = [
-    { id: 'svc-1', name: 'Comida de Navidad', date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), service_group_id: 'sg-1', menu: [{ recipe_id: 'rec-1' }], roles: { 'Cocina': 'teacher-1' }, status: 'Planificación' }
+    { 
+        id: 'svc-1', 
+        name: 'Comida de Navidad', 
+        date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), 
+        service_group_id: 'sg-1', 
+        menu: [
+            {
+                id: 'menu-1',
+                recipe_id: 'rec-1',
+                name: 'Solomillo Wellington',
+                category: 'Platos Principales',
+                order_number: 1,
+                work_area: 'Cocina',
+                allergens: ['Gluten'],
+                description: 'Clásico solomillo envuelto en hojaldre'
+            }
+        ], 
+        roles: { 'Cocina': 'teacher-1' }, 
+        status: 'Planificación' 
+    }
 ];
 
 export const demoData: AppData = {
