@@ -209,47 +209,46 @@ export const DiningServiceView: React.FC = () => {
                                         : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800 hover:border-primary-200 dark:hover:border-primary-800 hover:shadow-sm'
                                 } ${ds.isPending ? 'opacity-75' : ''}`}
                             >
-                                <div className={`h-1.5 w-full ${
+                                <div className={`h-1 w-full ${
                                     ds.isPending ? 'bg-amber-400' : 
                                     ds.status === 'abierto' ? 'bg-green-500' : 
                                     ds.status === 'cerrado' ? 'bg-blue-500' : 'bg-gray-300'
                                 }`} />
-                                
-                                <div className="p-4">
-                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="p-2">
+                                    <div className="flex justify-between items-start mb-1">
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none mb-1">
+                                            <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none mb-0.5">
                                                 {new Date(ds.date).toLocaleDateString('es-ES', { weekday: 'long' })}
                                             </span>
-                                            <span className="text-lg font-bold text-gray-800 dark:text-white leading-tight">
+                                            <span className="text-sm font-bold text-gray-800 dark:text-white leading-tight">
                                                 {new Date(ds.date).toLocaleDateString()}
                                             </span>
                                         </div>
-                                        <div className={`p-2 rounded-lg ${isActive ? 'bg-primary-500 text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-500'} transition-colors`}>
-                                            <ChefHat className="w-5 h-5" />
+                                        <div className={`p-1 rounded-lg ${isActive ? 'bg-primary-500 text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-500'} transition-colors`}>
+                                            <ChefHat className="w-3.5 h-3.5" />
                                         </div>
                                     </div>
 
-                                    <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-4 line-clamp-1">
+                                    <h3 className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 mb-2 line-clamp-1">
                                         {ds.planningName || 'Servicio de Comedor'}
                                     </h3>
 
-                                    <div className="flex items-center justify-between text-xs mt-auto">
+                                    <div className="flex items-center justify-between text-[10px] mt-auto">
                                         <div className="flex items-center text-gray-500 dark:text-gray-400">
-                                            <Users className={`w-3.5 h-3.5 mr-1 ${ds.current_pax >= ds.max_capacity ? 'text-red-500' : ''}`} />
+                                            <Users className={`w-3 h-3 mr-1 ${ds.current_pax >= ds.max_capacity ? 'text-red-500' : ''}`} />
                                             <span className="font-bold">{ds.current_pax}</span>
                                             <span className="opacity-50 mx-0.5">/</span>
-                                            <span>{ds.max_capacity} pax</span>
+                                            <span>{ds.max_capacity}</span>
                                         </div>
                                         
-                                        <div className={`flex items-center font-black uppercase tracking-tighter text-[9px] ${
+                                        <div className={`flex items-center font-black uppercase tracking-tighter text-[8px] ${
                                             ds.isPending ? 'text-amber-600' : 
                                             ds.status === 'abierto' ? 'text-green-600' : 'text-gray-500'
                                         }`}>
                                             {ds.isPending ? (
-                                                <><Clock className="w-3 h-3 mr-1" /> Pendiente</>
+                                                <><Clock className="w-2.5 h-2.5 mr-0.5" /> Pendiente</>
                                             ) : ds.status === 'abierto' ? (
-                                                <><CheckCircle className="w-3 h-3 mr-1" /> Activo</>
+                                                <><CheckCircle className="w-2.5 h-2.5 mr-0.5" /> Activo</>
                                             ) : ds.status}
                                         </div>
                                     </div>
@@ -281,38 +280,38 @@ export const DiningServiceView: React.FC = () => {
                         transition={{ duration: 0.3 }}
                         className="space-y-6"
                     >
-                        <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${selectedService.isPending ? 'opacity-70' : ''}`}>
-                            <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border-2 border-primary-50 dark:border-primary-900/30 flex items-center shadow-sm">
-                                <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-xl mr-4">
-                                    <Users className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+                        <div className={`grid grid-cols-1 md:grid-cols-3 gap-3 ${selectedService.isPending ? 'opacity-70' : ''}`}>
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border-2 border-primary-50 dark:border-primary-900/30 flex items-center shadow-sm">
+                                <div className="p-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg mr-3">
+                                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mb-1">Aforo Actual</p>
-                                    <p className="text-2xl font-black text-gray-800 dark:text-white">
+                                    <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mb-0.5">Aforo Actual</p>
+                                    <p className="text-lg font-black text-gray-800 dark:text-white leading-tight">
                                         {selectedService.isPending ? '0' : selectedService.current_pax} 
-                                        <span className="text-base text-gray-400 font-normal ml-1">/ {selectedService.isPending ? '?' : selectedService.max_capacity}</span>
+                                        <span className="text-[10px] text-gray-400 font-normal ml-1">/ {selectedService.isPending ? '?' : selectedService.max_capacity}</span>
                                     </p>
                                 </div>
                             </div>
-                            <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border-2 border-primary-50 dark:border-primary-900/30 flex items-center shadow-sm">
-                                <div className="p-3 bg-green-100 dark:bg-green-900/40 rounded-xl mr-4">
-                                    <Calendar className="w-7 h-7 text-green-600 dark:text-green-400" />
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border-2 border-primary-50 dark:border-primary-900/30 flex items-center shadow-sm">
+                                <div className="p-1.5 bg-green-100 dark:bg-green-900/40 rounded-lg mr-3">
+                                    <Calendar className="w-4 h-4 text-green-600 dark:text-green-400" />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mb-1">Estado</p>
-                                    <p className="text-2xl font-black text-gray-800 dark:text-white capitalize">
+                                    <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mb-0.5">Estado</p>
+                                    <p className="text-lg font-black text-gray-800 dark:text-white capitalize leading-tight">
                                         {selectedService.isPending ? 'Planificado' : selectedService.status}
                                     </p>
                                 </div>
                             </div>
-                            <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border-2 border-primary-50 dark:border-primary-900/30 flex items-center shadow-sm">
-                                <div className="p-3 bg-orange-100 dark:bg-orange-900/40 rounded-xl mr-4">
-                                    <AlertTriangle className="w-7 h-7 text-orange-600 dark:text-orange-400" />
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border-2 border-primary-50 dark:border-primary-900/30 flex items-center shadow-sm">
+                                <div className="p-1.5 bg-orange-100 dark:bg-orange-900/40 rounded-lg mr-3">
+                                    <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mb-1">Alertas Alérgenos</p>
-                                    <p className="text-2xl font-black text-gray-800 dark:text-white">
-                                        {allergenMatrix.length} <span className="text-sm text-gray-400 font-normal">Tipos</span>
+                                    <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mb-0.5">Alertas Alérgenos</p>
+                                    <p className="text-lg font-black text-gray-800 dark:text-white leading-tight">
+                                        {allergenMatrix.length} <span className="text-[10px] text-gray-400 font-normal ml-1">Tipos</span>
                                     </p>
                                 </div>
                             </div>

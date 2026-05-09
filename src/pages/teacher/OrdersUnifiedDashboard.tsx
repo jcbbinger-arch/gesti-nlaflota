@@ -25,16 +25,16 @@ const TabButton: React.FC<{
 }> = ({ active, onClick, icon, label, description }) => (
     <button
         onClick={onClick}
-        className={`flex flex-col items-start p-4 rounded-2xl transition-all duration-300 border-2 ${
+        className={`flex flex-col items-start p-3 rounded-2xl transition-all duration-300 border-2 ${
             active 
                 ? 'bg-primary-600 border-primary-500 shadow-lg shadow-primary-500/20 text-white' 
                 : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-primary-200 dark:hover:border-primary-900 group'
         }`}
     >
-        <div className={`p-2 rounded-xl mb-3 transition-colors ${
+        <div className={`p-1.5 rounded-xl mb-2 transition-colors ${
             active ? 'bg-white/20' : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-primary-50 dark:group-hover:bg-primary-900/30 group-hover:text-primary-600'
         }`}>
-            <span className="w-6 h-6 block">{icon}</span>
+            <span className="w-5 h-5 block">{icon}</span>
         </div>
         <span className={`text-sm font-black uppercase tracking-widest ${active ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
             {label}
@@ -74,13 +74,13 @@ const OrdersDashboardSummary: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.1 }}
                 >
-                    <Card className="flex items-center space-x-4 p-6 border-0 shadow-sm bg-white dark:bg-gray-800">
-                        <div className={`p-4 rounded-2xl bg-gray-50 dark:bg-slate-900 ${stat.color}`}>
-                            <span className="w-8 h-8 block">{stat.icon}</span>
+                    <Card noPadding className="flex items-center space-x-3 p-3 border-0 shadow-sm bg-white dark:bg-gray-800">
+                        <div className={`p-2 rounded-xl bg-gray-50 dark:bg-slate-900 ${stat.color}`}>
+                            <span className="w-5 h-5 block">{stat.icon}</span>
                         </div>
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">{stat.label}</p>
-                            <p className={`text-2xl font-black tracking-tighter ${stat.color}`}>{stat.value}</p>
+                            <p className="text-[9px] font-black uppercase tracking-wider text-gray-400 mb-0.5">{stat.label}</p>
+                            <p className={`text-xl font-black tracking-tighter ${stat.color} leading-none`}>{stat.value}</p>
                         </div>
                     </Card>
                 </motion.div>
