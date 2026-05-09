@@ -205,6 +205,94 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         doc.save(`orden_servicio_${service.name}.pdf`);
     };
 
+    const handleExportStudentSheets = () => {
+        const doc = new jsPDF();
+        const dateStr = new Date(service.date).toLocaleDateString();
+        
+        service.menu.forEach((item, index) => {
+            if (index > 0) doc.addPage();
+            
+            const startY = addHeaderToPdf(
+                doc, 
+                companyInfo, 
+                'FICHA TÉCNICA DE SERVICIO (ALUMNOS)', 
+                `Plato: ${item.name.toUpperCase()}\nCategoría: ${item.category}\nServicio: ${service.name}\nFecha: ${dateStr}`
+            );
+
+            let currentY = startY + 15;
+
+            // Ingredients / Composition
+            doc.setFontSize(14);
+            doc.setTextColor(37, 99, 235);
+            doc.text('1. COMPOSICIÓN Y RECETAS', 14, currentY);
+            currentY += 8;
+
+            const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
+            const itemRecipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
+
+            if (itemRecipes.length > 0) {
+                (doc as any).autoTable({
+                    startY: currentY,
+                    head: [['Receta', 'Descripción', 'Alérgenos']],
+                    body: itemRecipes.map(r => [
+                        r.name,
+                        r.description || '-',
+                        (r.selected_allergens || []).join(', ') || 'Sin alérgenos'
+                    ]),
+                    theme: 'grid',
+                    headStyles: { fillColor: [37, 99, 235] },
+                    margin: { left: 14, right: 14 }
+                });
+                currentY = (doc as any).lastAutoTable.finalY + 15;
+            } else {
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                doc.text('Este plato no tiene recetas vinculadas (Entrada Manual).', 14, currentY);
+                currentY += 15;
+            }
+
+            // Service Details
+            doc.setFontSize(14);
+            doc.setTextColor(217, 119, 6); // Amber
+            doc.text('2. INSTRUCCIONES DE SERVICIO', 14, currentY);
+            currentY += 8;
+
+            const firstRecipe = itemRecipes[0];
+            const serviceData = [
+                ['Explicación Camarero', firstRecipe?.service_explanation || item.description || '-'],
+                ['Temperatura de Servicio', firstRecipe?.temperature || '-'],
+                ['Protocolo / Tipo Servicio', firstRecipe?.service_type || '-'],
+                ['Marcaje / Vajilla', firstRecipe?.cutlery_required || firstRecipe?.recommended_marking || '-'],
+                ['Presentación / Emplatado', firstRecipe?.presentation || '-']
+            ];
+
+            (doc as any).autoTable({
+                startY: currentY,
+                body: serviceData,
+                theme: 'striped',
+                columnStyles: {
+                    0: { cellWidth: 50, fontStyle: 'bold', fillColor: [243, 244, 246] }
+                },
+                margin: { left: 14, right: 14 }
+            });
+
+            currentY = (doc as any).lastAutoTable.finalY + 15;
+
+            // Alérgenos del Plato
+            doc.setFontSize(14);
+            doc.setTextColor(220, 38, 38); // Red
+            doc.text('3. ALÉRGENOS', 14, currentY);
+            currentY += 8;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0);
+            const allergensText = (item.allergens || []).length > 0 ? item.allergens!.join(', ') : 'Ninguno declarado.';
+            doc.text(allergensText, 14, currentY, { maxWidth: 180 });
+        });
+
+        doc.save(`fichas_alumnos_${service.name.replace(/\s+/g, '_')}.pdf`);
+    };
+
     const generateDraftOrder = () => {
         const activeEvent = events.find(e => e.type === 'Regular' && new Date(e.end_date) > new Date());
         if (!activeEvent) {
@@ -248,12 +336,12 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                     <PlusIcon className="w-4 h-4 mr-2" />
                                     Añadir Plato
                                 </button>
-                                {service.menu.length > 0 && service.status === 'Planificación' && (
+                                {service.menu.length > 0 && (
                                     <button 
                                         onClick={handleDistribute}
-                                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center"
+                                        className={`${service.status === 'Confirmado' ? 'bg-gray-100 text-gray-600 border' : 'bg-green-600 text-white'} px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center`}
                                     >
-                                        Distribuir a Comedor
+                                        {service.status === 'Confirmado' ? 'Re-Distribuir a Comedor' : 'Distribuir a Comedor'}
                                     </button>
                                 )}
                             </div>
@@ -356,9 +444,16 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                         )}
                     </Card>
                     <Card title="Documentación de Salida">
-                        <div className="flex space-x-4">
-                            <button onClick={generateAllergenDoc} className="bg-gray-600 text-white py-2 px-4 rounded-md flex items-center"><PrinterIcon className="w-5 h-5 mr-1"/> Informe de Alérgenos</button>
-                            <button onClick={generateServiceOrderDoc} className="bg-gray-600 text-white py-2 px-4 rounded-md flex items-center"><PrinterIcon className="w-5 h-5 mr-1"/> Orden de Servicio</button>
+                        <div className="flex flex-wrap gap-3">
+                            <button onClick={handleExportStudentSheets} className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md flex items-center transition-colors shadow-sm">
+                                <PrinterIcon className="w-5 h-5 mr-2"/> Fichas para Alumnos (PDF)
+                            </button>
+                            <button onClick={generateAllergenDoc} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-md flex items-center transition-colors border">
+                                <PrinterIcon className="w-5 h-5 mr-2"/> Informe de Alérgenos
+                            </button>
+                            <button onClick={generateServiceOrderDoc} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-md flex items-center transition-colors border">
+                                <PrinterIcon className="w-5 h-5 mr-2"/> Orden de Servicio
+                            </button>
                         </div>
                     </Card>
                     <Card title="Generación de Pedido">
@@ -518,7 +613,6 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
                                 onChange={e => {
                                     if (e.target.value === 'Otros') {
                                         setIsCustomCategory(true);
-                                        setCategory('');
                                     } else {
                                         setIsCustomCategory(false);
                                         setCategory(e.target.value);
@@ -534,13 +628,13 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
                                 <option value="Bebida">Bebida</option>
                                 <option value="Otros">Personalizada / Otros...</option>
                             </select>
-                            {isCustomCategory && (
+                            {(isCustomCategory || !['Aperitivo', 'Entrante', 'Pescado', 'Carne', 'Postre', 'Bebida'].includes(category)) && (
                                 <input 
                                     type="text"
                                     value={category}
                                     onChange={e => setCategory(e.target.value)}
                                     placeholder="Nombre de la categoría..."
-                                    className="w-full p-2 border rounded dark:bg-gray-700 text-xs"
+                                    className="w-full p-2 border rounded dark:bg-gray-700 text-xs font-bold"
                                     autoFocus
                                 />
                             )}

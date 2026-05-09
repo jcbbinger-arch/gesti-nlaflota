@@ -7,7 +7,7 @@ import { Modal } from '../../components/Modal';
 import { 
     Users, Calendar, Download, AlertTriangle, ArrowRight, 
     CheckCircle, Clock, ChefHat, Edit2, Save, X, Plus, Trash2, 
-    ChevronUp, ChevronDown, Info, ChevronRight
+    ChevronUp, ChevronDown, Info, ChevronRight, Printer as PrinterIcon
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { motion, AnimatePresence } from 'motion/react';
@@ -312,18 +312,118 @@ export const DiningServiceView: React.FC = () => {
         doc.save(`servicio_comedor_${selectedService.date.replace(/-/g, '')}.pdf`);
     };
 
+    const handleExportStudentSheets = () => {
+        if (!matchingPlanningService) return;
+
+        const doc = new jsPDF();
+        const dateStr = new Date(matchingPlanningService.date).toLocaleDateString();
+        
+        matchingPlanningService.menu.forEach((item, index) => {
+            if (index > 0) doc.addPage();
+            
+            const startY = addHeaderToPdf(
+                doc, 
+                companyInfo, 
+                'FICHA TÉCNICA DE SERVICIO (ALUMNOS)', 
+                `Plato: ${item.name.toUpperCase()}\nCategoría: ${item.category}\nServicio: ${matchingPlanningService.name}\nFecha: ${dateStr}`
+            );
+
+            let currentY = startY + 15;
+
+            // Ingredients / Composition
+            doc.setFontSize(14);
+            doc.setTextColor(37, 99, 235);
+            doc.text('1. COMPOSICIÓN Y RECETAS', 14, currentY);
+            currentY += 8;
+
+            const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
+            const itemRecipes = recipeIds.map(rid => recipes.find(r => r.id === rid)).filter((r): r is any => !!r);
+
+            if (itemRecipes.length > 0) {
+                (doc as any).autoTable({
+                    startY: currentY,
+                    head: [['Receta', 'Descripción', 'Alérgenos']],
+                    body: itemRecipes.map(r => [
+                        r.name,
+                        r.description || '-',
+                        (r.selected_allergens || []).join(', ') || 'Sin alérgenos'
+                    ]),
+                    theme: 'grid',
+                    headStyles: { fillColor: [37, 99, 235] },
+                    margin: { left: 14, right: 14 }
+                });
+                currentY = (doc as any).lastAutoTable.finalY + 15;
+            } else {
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                doc.text('Este plato no tiene recetas vinculadas (Entrada Manual).', 14, currentY);
+                currentY += 15;
+            }
+
+            // Service Details
+            doc.setFontSize(14);
+            doc.setTextColor(217, 119, 6); // Amber
+            doc.text('2. INSTRUCCIONES DE SERVICIO', 14, currentY);
+            currentY += 8;
+
+            const firstRecipe = itemRecipes[0];
+            const serviceData = [
+                ['Explicación Camarero', firstRecipe?.service_explanation || item.description || '-'],
+                ['Temperatura de Servicio', firstRecipe?.temperature || '-'],
+                ['Protocolo / Tipo Servicio', firstRecipe?.service_type || '-'],
+                ['Marcaje / Vajilla', firstRecipe?.cutlery_required || firstRecipe?.recommended_marking || '-'],
+                ['Presentación / Emplatado', firstRecipe?.presentation || '-']
+            ];
+
+            (doc as any).autoTable({
+                startY: currentY,
+                body: serviceData,
+                theme: 'striped',
+                columnStyles: {
+                    0: { cellWidth: 50, fontStyle: 'bold', fillColor: [243, 244, 246] }
+                },
+                margin: { left: 14, right: 14 }
+            });
+
+            currentY = (doc as any).lastAutoTable.finalY + 15;
+
+            // Alérgenos del Plato
+            doc.setFontSize(14);
+            doc.setTextColor(220, 38, 38); // Red
+            doc.text('3. ALÉRGENOS', 14, currentY);
+            currentY += 8;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0);
+            const allergensText = item.allergens.length > 0 ? item.allergens.join(', ') : 'Ninguno declarado.';
+            doc.text(allergensText, 14, currentY, { maxWidth: 180 });
+        });
+
+        doc.save(`fichas_alumnos_${matchingPlanningService.name.replace(/\s+/g, '_')}.pdf`);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Gestión de Servicio de Comedor</h1>
                 {selectedService && (
-                    <button
-                        onClick={handleExportPDF}
-                        className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 shadow-sm transition-colors"
-                    >
-                        <Download className="w-5 h-5 mr-2" />
-                        Exportar Hoja de Servicio
-                    </button>
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={handleExportStudentSheets}
+                            className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm transition-colors"
+                            title="Imprimir fichas técnicas detalladas para alumnos"
+                        >
+                            <PrinterIcon className="w-5 h-5 mr-2" />
+                            Imprimir Fichas (Alumnos)
+                        </button>
+                        <button
+                            onClick={handleExportPDF}
+                            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 shadow-sm transition-colors"
+                        >
+                            <Download className="w-5 h-5 mr-2" />
+                            Exportar Hoja de Servicio
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -776,14 +876,17 @@ export const DiningServiceView: React.FC = () => {
                                 value={editingMenuItem?.category && editingMenuItem.work_area && CATEGORIES_BY_AREA[editingMenuItem.work_area].includes(editingMenuItem.category) ? editingMenuItem.category : 'Otros'}
                                 onChange={(e) => {
                                     const val = e.target.value;
-                                    setEditingMenuItem(prev => ({ 
-                                        ...prev!, 
-                                        category: val === 'Otros' ? '' : val, 
-                                        is_custom: val === 'Otros' 
-                                    }));
+                                    setEditingMenuItem(prev => {
+                                        const isCustom = val === 'Otros';
+                                        return { 
+                                            ...prev!, 
+                                            category: isCustom ? prev?.category || '' : val, 
+                                            is_custom: isCustom
+                                        };
+                                    });
                                 }}
                             >
-                                {editingMenuItem?.work_area && CATEGORIES_BY_AREA[editingMenuItem.work_area].map(cat => (
+                                {editingMenuItem?.work_area && (CATEGORIES_BY_AREA[editingMenuItem.work_area] || []).map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
                                 <option value="Otros">Personalizada / Otros...</option>
@@ -791,10 +894,11 @@ export const DiningServiceView: React.FC = () => {
                             {(editingMenuItem?.is_custom || (editingMenuItem?.category && editingMenuItem.work_area && !CATEGORIES_BY_AREA[editingMenuItem.work_area].includes(editingMenuItem.category))) && (
                                 <input 
                                     type="text"
-                                    placeholder="Nombre de la categoría personalizada (Ej: Aperitivo, Entrante...)"
+                                    placeholder="Nombre de la categoría personalizada..."
                                     className="w-full p-2 border rounded dark:bg-gray-700 text-xs font-bold"
-                                    value={editingMenuItem.category}
+                                    value={editingMenuItem.category || ''}
                                     onChange={(e) => setEditingMenuItem(prev => ({ ...prev!, category: e.target.value }))}
+                                    autoFocus
                                 />
                             )}
                         </div>
