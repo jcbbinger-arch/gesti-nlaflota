@@ -374,7 +374,7 @@ export const DiningServiceView: React.FC = () => {
                         exit={{ opacity: 0, y: -20 }}
                         className="space-y-6"
                     >
-                        <div className="flex border-b border-gray-200 dark:border-gray-700">
+                        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
                             <button
                                 onClick={() => setActiveTab('reservas')}
                                 className={`px-6 py-3 text-sm font-black uppercase tracking-widest border-b-2 transition-colors ${
@@ -485,79 +485,143 @@ export const DiningServiceView: React.FC = () => {
                         ) : (
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center">
-                                    <h3 className="text-lg font-bold text-gray-800 dark:text-white">Menú Integrado del Servicio</h3>
+                                    <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center">
+                                        <ChefHat className="w-5 h-5 mr-2 text-primary-500" />
+                                        Menú y Fichas de Servicio
+                                    </h3>
                                     <button 
                                         onClick={handleAddMenuItem}
                                         className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-bold shadow-md hover:bg-primary-700"
                                     >
                                         <Plus className="w-4 h-4 mr-2" />
-                                        Añadir Plato / Pase
+                                        Añadir Pase Manual
                                     </button>
                                 </div>
 
-                                <Card noPadding>
-                                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                                        {matchingPlanningService?.menu && matchingPlanningService.menu.length > 0 ? (
-                                            matchingPlanningService.menu.map((item, idx) => (
-                                                <div key={item.id} className="p-4 flex items-center group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                                    <div className="flex flex-col items-center mr-6 text-gray-300 group-hover:text-primary-500 transition-colors">
-                                                        <button onClick={() => handleMoveMenuItem(item.id, 'up')} disabled={idx === 0} className="hover:scale-125 disabled:opacity-30 disabled:pointer-events-none"><ChevronUp className="w-5 h-5" /></button>
-                                                        <span className="text-sm font-black my-0.5">{item.order_number}</span>
-                                                        <button onClick={() => handleMoveMenuItem(item.id, 'down')} disabled={idx === matchingPlanningService.menu.length - 1} className="hover:scale-125 disabled:opacity-30 disabled:pointer-events-none"><ChevronDown className="w-5 h-5" /></button>
-                                                    </div>
-                                                    
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center space-x-2 mb-1">
-                                                            <span className="text-[10px] font-black uppercase tracking-widest text-primary-500 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded">
-                                                                {item.category}
-                                                            </span>
-                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
-                                                                {item.work_area}
-                                                            </span>
+                                <div className="grid grid-cols-1 gap-6">
+                                    {matchingPlanningService?.menu && matchingPlanningService.menu.length > 0 ? (
+                                        matchingPlanningService.menu.map((item, idx) => {
+                                            const recipe = item.recipe_id ? recipes.find(r => r.id === item.recipe_id) : null;
+                                            
+                                            return (
+                                                <motion.div 
+                                                    key={item.id}
+                                                    initial={{ opacity: 0, x: -10 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: idx * 0.05 }}
+                                                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                                                >
+                                                    <div className="p-4 flex items-start space-x-4">
+                                                        <div className="flex flex-col items-center text-gray-300">
+                                                            <button onClick={() => handleMoveMenuItem(item.id, 'up')} disabled={idx === 0} className="hover:text-primary-500 disabled:opacity-0"><ChevronUp className="w-5 h-5" /></button>
+                                                            <span className="text-sm font-black text-gray-400 my-1">{item.order_number}</span>
+                                                            <button onClick={() => handleMoveMenuItem(item.id, 'down')} disabled={idx === matchingPlanningService.menu.length - 1} className="hover:text-primary-500 disabled:opacity-0"><ChevronDown className="w-5 h-5" /></button>
                                                         </div>
-                                                        <h4 className="text-base font-bold text-gray-800 dark:text-white leading-tight">{item.name}</h4>
-                                                        {item.description && (
-                                                            <p className="text-xs text-gray-500 mt-1 dark:text-gray-400 flex items-start">
-                                                                <Info className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
-                                                                {item.description}
-                                                            </p>
-                                                        )}
-                                                        <div className="flex flex-wrap gap-1 mt-2">
-                                                            {item.allergens.map(a => (
-                                                                <span key={a} className="text-[9px] font-black uppercase bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-100">
-                                                                    {a}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
 
-                                                    <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button 
-                                                            onClick={() => { setEditingMenuItem(item); setIsMenuModalOpen(true); }}
-                                                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"
-                                                            disabled={item.work_area !== currentUser?.work_area}
-                                                            title={item.work_area !== currentUser?.work_area ? "Sólo el autor puede editar" : ""}
-                                                        >
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => handleDeleteMenuItem(item.id)}
-                                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                                                            disabled={item.work_area !== currentUser?.work_area}
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded">
+                                                                        {item.category}
+                                                                    </span>
+                                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+                                                                        {item.work_area}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex space-x-2">
+                                                                    <button 
+                                                                        onClick={() => { setEditingMenuItem(item); setIsMenuModalOpen(true); }}
+                                                                        className="p-1.5 text-gray-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
+                                                                        disabled={item.work_area !== currentUser?.work_area}
+                                                                    >
+                                                                        <Edit2 className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleDeleteMenuItem(item.id)}
+                                                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                                        disabled={item.work_area !== currentUser?.work_area}
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            <h4 className="text-xl font-black text-gray-800 dark:text-white leading-tight uppercase tracking-tight">
+                                                                {item.name}
+                                                            </h4>
+                                                            
+                                                            <div className="flex flex-wrap gap-1.5 mt-3">
+                                                                {item.allergens.map(a => (
+                                                                    <span key={a} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-red-50 text-red-600 border border-red-100">
+                                                                        <AlertTriangle className="w-3 h-3 mr-1" />
+                                                                        {a}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+
+                                                            {/* Technical Details for FOH */}
+                                                            {recipe ? (
+                                                                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-50 dark:border-gray-700/50">
+                                                                    <div className="space-y-4">
+                                                                        <div>
+                                                                            <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center">
+                                                                                <Info className="w-3.5 h-3.5 mr-1.5" />
+                                                                                Explicación para el Camarero
+                                                                            </h5>
+                                                                            <p className="text-sm text-gray-600 dark:text-gray-400 italic bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100/50">
+                                                                                {recipe.service_explanation || recipe.description || "Sin explicación específica registrada."}
+                                                                            </p>
+                                                                        </div>
+
+                                                                        <div className="grid grid-cols-2 gap-4">
+                                                                            <div>
+                                                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Temperatura</h5>
+                                                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                                                                                    {recipe.temperature || "No definida"}
+                                                                                </p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Protoclo</h5>
+                                                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                                                                                    {recipe.service_type || "Estándar"}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="space-y-4">
+                                                                        <div>
+                                                                            <h5 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">Marcaje / Cubertería</h5>
+                                                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200 p-3 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl border border-indigo-100/50">
+                                                                                {recipe.cutlery_required || recipe.recommended_marking || "Cubertería estándar de mesa."}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <h5 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Instrucciones de Emplatado</h5>
+                                                                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                                                {recipe.presentation || "Servicio estándar según protocolo."}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                                                                    <p className="text-xs text-gray-400 italic">Este es un pase manual. No tiene ficha técnica de cocina vinculada.</p>
+                                                                    {item.description && <p className="text-sm text-gray-600 mt-2">{item.description}</p>}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="p-12 text-center text-gray-400 italic">
-                                                <ChefHat className="w-12 h-12 mx-auto opacity-20 mb-3" />
-                                                No se ha configurado el menú para este servicio todavía.
-                                            </div>
-                                        )}
-                                    </div>
-                                </Card>
+                                                </motion.div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="p-12 text-center text-gray-400 italic bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200">
+                                            <ChefHat className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                                            No se ha configurado el menú para este servicio todavía.
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </motion.div>
