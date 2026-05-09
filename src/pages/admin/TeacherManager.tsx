@@ -3,7 +3,7 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, WarningIcon, DownloadIcon, TrashIcon } from '../../components/icons';
-import { User, Profile, Assignment, Group, Module, getProfileDisplayName, SUPER_USER_EMAILS } from '../../types';
+import { User, Profile, Assignment, Group, Module, getProfileDisplayName, SUPER_USER_EMAILS, WorkArea } from '../../types';
 import { exportToCsv } from '../../utils/export';
 
 export const TeacherManager: React.FC = () => {
@@ -58,6 +58,7 @@ export const TeacherManager: React.FC = () => {
                     <tr>
                         <th className="px-6 py-3">Nombre</th>
                         <th className="px-6 py-3">Email</th>
+                        {activeTab === 'profesores' && <th className="px-6 py-3">Área / Rol</th>}
                         {activeTab === 'profesores' && <th className="px-6 py-3">Acceso Perfiles</th>}
                         <th className="px-6 py-3">Estado</th>
                         <th className="px-6 py-3">Conexión</th>
@@ -69,6 +70,17 @@ export const TeacherManager: React.FC = () => {
                         <tr key={user.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                             <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{user.name}</td>
                             <td className="px-6 py-4">{user.email}</td>
+                            {activeTab === 'profesores' && (
+                                <td className="px-6 py-4">
+                                    {user.work_area ? (
+                                        <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+                                            {user.work_area}
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-400 italic text-xs">No asignado</span>
+                                    )}
+                                </td>
+                            )}
                             {activeTab === 'profesores' && (
                                 <td className="px-6 py-4">
                                     <div className="flex space-x-1">
@@ -329,6 +341,7 @@ const UserFormModal: React.FC<{
         substituting_user_id: user?.substituting_user_id || '',
         phone: user?.phone || '',
         address: user?.address || '',
+        work_area: user?.work_area || '' as WorkArea,
     });
 
     const titularTeachers = useMemo(() => {
@@ -423,6 +436,26 @@ const UserFormModal: React.FC<{
                     <input type="tel" name="phone" value={formState.phone} onChange={handleChange} placeholder="Teléfono" className="w-full p-2 border rounded dark:bg-gray-700"/>
                     <input type="text" name="address" value={formState.address} onChange={handleChange} placeholder="Dirección" className="w-full p-2 border rounded dark:bg-gray-700"/>
                 </div>
+
+                {(activeTab === 'profesores' || activeTab === 'invitaciones') && (
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Área de Trabajo / Especialización</label>
+                        <select 
+                            name="work_area" 
+                            value={formState.work_area} 
+                            onChange={handleChange} 
+                            className="w-full p-2 border rounded dark:bg-gray-700 text-sm font-bold text-gray-800 dark:text-white"
+                        >
+                            <option value="">-- Seleccionar Área --</option>
+                            <option value="Servicios">Servicios</option>
+                            <option value="Cocina">Cocina</option>
+                            <option value="Panadería">Panadería</option>
+                            <option value="Pastelería">Pastelería</option>
+                            <option value="Administrador">Administrador</option>
+                            <option value="Almacén">Almacén</option>
+                        </select>
+                    </div>
+                )}
 
                 {(activeTab === 'profesores' || activeTab === 'invitaciones') && (
                     <div>

@@ -29,6 +29,7 @@ export const getProfileDisplayName = (profile: Profile, context?: 'student_simul
 export type OrderStatus = 'Borrador' | 'Enviado' | 'Cerrado' | 'Procesado' | 'Recibido Parcial' | 'Recibido OK' | 'Completado' | 'Cancelado';
 export type UserActivityStatus = 'Activo' | 'De Baja';
 export type UserLocationStatus = 'En el centro' | 'Fuera del centro';
+export type WorkArea = 'Servicios' | 'Cocina' | 'Panadería' | 'Pastelería' | 'Administrador' | 'Almacén';
 export type SupplierStatus = 'Activo' | 'Inactivo';
 export type ProductState = string;
 export type WarehouseStatus = 'Disponible' | 'Bajo Pedido' | 'Descontinuado';
@@ -89,6 +90,7 @@ export interface User {
   role?: 'admin' | 'user';
   activity_status: UserActivityStatus;
   location_status: UserLocationStatus;
+  work_area?: WorkArea;
   access_profiles?: { [key in Profile]?: boolean };
   contract_type?: 'Fijo' | 'Interino';
   role_type?: 'Titular' | 'Sustituto';
