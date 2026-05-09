@@ -79,137 +79,106 @@ const RecipeListItem: React.FC<{
     return (
         <motion.div 
             layout
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="group relative bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col md:flex-row overflow-hidden"
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row overflow-hidden h-auto sm:h-32"
         >
-            {/* Top accent bar */}
+            {/* Top accent bar shortened */}
             {colors.length > 0 && (
-                <div className="absolute top-0 left-0 w-full h-[6px] flex">
+                <div className="absolute top-0 left-0 w-full h-[3px] flex opacity-70">
                     {colors.map((c, i) => <div key={i} className="flex-1 h-full" style={{ backgroundColor: c }} />)}
                 </div>
             )}
 
-            {/* Image Placeholder / Photo */}
-            <div className="w-full md:w-56 h-48 md:h-auto bg-gray-50 dark:bg-gray-900 flex items-center justify-center overflow-hidden border-r border-gray-50 dark:border-gray-700">
+            {/* Compact Image */}
+            <div className="w-full sm:w-40 h-32 sm:h-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center overflow-hidden flex-shrink-0">
                 {recipe.photo ? (
                     <img 
                         src={recipe.photo} 
                         alt={recipe.name} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                     />
                 ) : (
                     <div className="flex flex-col items-center text-gray-200">
-                        <ImageIcon className="w-12 h-12 mb-2" />
+                        <ImageIcon className="w-8 h-8" />
                     </div>
                 )}
             </div>
 
-            {/* Content Container */}
-            <div className="flex-1 p-4 md:p-6 flex flex-col justify-between">
-                <div>
-                    {/* Header: Badges and Cost */}
-                    <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-gray-100 dark:bg-gray-700 text-gray-500">
+            {/* Content Container - Much more compact */}
+            <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between overflow-hidden">
+                <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 overflow-hidden">
+                            <span className="px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider bg-gray-100 dark:bg-gray-700 text-gray-500 whitespace-nowrap">
                                 {recipe.category}
                             </span>
-                            
                             {recipe.is_public ? (
-                                <span className="flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-gray-400 border border-gray-200">
-                                    <Unlock className="w-3 h-3 mr-1" /> Público
-                                </span>
+                                <Unlock className="w-3 h-3 text-gray-300" />
                             ) : (
-                                <span className="flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-white shadow-sm shadow-emerald-100">
-                                    <Lock className="w-3 h-3 mr-1" /> Privado
-                                </span>
+                                <Lock className="w-3 h-3 text-emerald-500" />
                             )}
-
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            <span className="text-[9px] font-bold text-gray-400 whitespace-nowrap">
                                 {recipe.yield_amount} {recipe.yield_unit}
                             </span>
                         </div>
-
-                        <div className="text-right">
-                            <div className="text-2xl font-black text-indigo-900 dark:text-indigo-300 leading-none">
-                                {recipe.cost.toFixed(2)}€
-                            </div>
-                            <div className="text-[10px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-tighter mt-1">
-                                Coste / Ración
-                            </div>
+                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight truncate">
+                            {recipe.name}
+                        </h3>
+                        <div className="flex items-center text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                            {authorName}
                         </div>
                     </div>
 
-                    {/* Title and Author */}
-                    <div className="mb-4">
-                        <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight line-clamp-1">
-                            {recipe.name}
-                        </h3>
-                        <div className="flex items-center mt-1 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                            <Users className="w-3 h-3 mr-1.5" />
-                            {authorName}
+                    <div className="text-right flex-shrink-0">
+                        <div className="text-xl font-black text-indigo-900 dark:text-indigo-300 leading-none">
+                            {recipe.cost.toFixed(2)}€
+                        </div>
+                        <div className="text-[8px] font-black text-indigo-300 uppercase mt-0.5">
+                            P/R
                         </div>
                     </div>
                 </div>
 
-                {/* Footer: Allergens and Actions */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 pt-4 border-t border-gray-50 dark:border-gray-700/50">
-                    <div className="flex flex-wrap gap-1.5">
-                        {recipe.selected_allergens?.map(allergen => (
+                <div className="flex justify-between items-end mt-2">
+                    <div className="flex -space-x-1">
+                        {recipe.selected_allergens?.slice(0, 5).map(allergen => (
                             <span 
                                 key={allergen} 
                                 title={allergen}
-                                className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-sm shadow-sm border border-amber-100/50"
+                                className="w-6 h-6 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center text-xs shadow-sm border border-gray-100 dark:border-gray-600"
                             >
                                 {ALLERGEN_ICONS[allergen] || '⚠️'}
                             </span>
                         ))}
+                        {recipe.selected_allergens && recipe.selected_allergens.length > 5 && (
+                            <span className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center text-[8px] font-bold text-gray-400 border border-gray-100">
+                                +{recipe.selected_allergens.length - 5}
+                            </span>
+                        )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
-                        <div className="flex items-center bg-gray-50 dark:bg-gray-700/30 rounded-xl p-1 gap-1 mr-2">
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center bg-gray-50 dark:bg-gray-700/50 rounded-lg p-0.5 gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             {isOwner ? (
                                 <>
-                                    <button 
-                                        onClick={onShare}
-                                        className="p-2 text-gray-400 hover:text-primary-600 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all"
-                                        title="Compartir"
-                                    >
-                                        <Share2 className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                        onClick={() => navigate(`/teacher/recipes/edit/${recipe.id}`)}
-                                        className="p-2 text-gray-400 hover:text-amber-600 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all"
-                                        title="Editar"
-                                    >
-                                        <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                        onClick={onDelete}
-                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all"
-                                        title="Eliminar"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    <button onClick={onShare} className="p-1.5 text-gray-400 hover:text-primary-600 rounded-md"><Share2 className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => navigate(`/teacher/recipes/edit/${recipe.id}`)} className="p-1.5 text-gray-400 hover:text-amber-600 rounded-md"><Edit2 className="w-3.5 h-3.5" /></button>
+                                    <button onClick={onDelete} className="p-1.5 text-gray-400 hover:text-red-600 rounded-md"><Trash2 className="w-3.5 h-3.5" /></button>
                                 </>
                             ) : (
                                 onDuplicate && (
-                                    <button 
-                                        onClick={onDuplicate}
-                                        className="px-3 py-2 text-[10px] font-black uppercase text-gray-500 hover:text-emerald-600 transition-colors"
-                                    >
-                                        Hacer mía
-                                    </button>
+                                    <button onClick={onDuplicate} className="px-2 py-1 text-[8px] font-black uppercase text-gray-500 hover:text-emerald-600">Copiar</button>
                                 )
                             )}
                         </div>
 
                         <Link 
                             to={`/teacher/recipes/view/${recipe.id}`}
-                            className="flex-1 md:flex-initial inline-flex items-center justify-center px-5 py-2.5 bg-[#0e1627] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#1a253a] transition-colors shadow-lg shadow-slate-200 dark:shadow-none"
+                            className="inline-flex items-center justify-center px-4 py-2 bg-[#0e1627] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
                         >
-                            Ver Ficha <Eye className="w-3.5 h-3.5 ml-2" />
+                            VER <Eye className="w-3 h-3 ml-1.5" />
                         </Link>
                     </div>
                 </div>
