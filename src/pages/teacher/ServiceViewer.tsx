@@ -4,7 +4,17 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Service, ServiceGroup, User, Profile, ServiceRole, Recipe, Order, AppEvent, ServiceMenuItem } from '../../types';
 import { Modal } from '../../components/Modal';
-import { PlusIcon, TrashIcon, PrinterIcon } from '../../components/icons';
+import { 
+    Plus as PlusIcon, 
+    Trash2 as TrashIcon, 
+    Printer as PrinterIcon, 
+    ChevronUp, 
+    ChevronDown, 
+    X, 
+    Plus,
+    Info,
+    AlertTriangle
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { addHeaderToPdf } from '../../utils/export';
 import { useCompany } from '../../contexts/CompanyContext';
@@ -24,6 +34,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     const { companyInfo } = useCompany();
     const { currentUser } = useAuth();
     const [addStep, setAddStep] = useState<null | 'choice' | 'database' | 'manual'>(null);
+    const [targetMenuItemId, setTargetMenuItemId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const usersMap = useMemo(() => new Map<string, User>(users.map((u: any) => [u.id, u])), [users]);
@@ -80,15 +91,39 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         setServices(services.map(s => s.id === service.id ? updatedService : s));
     };
 
+    const handleDistribute = () => {
+        const updatedService = { ...service, status: 'Confirmado' as const };
+        setServices(services.map(s => s.id === service.id ? updatedService : s));
+        alert('Menú distribuido a la vista de comedor.');
+    };
+
     const handleAddRecipe = (recipe_id: string) => {
         const recipe = recipesMap.get(recipe_id);
         if (!recipe) return;
 
-        if (service.menu.some(item => item.recipe_id === recipe_id)) return;
+        if (targetMenuItemId) {
+            // Adding component to existing dish
+            const updatedMenu = service.menu.map(item => {
+                if (item.id === targetMenuItemId) {
+                    const currentIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
+                    if (currentIds.includes(recipe_id)) return item;
+                    return { ...item, recipe_ids: [...currentIds, recipe_id] };
+                }
+                return item;
+            });
+            const updatedService = { ...service, menu: updatedMenu };
+            setServices(services.map(s => s.id === service.id ? updatedService : s));
+            setTargetMenuItemId(null);
+            setAddStep(null);
+            return;
+        }
+
+        if (service.menu.some(item => (item.recipe_ids || (item.recipe_id ? [item.recipe_id] : [])).includes(recipe_id))) return;
         
         const newItem: ServiceMenuItem = {
             id: `item-${Date.now()}`,
             recipe_id: recipe.id,
+            recipe_ids: [recipe.id],
             name: recipe.name,
             category: recipe.category || 'Otros',
             order_number: service.menu.length + 1,
@@ -108,6 +143,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         const newItem: ServiceMenuItem = {
             id: `item-${Date.now()}`,
             recipe_id: newRecipe.id,
+            recipe_ids: [newRecipe.id],
             name: newRecipe.name,
             category: newRecipe.category || 'Otros',
             order_number: service.menu.length + 1,
@@ -207,15 +243,27 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                 <div className="space-y-6">
                     <Card title="Menú del Servicio">
                         <div className="flex justify-between items-center mb-4">
-                            <button onClick={() => setAddStep('choice')} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center">
-                                <PlusIcon className="w-4 h-4 mr-2" />
-                                Añadir Plato
-                            </button>
+                            <div className="flex space-x-2">
+                                <button onClick={() => setAddStep('choice')} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center">
+                                    <PlusIcon className="w-4 h-4 mr-2" />
+                                    Añadir Plato
+                                </button>
+                                {service.menu.length > 0 && service.status === 'Planificación' && (
+                                    <button 
+                                        onClick={handleDistribute}
+                                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center"
+                                    >
+                                        Distribuir a Comedor
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         
                         <div className="space-y-2">
                             {service.menu.sort((a, b) => (a.order_number || 0) - (b.order_number || 0)).map((item, idx) => {
-                                const recipe = recipesMap.get(item.recipe_id || '');
+                                const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
+                                const itemsRecipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
+                                
                                 return (
                                     <div key={item.id} className="flex items-center p-3 bg-white dark:bg-gray-800 border rounded-xl shadow-sm group">
                                         <div className="flex flex-col items-center mr-4 pr-4 border-r dark:border-gray-700 min-w-[60px]">
@@ -234,30 +282,58 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                         
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center space-x-2 mb-1">
-                                                <select
-                                                    value={item.category || 'Otros'}
-                                                    onChange={(e) => {
-                                                        const newVal = e.target.value;
-                                                        const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, category: newVal } : m);
-                                                        setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                    }}
-                                                    className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded border-none focus:ring-0 cursor-pointer"
-                                                >
-                                                    <option value="Aperitivo">Aperitivo</option>
-                                                    <option value="Entrante">Entrante</option>
-                                                    <option value="Pescado">Pescado</option>
-                                                    <option value="Carne">Carne</option>
-                                                    <option value="Postre">Postre</option>
-                                                    <option value="Bebida">Bebida</option>
-                                                    <option value="Otros">Otros</option>
-                                                </select>
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                                    {item.work_area}
-                                                </span>
+                                                <div className="flex space-x-1">
+                                                    <input 
+                                                        type="text"
+                                                        value={item.category || ''}
+                                                        placeholder="Categoría..."
+                                                        onChange={(e) => {
+                                                            const newVal = e.target.value;
+                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, category: newVal } : m);
+                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                        }}
+                                                        className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded border-none focus:ring-0 w-24 h-5"
+                                                    />
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                                                        {item.work_area}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <h4 className="font-bold text-gray-800 dark:text-white truncate">
-                                                {item.name || recipe?.name}
-                                            </h4>
+                                            <input 
+                                                type="text"
+                                                value={item.name}
+                                                onChange={(e) => {
+                                                    const newVal = e.target.value;
+                                                    const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, name: newVal } : m);
+                                                    setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                }}
+                                                className="font-bold text-gray-800 dark:text-white bg-transparent border-none focus:ring-0 p-0 w-full h-auto"
+                                            />
+                                            {itemsRecipes.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {itemsRecipes.map(r => (
+                                                        <span key={r.id} className="text-[9px] bg-gray-100 dark:bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-600 flex items-center group/tag">
+                                                            {r.name}
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, recipe_ids: (m.recipe_ids || []).filter(rid => rid !== r.id) } : m);
+                                                                    setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                                }}
+                                                                className="ml-1 text-gray-400 hover:text-red-500 opacity-0 group-hover/tag:opacity-100"
+                                                            >
+                                                                <X className="w-2.5 h-2.5" />
+                                                            </button>
+                                                        </span>
+                                                    ))}
+                                                    <button 
+                                                        onClick={() => { setTargetMenuItemId(item.id); setAddStep('database'); }}
+                                                        className="text-[9px] bg-primary-50 dark:bg-primary-900/30 text-primary-600 px-1.5 py-0.5 rounded-full border border-primary-200 dark:border-primary-800 hover:bg-primary-100 transition-colors"
+                                                    >
+                                                        + Añadir Componente
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <button 
@@ -380,6 +456,7 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
     const [clientDescription, setClientDescription] = useState('');
     const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
     const [category, setCategory] = useState('Entrante');
+    const [isCustomCategory, setIsCustomCategory] = useState(false);
 
     const toggleAllergen = (allergen: string) => {
         setSelectedAllergens(prev => 
@@ -435,19 +512,39 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Categoría</label>
-                        <select 
-                            value={category} 
-                            onChange={e => setCategory(e.target.value)} 
-                            className="w-full p-2 border rounded dark:bg-gray-700 font-bold"
-                        >
-                            <option value="Aperitivo">Aperitivo</option>
-                            <option value="Entrante">Entrante</option>
-                            <option value="Pescado">Pescado</option>
-                            <option value="Carne">Carne</option>
-                            <option value="Postre">Postre</option>
-                            <option value="Bebida">Bebida</option>
-                            <option value="Otros">Otros</option>
-                        </select>
+                        <div className="space-y-1">
+                            <select 
+                                value={isCustomCategory ? 'Otros' : category} 
+                                onChange={e => {
+                                    if (e.target.value === 'Otros') {
+                                        setIsCustomCategory(true);
+                                        setCategory('');
+                                    } else {
+                                        setIsCustomCategory(false);
+                                        setCategory(e.target.value);
+                                    }
+                                }} 
+                                className="w-full p-2 border rounded dark:bg-gray-700 font-bold"
+                            >
+                                <option value="Aperitivo">Aperitivo</option>
+                                <option value="Entrante">Entrante</option>
+                                <option value="Pescado">Pescado</option>
+                                <option value="Carne">Carne</option>
+                                <option value="Postre">Postre</option>
+                                <option value="Bebida">Bebida</option>
+                                <option value="Otros">Personalizada / Otros...</option>
+                            </select>
+                            {isCustomCategory && (
+                                <input 
+                                    type="text"
+                                    value={category}
+                                    onChange={e => setCategory(e.target.value)}
+                                    placeholder="Nombre de la categoría..."
+                                    className="w-full p-2 border rounded dark:bg-gray-700 text-xs"
+                                    autoFocus
+                                />
+                            )}
+                        </div>
                     </div>
                 </div>
                 

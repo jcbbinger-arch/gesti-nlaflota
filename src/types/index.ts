@@ -408,7 +408,8 @@ export interface ServiceGroup {
 
 export interface ServiceMenuItem {
     id: string;
-    recipe_id?: string;
+    recipe_ids?: string[]; // Array of recipe IDs for multiple preparations in one dish
+    recipe_id?: string; // Kept for backward compatibility
     name: string;
     category: string;
     order_number: number;

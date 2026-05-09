@@ -538,7 +538,9 @@ export const DiningServiceView: React.FC = () => {
                                 <div className="grid grid-cols-1 gap-6">
                                     {matchingPlanningService?.menu && matchingPlanningService.menu.length > 0 ? (
                                         matchingPlanningService.menu.map((item, idx) => {
-                                            const recipe = item.recipe_id ? recipes.find(r => r.id === item.recipe_id) : null;
+                                            const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
+                                            const itemRecipes = recipeIds.map(rid => recipes.find(r => r.id === rid)).filter((r): r is any => !!r);
+                                            const firstRecipe = itemRecipes[0] || null;
                                             
                                             return (
                                                 <motion.div 
@@ -571,9 +573,17 @@ export const DiningServiceView: React.FC = () => {
                                                         <div className="flex-1">
                                                             <div className="flex items-center justify-between mb-2">
                                                                 <div className="flex items-center space-x-2">
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded">
-                                                                        {item.category}
-                                                                    </span>
+                                                                    <input 
+                                                                        type="text"
+                                                                        value={item.category || ''}
+                                                                        placeholder="Categoría..."
+                                                                        onChange={(e) => {
+                                                                            const newVal = e.target.value;
+                                                                            const updatedMenu = matchingPlanningService.menu.map(m => m.id === item.id ? { ...m, category: newVal } : m);
+                                                                            setServices(prev => prev.map(s => s.id === matchingPlanningService.id ? { ...s, menu: updatedMenu } : s));
+                                                                        }}
+                                                                        className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded border-none focus:ring-0 w-24 h-5"
+                                                                    />
                                                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
                                                                         {item.work_area}
                                                                     </span>
@@ -596,9 +606,16 @@ export const DiningServiceView: React.FC = () => {
                                                                 </div>
                                                             </div>
 
-                                                            <h4 className="text-xl font-black text-gray-800 dark:text-white leading-tight uppercase tracking-tight">
-                                                                {item.name}
-                                                            </h4>
+                                                            <input 
+                                                                type="text"
+                                                                value={item.name}
+                                                                onChange={(e) => {
+                                                                    const newVal = e.target.value;
+                                                                    const updatedMenu = matchingPlanningService.menu.map(m => m.id === item.id ? { ...m, name: newVal } : m);
+                                                                    setServices(prev => prev.map(s => s.id === matchingPlanningService.id ? { ...s, menu: updatedMenu } : s));
+                                                                }}
+                                                                className="text-xl font-black text-gray-800 dark:text-white leading-tight uppercase tracking-tight bg-transparent border-none focus:ring-0 p-0 w-full"
+                                                            />
                                                             
                                                             <div className="flex flex-wrap gap-1.5 mt-3">
                                                                 {item.allergens.map(a => (
@@ -610,47 +627,61 @@ export const DiningServiceView: React.FC = () => {
                                                             </div>
 
                                                             {/* Technical Details for FOH */}
-                                                            {recipe ? (
-                                                                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-gray-50 dark:border-gray-700/50">
-                                                                    <div className="space-y-4">
-                                                                        <div>
-                                                                            <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center">
-                                                                                <Info className="w-3.5 h-3.5 mr-1.5" />
-                                                                                Explicación para el Camarero
-                                                                            </h5>
-                                                                            <p className="text-sm text-gray-600 dark:text-gray-400 italic bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100/50">
-                                                                                {recipe.service_explanation || recipe.description || "Sin explicación específica registrada."}
-                                                                            </p>
+                                                            {firstRecipe ? (
+                                                                <div className="mt-6 pt-6 border-t border-gray-50 dark:border-gray-700/50">
+                                                                    {itemRecipes.length > 1 && (
+                                                                         <div className="mb-4">
+                                                                            <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Composiciones (Recetas)</h5>
+                                                                            <div className="flex flex-wrap gap-2">
+                                                                                {itemRecipes.map(r => (
+                                                                                    <span key={r.id} className="text-[10px] bg-gray-50 dark:bg-gray-700 px-2 py-1 rounded-lg border border-gray-100 dark:border-gray-600 font-bold">
+                                                                                        {r.name}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                         </div>
+                                                                    )}
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                        <div className="space-y-4">
+                                                                            <div>
+                                                                                <h5 className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center">
+                                                                                    <Info className="w-3.5 h-3.5 mr-1.5" />
+                                                                                    Explicación para el Camarero
+                                                                                </h5>
+                                                                                <p className="text-sm text-gray-600 dark:text-gray-400 italic bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-100/50">
+                                                                                    {firstRecipe.service_explanation || firstRecipe.description || "Sin explicación específica registrada."}
+                                                                                </p>
+                                                                            </div>
+
+                                                                            <div className="grid grid-cols-2 gap-4">
+                                                                                <div>
+                                                                                    <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Temperatura</h5>
+                                                                                    <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                                                                                        {firstRecipe.temperature || "No definida"}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Protoclo</h5>
+                                                                                    <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                                                                                        {firstRecipe.service_type || "Estándar"}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
 
-                                                                        <div className="grid grid-cols-2 gap-4">
+                                                                        <div className="space-y-4">
                                                                             <div>
-                                                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Temperatura</h5>
-                                                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                                                                                    {recipe.temperature || "No definida"}
+                                                                                <h5 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">Marcaje / Cubertería</h5>
+                                                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200 p-3 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl border border-indigo-100/50">
+                                                                                    {firstRecipe.cutlery_required || firstRecipe.recommended_marking || "Cubertería estándar de mesa."}
                                                                                 </p>
                                                                             </div>
                                                                             <div>
-                                                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Protoclo</h5>
-                                                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                                                                                    {recipe.service_type || "Estándar"}
+                                                                                <h5 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Instrucciones de Emplatado</h5>
+                                                                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                                                    {firstRecipe.presentation || "Servicio estándar según protocolo."}
                                                                                 </p>
                                                                             </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="space-y-4">
-                                                                        <div>
-                                                                            <h5 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">Marcaje / Cubertería</h5>
-                                                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200 p-3 bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl border border-indigo-100/50">
-                                                                                {recipe.cutlery_required || recipe.recommended_marking || "Cubertería estándar de mesa."}
-                                                                            </p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <h5 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Instrucciones de Emplatado</h5>
-                                                                            <p className="text-xs text-gray-600 dark:text-gray-400">
-                                                                                {recipe.presentation || "Servicio estándar según protocolo."}
-                                                                            </p>
                                                                         </div>
                                                                     </div>
                                                                 </div>
