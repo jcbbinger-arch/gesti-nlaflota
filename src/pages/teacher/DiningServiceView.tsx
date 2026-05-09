@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
@@ -6,7 +7,7 @@ import { Modal } from '../../components/Modal';
 import { 
     Users, Calendar, Download, AlertTriangle, ArrowRight, 
     CheckCircle, Clock, ChefHat, Edit2, Save, X, Plus, Trash2, 
-    ChevronUp, ChevronDown, Info
+    ChevronUp, ChevronDown, Info, ChevronRight
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { motion, AnimatePresence } from 'motion/react';
@@ -616,9 +617,28 @@ export const DiningServiceView: React.FC = () => {
                                             );
                                         })
                                     ) : (
-                                        <div className="p-12 text-center text-gray-400 italic bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200">
-                                            <ChefHat className="w-12 h-12 mx-auto opacity-20 mb-3" />
-                                            No se ha configurado el menú para este servicio todavía.
+                                        <div className="p-12 text-center bg-white dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center">
+                                            <div className="w-16 h-16 bg-gray-50 dark:bg-gray-700/50 rounded-full flex items-center justify-center mb-4">
+                                                <ChefHat className="w-8 h-8 text-gray-300" />
+                                            </div>
+                                            <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">Menú no configurado</h4>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-6 italic">
+                                                No hay platos asignados a este servicio. Puedes añadirlos manualmente uno a uno o usar el planificador central.
+                                            </p>
+                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                <button 
+                                                    onClick={handleAddMenuItem}
+                                                    className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-colors"
+                                                >
+                                                    Añadir Pase Manual
+                                                </button>
+                                                <Link 
+                                                    to="/teacher/services" 
+                                                    className="px-6 py-2.5 bg-primary-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary-700 transition-all shadow-lg shadow-primary-100 flex items-center justify-center"
+                                                >
+                                                    Ir al Planificador <ChevronRight className="w-3.5 h-3.5 ml-2" />
+                                                </Link>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
