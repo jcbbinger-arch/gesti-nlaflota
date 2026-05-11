@@ -493,43 +493,45 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                 </button>
                             ))}
                         </div>
-                        <div className="mb-6 pb-6 border-b border-gray-100 dark:border-gray-700/50">
-                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Configuración General del Servicio</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div className="lg:col-span-2">
-                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Tipo de Servicio Global del Comedor</label>
-                                    <input 
-                                        type="text"
-                                        value={service.global_setup?.service_type || ''}
-                                        placeholder="Ej: Servicio a la Americana"
-                                        onChange={(e) => {
-                                            const updatedService = { 
-                                                ...service, 
-                                                global_setup: { ...(service.global_setup || {}), service_type: e.target.value } 
-                                            };
-                                            setServices(services.map(s => s.id === service.id ? updatedService : s));
-                                        }}
-                                        className="w-full p-2 text-sm font-bold border rounded-lg dark:bg-gray-700"
-                                    />
+                            {activeTab === 'Global' && (currentUser?.profiles.includes(Profile.TEACHER) || currentUser?.role === 'admin') && (
+                                <div className="mb-6 pb-6 border-b border-gray-100 dark:border-gray-700/50">
+                                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Configuración General del Servicio</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div className="lg:col-span-2">
+                                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Tipo de Servicio Global del Comedor</label>
+                                            <input 
+                                                type="text"
+                                                value={service.global_setup?.service_type || ''}
+                                                placeholder="Ej: Servicio a la Americana"
+                                                onChange={(e) => {
+                                                    const updatedService = { 
+                                                        ...service, 
+                                                        global_setup: { ...(service.global_setup || {}), service_type: e.target.value } 
+                                                    };
+                                                    setServices(services.map(s => s.id === service.id ? updatedService : s));
+                                                }}
+                                                className="w-full p-2 text-sm font-bold border rounded-lg dark:bg-gray-700"
+                                            />
+                                        </div>
+                                        <div className="lg:col-span-2">
+                                            <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Observaciones Generales para todo el equipo</label>
+                                            <input 
+                                                type="text"
+                                                value={service.global_setup?.general_observations || ''}
+                                                placeholder="Notas importantes para todo el equipo..."
+                                                onChange={(e) => {
+                                                    const updatedService = { 
+                                                        ...service, 
+                                                        global_setup: { ...(service.global_setup || {}), general_observations: e.target.value } 
+                                                    };
+                                                    setServices(services.map(s => s.id === service.id ? updatedService : s));
+                                                }}
+                                                className="w-full p-2 text-sm border rounded-lg dark:bg-gray-700"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="lg:col-span-2">
-                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Observaciones Generales para todo el equipo</label>
-                                    <input 
-                                        type="text"
-                                        value={service.global_setup?.general_observations || ''}
-                                        placeholder="Notas importantes para todo el equipo..."
-                                        onChange={(e) => {
-                                            const updatedService = { 
-                                                ...service, 
-                                                global_setup: { ...(service.global_setup || {}), general_observations: e.target.value } 
-                                            };
-                                            setServices(services.map(s => s.id === service.id ? updatedService : s));
-                                        }}
-                                        className="w-full p-2 text-sm border rounded-lg dark:bg-gray-700"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                            )}
 
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex space-x-2">
