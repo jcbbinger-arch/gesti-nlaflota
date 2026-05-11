@@ -24,7 +24,7 @@ import { ALLERGENS_LIST, ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/aller
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', 'Cafetería'];
+const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', 'Cafetería', 'Pan del servicio', 'Mignardises'];
 
 // --- DETAIL VIEW COMPONENT ---
 const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({ service, onBack }) => {
@@ -38,6 +38,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     const [addStep, setAddStep] = useState<null | 'choice' | 'database' | 'manual'>(null);
     const [targetMenuItemId, setTargetMenuItemId] = useState<string | null>(null);
     const [editingMenuItemId, setEditingMenuItemId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<ServiceRole | 'Global'>('Global');
     const navigate = useNavigate();
 
     const usersMap = useMemo(() => new Map<string, User>(users.map((u: any) => [u.id, u])), [users]);
@@ -45,7 +46,38 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     const productsMap = useMemo(() => new Map(products.map((p: any) => [p.id, p])), [products]);
 
     const group = useMemo(() => service_groups.find((g: any) => g.id === service.service_group_id), [service_groups, service.service_group_id]);
-    const teachersInGroup = useMemo(() => group?.teacher_ids.map(id => usersMap.get(id)).filter((u): u is User => !!u) || [], [group, usersMap]);
+    
+    // Identify current user's role(s) in this service
+    const myRoles = useMemo(() => {
+        if (!currentUser) return [];
+        return Object.entries(service.roles)
+            .filter(([_, uid]) => uid === currentUser.id)
+            .map(([role]) => role as ServiceRole);
+    }, [service.roles, currentUser]);
+
+    const isFOH = myRoles.includes('Servicios (Sala)') || currentUser?.role === 'admin';
+
+    const handleRoleSubmission = (role: ServiceRole) => {
+        const completedRoles = service.completed_roles || [];
+        if (completedRoles.includes(role)) return;
+        
+        const updatedService = { ...service, completed_roles: [...completedRoles, role] };
+        setServices(services.map(s => s.id === service.id ? updatedService : s));
+    };
+
+    const toggleRoleInactivity = (role: ServiceRole) => {
+        if (!isFOH) return;
+        const inactiveRoles = service.inactive_roles || [];
+        const isCurrentlyInactive = inactiveRoles.includes(role);
+        
+        const updatedService = { 
+            ...service, 
+            inactive_roles: isCurrentlyInactive 
+                ? inactiveRoles.filter(r => r !== role) 
+                : [...inactiveRoles, role] 
+        };
+        setServices(services.map(s => s.id === service.id ? updatedService : s));
+    };
 
     const serviceCosts = useMemo(() => {
         const event = events.find(e => {
@@ -104,6 +136,8 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         const recipe = recipesMap.get(recipe_id);
         if (!recipe) return;
 
+        const roleForNewItem = activeTab !== 'Global' ? activeTab : (myRoles[0] || 'Cocina');
+
         if (targetMenuItemId) {
             // Adding component to existing dish
             const updatedMenu = service.menu.map(item => {
@@ -131,6 +165,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
             category: recipe.category || 'Otros',
             order_number: service.menu.length + 1,
             work_area: currentUser?.work_area || 'Cocina',
+            role: roleForNewItem,
             allergens: recipe.ingredients.flatMap((ing: any) => productsMap.get(ing.product_id)?.allergens || []),
             description: recipe.description
         };
@@ -140,7 +175,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         setAddStep(null);
     };
 
-    const handleAddManualRecipe = (newRecipe: Recipe) => {
+    const handleAddManualRecipe = (newRecipe: Recipe, assignedRole: ServiceRole) => {
         setRecipes([...recipes, newRecipe]);
         
         const newItem: ServiceMenuItem = {
@@ -151,6 +186,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
             category: newRecipe.category || 'Otros',
             order_number: service.menu.length + 1,
             work_area: currentUser?.work_area || 'Cocina',
+            role: assignedRole,
             allergens: newRecipe.selected_allergens || [],
             description: newRecipe.description,
             is_custom: true
@@ -172,12 +208,15 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         const startY = addHeaderToPdf(doc, companyInfo, 'INFORME DE ALÉRGENOS', `Servicio: ${service.name}\nFecha: ${date}`);
 
         const body = service.menu.flatMap(item => {
-            const recipe = recipesMap.get(item.recipe_id || '');
-            if (!recipe && !item.name) return [];
+            const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
+            const recipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
             
+            const itemAllergens = new Set(item.allergens || []);
+            recipes.forEach(r => (r.selected_allergens || []).forEach(a => itemAllergens.add(a)));
+
             return {
-                name: item.name || recipe?.name || 'Plato',
-                allergens: (item.allergens || []).join(', ') || 'Ninguno'
+                name: item.name || recipes[0]?.name || 'Plato',
+                allergens: Array.from(itemAllergens).join(', ') || 'Ninguno'
             };
         }).map(r => [r.name, r.allergens]);
 
@@ -191,15 +230,20 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         const startY = addHeaderToPdf(doc, companyInfo, 'ORDEN DE SERVICIO', `Servicio: ${service.name}\nFecha: ${date}`);
 
         const body = service.menu.map(item => {
-            const r = recipesMap.get(item.recipe_id || '');
+            const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
+            const recipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
+            const r = recipes[0];
             
+            const allAllergens = new Set(item.allergens || []);
+            recipes.forEach(rec => (rec.selected_allergens || []).forEach(a => allAllergens.add(a)));
+
             return [
                 item.name || r?.name || 'Receta no encontrada',
-                (item.allergens || []).join(', ') || '-',
-                r?.presentation || '-',
-                `${r?.temperature || '-'} / ${r?.service_time || '-'}`,
-                r?.recommended_marking || '-',
-                r?.service_type || '-',
+                Array.from(allAllergens).join(', ') || '-',
+                item.presentation || r?.presentation || '-',
+                `${item.temperature || r?.temperature || '-'} / ${item.service_time || r?.service_time || '-'}`,
+                item.cutlery_required || r?.recommended_marking || '-',
+                item.service_type || r?.service_type || '-',
                 item.description || r?.client_description || '-'
             ];
         });
@@ -346,9 +390,12 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
 
         const aggregatedIngredients = new Map<string, number>();
         service.menu.forEach(item => {
-            const recipe = recipesMap.get(item.recipe_id);
-            recipe?.ingredients.forEach((ing: any) => {
-                aggregatedIngredients.set(ing.product_id, (aggregatedIngredients.get(ing.product_id) || 0) + ing.quantity);
+            const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
+            recipeIds.forEach(rid => {
+                const recipe = recipesMap.get(rid);
+                recipe?.ingredients.forEach((ing: any) => {
+                    aggregatedIngredients.set(ing.product_id, (aggregatedIngredients.get(ing.product_id) || 0) + ing.quantity);
+                });
             });
         });
 
@@ -368,12 +415,84 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         navigate(`/teacher/orders-management/portal/edit/${newOrder.id}`);
     };
 
+    const isLocked = useMemo(() => {
+        const activeRoles = SERVICE_ROLES.filter(r => !(service.inactive_roles || []).includes(r));
+        const completedRoles = service.completed_roles || [];
+        return activeRoles.every(r => completedRoles.includes(r));
+    }, [service.inactive_roles, service.completed_roles]);
+
     return (
         <div>
             <button onClick={onBack} className="text-sm text-primary-600 hover:underline mb-4">&larr; Volver a mis servicios</button>
+            
+            {/* Roles Status Bar */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-6">
+                {SERVICE_ROLES.map(role => {
+                    const isInactive = (service.inactive_roles || []).includes(role);
+                    const isCompleted = (service.completed_roles || []).includes(role);
+                    const teacherId = service.roles[role];
+                    const teacher = teacherId ? usersMap.get(teacherId) : null;
+                    const isMyRole = myRoles.includes(role);
+
+                    return (
+                        <div 
+                            key={role}
+                            className={`p-2 rounded-xl border-2 transition-all ${
+                                isInactive 
+                                    ? 'bg-gray-50 border-gray-100 opacity-50' 
+                                    : isCompleted 
+                                        ? 'bg-green-50 border-green-200' 
+                                        : 'bg-white border-blue-100'
+                            }`}
+                        >
+                            <div className="flex justify-between items-start mb-1">
+                                <span className="text-[9px] font-black uppercase tracking-tighter text-gray-500">{role}</span>
+                                {isFOH && (
+                                    <button 
+                                        onClick={() => toggleRoleInactivity(role)}
+                                        className={`text-[8px] px-1 rounded font-bold ${isInactive ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'}`}
+                                    >
+                                        {isInactive ? 'Activar' : 'Omitir'}
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex items-center">
+                                <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isInactive ? 'bg-gray-300' : isCompleted ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-amber-400 animate-pulse'}`} />
+                                <span className="text-[10px] font-bold text-gray-700 truncate">{teacher?.name || 'S/A'}</span>
+                            </div>
+                            {isMyRole && !isInactive && !isCompleted && (
+                                <button 
+                                    onClick={() => handleRoleSubmission(role)}
+                                    className="w-full mt-2 py-1 bg-green-600 text-white text-[9px] font-black uppercase rounded shadow-sm hover:bg-green-700"
+                                >
+                                    Enviar Parte
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
             <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-6">
                     <Card title="Menú del Servicio">
+                        <div className="flex border-b mb-6 overflow-x-auto no-scrollbar">
+                            <button 
+                                onClick={() => setActiveTab('Global')}
+                                className={`px-4 py-2 text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'Global' ? 'border-b-2 border-primary-600 text-primary-600 bg-primary-50/50' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                VISTA GLOBAL
+                            </button>
+                            {SERVICE_ROLES.filter(r => !(service.inactive_roles || []).includes(r)).map(role => (
+                                <button 
+                                    key={role}
+                                    onClick={() => setActiveTab(role)}
+                                    className={`px-4 py-2 text-xs font-bold transition-all whitespace-nowrap ${activeTab === role ? 'border-b-2 border-amber-600 text-amber-600 bg-amber-50/50' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    {role.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
                         <div className="mb-6 pb-6 border-b border-gray-100 dark:border-gray-700/50">
                             <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Configuración General del Servicio</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -430,25 +549,34 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
 
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex space-x-2">
-                                <button onClick={() => setAddStep('choice')} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center">
+                                <button 
+                                    onClick={() => setAddStep('choice')} 
+                                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center"
+                                >
                                     <PlusIcon className="w-4 h-4 mr-2" />
-                                    Añadir Plato
+                                    Añadir Pase
                                 </button>
-                                {service.menu.length > 0 && (
+                                {service.menu.length > 0 && isFOH && (
                                     <button 
                                         onClick={handleDistribute}
-                                        className={`${service.status === 'Confirmado' ? 'bg-gray-100 text-gray-600 border' : 'bg-green-600 text-white'} px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center`}
+                                        disabled={!isLocked}
+                                        className={`${!isLocked ? 'bg-gray-300 cursor-not-allowed' : service.status === 'Confirmado' ? 'bg-gray-100 text-gray-600 border' : 'bg-green-600 text-white'} px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center`}
                                     >
-                                        {service.status === 'Confirmado' ? 'Re-Distribuir a Comedor' : 'Distribuir a Comedor'}
+                                        {!isLocked ? 'Puzzle Incompleto' : service.status === 'Confirmado' ? 'Re-Distribuir a Comedor' : 'Distribuir a Comedor'}
                                     </button>
                                 )}
                             </div>
                         </div>
                         
                         <div className="space-y-2">
-                            {service.menu.sort((a, b) => (a.order_number || 0) - (b.order_number || 0)).map((item, idx) => {
+                            {service.menu
+                                .filter(item => activeTab === 'Global' || item.role === activeTab)
+                                .sort((a, b) => (a.order_number || 0) - (b.order_number || 0)).map((item, idx) => {
                                 const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
                                 const itemsRecipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
+                                
+                                const canEdit = activeTab !== 'Global' || isFOH;
+
                                              return (
                                     <div key={item.id} className="space-y-2 border-b dark:border-gray-700 pb-4 last:border-0 last:pb-0">
                                         <div className="flex items-center p-3 bg-white dark:bg-gray-800 border rounded-xl shadow-sm group">
@@ -456,13 +584,14 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                                 <span className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Orden</span>
                                                 <input 
                                                     type="number"
+                                                    disabled={!canEdit}
                                                     value={item.order_number || 0}
                                                     onChange={(e) => {
                                                         const newVal = parseInt(e.target.value) || 0;
                                                         const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, order_number: newVal } : m);
                                                         setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
                                                     }}
-                                                    className="w-12 text-center font-black text-primary-600 bg-transparent border-none focus:ring-0 p-0"
+                                                    className="w-12 text-center font-black text-primary-600 bg-transparent border-none focus:ring-0 p-0 disabled:opacity-50"
                                                 />
                                             </div>
                                             
@@ -471,6 +600,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                                     <div className="flex space-x-1">
                                                         <input 
                                                             type="text"
+                                                            disabled={!canEdit}
                                                             value={item.category || ''}
                                                             placeholder="Categoría..."
                                                             onChange={(e) => {
@@ -478,22 +608,23 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                                                 const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, category: newVal } : m);
                                                                 setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
                                                             }}
-                                                            className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded border-none focus:ring-0 w-24 h-5"
+                                                            className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded border-none focus:ring-0 w-24 h-5 disabled:opacity-50"
                                                         />
                                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                                            {item.work_area}
+                                                            {item.role || item.work_area}
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <input 
                                                     type="text"
+                                                    disabled={!canEdit}
                                                     value={item.name}
                                                     onChange={(e) => {
                                                         const newVal = e.target.value;
                                                         const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, name: newVal } : m);
                                                         setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
                                                     }}
-                                                    className="font-bold text-gray-800 dark:text-white bg-transparent border-none focus:ring-0 p-0 w-full h-auto"
+                                                    className="font-bold text-gray-800 dark:text-white bg-transparent border-none focus:ring-0 p-0 w-full h-auto disabled:opacity-50"
                                                 />
                                                 <div className="flex items-center gap-2 mt-1">
                                                     {itemsRecipes.length > 0 && (
@@ -501,24 +632,28 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                                             {itemsRecipes.map(r => (
                                                                 <span key={r.id} className="text-[9px] bg-gray-100 dark:bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-600 flex items-center group/tag">
                                                                     {r.name}
-                                                                    <button 
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, recipe_ids: (m.recipe_ids || []).filter(rid => rid !== r.id) } : m);
-                                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                                        }}
-                                                                        className="ml-1 text-gray-400 hover:text-red-500 opacity-0 group-hover/tag:opacity-100"
-                                                                    >
-                                                                        <X className="w-2.5 h-2.5" />
-                                                                    </button>
+                                                                    {canEdit && (
+                                                                        <button 
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, recipe_ids: (m.recipe_ids || []).filter(rid => rid !== r.id) } : m);
+                                                                                setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
+                                                                            }}
+                                                                            className="ml-1 text-gray-400 hover:text-red-500 opacity-0 group-hover/tag:opacity-100"
+                                                                        >
+                                                                            <X className="w-2.5 h-2.5" />
+                                                                        </button>
+                                                                    )}
                                                                 </span>
                                                             ))}
-                                                            <button 
-                                                                onClick={() => { setTargetMenuItemId(item.id); setAddStep('database'); }}
-                                                                className="text-[9px] bg-primary-50 dark:bg-primary-900/30 text-primary-600 px-1.5 py-0.5 rounded-full border border-primary-200 dark:border-primary-800 hover:bg-primary-100 transition-colors"
-                                                            >
-                                                                + Añadir Componente
-                                                            </button>
+                                                            {canEdit && (
+                                                                <button 
+                                                                    onClick={() => { setTargetMenuItemId(item.id); setAddStep('database'); }}
+                                                                    className="text-[9px] bg-primary-50 dark:bg-primary-900/30 text-primary-600 px-1.5 py-0.5 rounded-full border border-primary-200 dark:border-primary-800 hover:bg-primary-100 transition-colors"
+                                                                >
+                                                                    + Añadir Componente
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                     <button 
@@ -531,13 +666,15 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                                 </div>
                                             </div>
 
-                                            <button 
-                                                onClick={() => handleRemoveRecipe(item.id)}
-                                                className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                title="Eliminar del menú"
-                                            >
-                                                <TrashIcon className="w-5 h-5" />
-                                            </button>
+                                            {canEdit && (
+                                                <button 
+                                                    onClick={() => handleRemoveRecipe(item.id)}
+                                                    className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    title="Eliminar del menú"
+                                                >
+                                                    <TrashIcon className="w-5 h-5" />
+                                                </button>
+                                            )}
                                         </div>
 
                                         {editingMenuItemId === item.id && (
@@ -617,16 +754,34 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                         )}
                     </Card>
                     <Card title="Documentación de Salida">
-                        <div className="flex flex-wrap gap-3">
-                            <button onClick={handleExportStudentSheets} className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md flex items-center transition-colors shadow-sm">
+                        <div className="flex flex-wrap gap-2">
+                            <button 
+                                onClick={handleExportStudentSheets} 
+                                disabled={!isLocked}
+                                className={`py-2.5 px-6 rounded-xl flex items-center transition-all shadow-md font-bold text-sm ${!isLocked ? 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                            >
                                 <PrinterIcon className="w-5 h-5 mr-2"/> Fichas para Alumnos (PDF)
                             </button>
-                            <button onClick={generateAllergenDoc} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-md flex items-center transition-colors border">
+                            <button 
+                                onClick={generateAllergenDoc} 
+                                disabled={!isLocked}
+                                className={`py-2.5 px-6 rounded-xl flex items-center transition-all font-bold text-sm border ${!isLocked ? 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-50' : 'bg-white hover:bg-gray-50 text-gray-700'}`}
+                            >
                                 <PrinterIcon className="w-5 h-5 mr-2"/> Informe de Alérgenos
                             </button>
-                            <button onClick={generateServiceOrderDoc} className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-md flex items-center transition-colors border">
+                            <button 
+                                onClick={generateServiceOrderDoc} 
+                                disabled={!isLocked}
+                                className={`py-2.5 px-6 rounded-xl flex items-center transition-all font-bold text-sm border ${!isLocked ? 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-50' : 'bg-white hover:bg-gray-50 text-gray-700'}`}
+                            >
                                 <PrinterIcon className="w-5 h-5 mr-2"/> Orden de Servicio
                             </button>
+                            {!isLocked && (
+                                <div className="flex items-center text-[11px] text-amber-600 font-black bg-amber-50 px-4 py-2.5 rounded-xl border border-amber-200 animate-pulse">
+                                    <AlertTriangle className="w-4 h-4 mr-2 shrink-0" />
+                                    PUZZLE INCOMPLETO: Faltan áreas por confirmar su servicio.
+                                </div>
+                            )}
                         </div>
                     </Card>
                     <Card title="Generación de Pedido">
@@ -708,13 +863,14 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                     onSave={handleAddManualRecipe} 
                     onClose={() => setAddStep('choice')} 
                     authorId={currentUser?.id || ''}
+                    initialRole={activeTab !== 'Global' ? activeTab : (myRoles[0] || 'Cocina')}
                 />
             )}
         </div>
     );
 };
 
-const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: () => void, authorId: string }> = ({ onSave, onClose, authorId }) => {
+const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe, role: ServiceRole) => void, onClose: () => void, authorId: string, initialRole?: ServiceRole }> = ({ onSave, onClose, authorId, initialRole }) => {
     const [name, setName] = useState('');
     const [presentation, setPresentation] = useState('');
     const [temperature, setTemperature] = useState<'Caliente' | 'Frio' | 'Ambiente'>('Caliente');
@@ -725,6 +881,7 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
     const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
     const [category, setCategory] = useState('Entrante');
     const [isCustomCategory, setIsCustomCategory] = useState(false);
+    const [assignedRole, setAssignedRole] = useState<ServiceRole>(initialRole || 'Cocina');
 
     const toggleAllergen = (allergen: string) => {
         setSelectedAllergens(prev => 
@@ -760,26 +917,32 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
             selected_allergens: selectedAllergens
         };
 
-        onSave(newRecipe);
+        onSave(newRecipe, assignedRole);
     };
 
     return (
-        <Modal isOpen={true} onClose={onClose} title="Crear Ficha Manual">
+        <Modal isOpen={true} onClose={onClose} title="Editar Plato del Menú">
             <form onSubmit={handleSubmit} className="space-y-4 p-1">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">Nombre del Plato *</label>
-                        <input 
-                            type="text" 
-                            required 
-                            value={name} 
-                            onChange={e => setName(e.target.value)} 
-                            className="w-full p-2 border rounded dark:bg-gray-700" 
-                            placeholder="Ej: Lubina a la sal"
-                        />
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Área de Producción</label>
+                        <select 
+                            value={assignedRole}
+                            onChange={e => setAssignedRole(e.target.value as ServiceRole)}
+                            className="w-full p-2 border rounded-lg dark:bg-gray-700 font-bold text-sm"
+                        >
+                            {SERVICE_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
                     </div>
+                     <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Orden en el Menú</label>
+                        <input type="number" defaultValue={1} className="w-full p-2 border rounded-lg dark:bg-gray-700 font-bold text-sm" />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">Categoría</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Categoría</label>
                         <div className="space-y-1">
                             <select 
                                 value={isCustomCategory ? 'Otros' : category} 
@@ -791,7 +954,7 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
                                         setCategory(e.target.value);
                                     }
                                 }} 
-                                className="w-full p-2 border rounded dark:bg-gray-700 font-bold"
+                                className="w-full p-2 border rounded-lg dark:bg-gray-700 font-bold text-sm"
                             >
                                 <option value="Aperitivo">Aperitivo</option>
                                 <option value="Entrante">Entrante</option>
@@ -807,21 +970,31 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
                                     value={category}
                                     onChange={e => setCategory(e.target.value)}
                                     placeholder="Nombre de la categoría..."
-                                    className="w-full p-2 border rounded dark:bg-gray-700 text-xs font-bold"
+                                    className="w-full p-2 border rounded-lg dark:bg-gray-700 text-xs font-bold"
                                     autoFocus
                                 />
                             )}
                         </div>
                     </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Nombre del Plato / Pase</label>
+                        <input 
+                            type="text" 
+                            required 
+                            value={name} 
+                            onChange={e => setName(e.target.value)} 
+                            className="w-full p-2 border rounded-lg dark:bg-gray-700" 
+                            placeholder="Introduce el nombre..."
+                        />
+                    </div>
                 </div>
-                
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">Temperatura</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Temperatura</label>
                         <select 
                             value={temperature} 
                             onChange={e => setTemperature(e.target.value as any)} 
-                            className="w-full p-2 border rounded dark:bg-gray-700"
+                            className="w-full p-2 border rounded-lg dark:bg-gray-700 text-sm font-bold"
                         >
                             <option value="Caliente">Caliente</option>
                             <option value="Frio">Frío</option>
@@ -829,95 +1002,104 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe) => void, onClose: (
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">Temp / Pase</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Temp / Pase</label>
                         <input 
                             type="text" 
                             value={serviceTime} 
                             onChange={e => setServiceTime(e.target.value)} 
-                            className="w-full p-2 border rounded dark:bg-gray-700" 
+                            className="w-full p-2 border rounded-lg dark:bg-gray-700 text-sm font-bold" 
                             placeholder="Ej: 65°C / 13:30"
                         />
                     </div>
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium mb-1">Presentación / Vajilla</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Presentación / Vajilla</label>
                     <input 
                         type="text" 
                         value={presentation} 
                         onChange={e => setPresentation(e.target.value)} 
-                        className="w-full p-2 border rounded dark:bg-gray-700" 
+                        className="w-full p-2 border rounded-lg dark:bg-gray-700 text-sm font-bold" 
                         placeholder="Ej: Plato trinchero blanco"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium mb-1">Marcaje recomendado</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Marcaje recomendado</label>
                     <input 
                         type="text" 
                         value={recommendedMarking} 
                         onChange={e => setRecommendedMarking(e.target.value)} 
-                        className="w-full p-2 border rounded dark:bg-gray-700" 
+                        className="w-full p-2 border rounded-lg dark:bg-gray-700 text-sm font-bold" 
                         placeholder="Ej: Cuchara sopera"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium mb-1">Tipo de Servicio</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Tipo de Servicio</label>
                     <input 
                         type="text" 
                         value={serviceType} 
                         onChange={e => setServiceType(e.target.value)} 
-                        className="w-full p-2 border rounded dark:bg-gray-700" 
+                        className="w-full p-2 border rounded-lg dark:bg-gray-700 text-sm font-bold" 
                         placeholder="Ej: Emplatado"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium mb-1">Descripción para el Cliente (Carta)</label>
-                    <textarea 
-                        value={clientDescription} 
-                        onChange={e => setClientDescription(e.target.value)} 
-                        className="w-full p-2 border rounded dark:bg-gray-700" 
-                        rows={3}
-                        placeholder="Descripción que aparecerá en la carta..."
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-2">Alérgenos</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                        {ALLERGENS_LIST.map(allergen => {
-                            const isSelected = selectedAllergens.includes(allergen);
-                            const Icon = ALLERGEN_ICONS[allergen];
-                            const color = ALLERGEN_COLORS[allergen];
-                            return (
-                                <button
-                                    key={allergen}
-                                    type="button"
-                                    onClick={() => toggleAllergen(allergen)}
-                                    className={`flex items-center space-x-2 p-2 rounded-lg border transition-all ${
-                                        isSelected 
-                                            ? 'bg-white border-primary-500 shadow-sm' 
-                                            : 'bg-gray-50 border-gray-200 opacity-60 grayscale'
-                                    }`}
-                                >
-                                    <div 
-                                        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                                        style={{ backgroundColor: isSelected ? color : '#9ca3af' }}
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Alérgenos (Separados por coma)</label>
+                    <div className="space-y-2">
+                        <input 
+                            type="text" 
+                            value={selectedAllergens.join(', ')} 
+                            onChange={e => setSelectedAllergens(e.target.value.split(',').map(s => s.trim()).filter(s => !!s))}
+                            className="w-full p-2 border rounded-lg dark:bg-gray-700 text-sm" 
+                            placeholder="Gluten, Lácteos..."
+                        />
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                            {ALLERGENS_LIST.map(allergen => {
+                                const isSelected = selectedAllergens.includes(allergen);
+                                const Icon = ALLERGEN_ICONS[allergen];
+                                const color = ALLERGEN_COLORS[allergen];
+                                return (
+                                    <button
+                                        key={allergen}
+                                        type="button"
+                                        onClick={() => toggleAllergen(allergen)}
+                                        className={`flex items-center space-x-2 p-1.5 rounded-lg border transition-all ${
+                                            isSelected 
+                                                ? 'bg-white border-primary-500 shadow-sm' 
+                                                : 'bg-gray-50 border-gray-100 opacity-40 grayscale-[0.5]'
+                                        }`}
                                     >
-                                        <Icon className="w-4 h-4 text-white" />
-                                    </div>
-                                    <span className="text-[10px] font-bold truncate">{allergen}</span>
-                                </button>
-                            );
-                        })}
+                                        <div 
+                                            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                                            style={{ backgroundColor: isSelected ? color : '#e5e7eb' }}
+                                        >
+                                            <Icon className={`w-3 h-3 ${isSelected ? 'text-white' : 'text-gray-400'}`} />
+                                        </div>
+                                        <span className="text-[9px] font-black uppercase tracking-tighter truncate">{allergen}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex justify-end space-x-2 pt-4">
-                    <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancelar</button>
-                    <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700">Guardar e Insertar</button>
+                <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Comentarios / Explicación para Sala</label>
+                    <textarea 
+                        value={clientDescription} 
+                        onChange={e => setClientDescription(e.target.value)} 
+                        className="w-full p-2 border rounded-lg dark:bg-gray-700" 
+                        rows={3}
+                        placeholder="Explica el origen, ingredientes clave o forma de servicio..."
+                    />
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4 border-t">
+                    <button type="button" onClick={onClose} className="px-6 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+                    <button type="submit" className="px-6 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-md transform active:scale-95 transition-all text-sm uppercase tracking-widest">Guardar Plato</button>
                 </div>
             </form>
         </Modal>
@@ -955,21 +1137,21 @@ export const ServiceViewer: React.FC = () => {
     }
 
     return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Planificador de Servicios</h1>
+        <div className="p-1 sm:p-6">
+            <h1 className="text-3xl font-black text-gray-800 dark:text-gray-200 mb-6 uppercase tracking-tighter">Planificador de Servicios</h1>
             <Card title="Mis Próximos Servicios">
                 <div className="space-y-3">
                     {myServices.map(service => (
-                        <div key={service.id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg flex justify-between items-center">
+                        <div key={service.id} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-2xl flex justify-between items-center border border-gray-100 dark:border-gray-600">
                             <div>
-                                <h3 className="font-bold">{service.name}</h3>
-                                <p className="text-sm">{new Date(service.date).toLocaleDateString()}</p>
+                                <h3 className="font-black text-lg text-gray-800 dark:text-white uppercase tracking-tight">{service.name}</h3>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{new Date(service.date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                             </div>
-                            <button onClick={() => setSelectedServiceId(service.id)} className="bg-primary-600 text-white py-2 px-4 rounded-md">Gestionar Servicio</button>
+                            <button onClick={() => setSelectedServiceId(service.id)} className="bg-primary-600 hover:bg-primary-700 text-white py-2.5 px-6 rounded-xl font-bold shadow-md transition-all active:scale-95 text-sm">Gestionar Servicio</button>
                         </div>
                     ))}
                      {myServices.length === 0 && (
-                        <p className="text-gray-500 text-center p-4">No estás asignado a ningún servicio próximo.</p>
+                        <p className="text-gray-500 text-center p-8 font-medium italic">No estás asignado a ningún servicio próximo.</p>
                      )}
                 </div>
             </Card>

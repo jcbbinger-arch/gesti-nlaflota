@@ -27,14 +27,16 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
     
     // Families from JSON + custom ones from workspace
     const taxonomy: CustomTaxonomyFamily[] = useMemo(() => {
-        if (workspaceSettings?.custom_taxonomy && workspaceSettings.custom_taxonomy.length > 0) {
+        if (workspaceSettings?.custom_taxonomy && Array.isArray(workspaceSettings.custom_taxonomy) && workspaceSettings.custom_taxonomy.length > 0) {
             return workspaceSettings.custom_taxonomy;
         }
+        
         // Fallback to default JSON classification
-        return productClassification.familias.map((f: any) => ({
-            nombre: f.nombre.toUpperCase(),
-            categorias: f.categorias.map((c: string) => c.toUpperCase()),
-            condiciones: f.condiciones.map((c: string) => c.toUpperCase())
+        const source = productClassification.familias || [];
+        return source.map((f: any) => ({
+            nombre: (f.nombre || '').toUpperCase(),
+            categorias: Array.isArray(f.categorias) ? f.categorias.map((c: string) => c.toUpperCase()) : [],
+            condiciones: Array.isArray(f.condiciones) ? f.condiciones.map((c: string) => c.toUpperCase()) : []
         }));
     }, [workspaceSettings]);
     

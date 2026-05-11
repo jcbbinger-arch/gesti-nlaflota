@@ -62,6 +62,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let userData = userDoc.data() as User;
       let needsUpdate = false;
 
+      // Check for pending invitation for this email to update profiles if needed
+      const inviteQuery = query(collection(db, 'users'), where('email', '==', userEmail), where('isInvitation', '==', true));
+      const inviteSnapshot = await getDocs(inviteQuery);
+      
+      if (!inviteSnapshot.empty) {
+        const inviteData = inviteSnapshot.docs[0].data() as User;
+        const newProfiles = [...new Set([...(userData.profiles || []), ...(inviteData.profiles || [])])];
+        
+        if (newProfiles.length > (userData.profiles?.length || 0)) {
+          console.log(`Updating existing user ${userEmail} with profiles from invitation.`);
+          userData.profiles = newProfiles;
+          if (!userData.work_area && inviteData.work_area) userData.work_area = inviteData.work_area;
+          if (!userData.classroom_id && inviteData.classroom_id) userData.classroom_id = inviteData.classroom_id;
+          userData.activity_status = 'Activo';
+          needsUpdate = true;
+          
+          // Delete invitation doc
+          await deleteDoc(doc(db, 'users', inviteSnapshot.docs[0].id));
+        }
+      }
+
       // Sanitize fields
       if (!Array.isArray(userData.profiles)) {
          userData.profiles = isSuperUser ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT] : []; // Do NOT default to TEACHER

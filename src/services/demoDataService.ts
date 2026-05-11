@@ -57,6 +57,7 @@ const demoServices: Service[] = [
                 category: 'Platos Principales',
                 order_number: 1,
                 work_area: 'Cocina',
+                role: 'Cocina',
                 allergens: ['Gluten'],
                 description: 'Clásico solomillo envuelto en hojaldre'
             }

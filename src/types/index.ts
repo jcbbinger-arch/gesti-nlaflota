@@ -414,11 +414,13 @@ export interface ServiceMenuItem {
     category: string;
     order_number: number;
     work_area: WorkArea;
+    role: ServiceRole; // To which "puzzle piece" this belongs
     allergens: string[];
     description?: string;
     is_custom?: boolean;
     service_explanation?: string;
     temperature?: string;
+    service_time?: string;
     service_type?: string;
     cutlery_required?: string;
     presentation?: string;
@@ -431,6 +433,8 @@ export interface Service {
     service_group_id: string;
     menu: ServiceMenuItem[];
     roles: Partial<Record<ServiceRole, string>>; // string is userId
+    inactive_roles?: ServiceRole[]; // Roles that won't participate in this service
+    completed_roles?: ServiceRole[]; // Roles that have finalized their part
     status: 'Planificación' | 'Confirmado' | 'Completado';
     event_id?: string;
     global_setup?: {
