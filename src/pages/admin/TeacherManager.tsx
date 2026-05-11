@@ -237,7 +237,7 @@ export const TeacherManager: React.FC = () => {
                         onClick={() => setActiveTab('profesores')} 
                         className={`px-4 py-2 rounded-md transition-colors ${activeTab === 'profesores' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}
                     >
-                        Profesores Activos
+                        Gestión de Personal
                     </button>
                     <button 
                         onClick={() => setActiveTab('invitaciones')} 

@@ -27,7 +27,7 @@ const creatorNav = [
 
 const adminNav = [
   { name: 'Panel de control', href: '/admin/dashboard', icon: <ComputerDesktopIcon /> },
-  { name: 'Profesores', href: '/admin/teachers', icon: <UserCircleIcon /> },
+  { name: 'Gestión de Personal', href: '/admin/teachers', icon: <UserCircleIcon /> },
   { name: 'Productos', href: '/admin/products', icon: <AppleIcon /> },
   { name: 'Proveedores', href: '/admin/suppliers', icon: <TruckIcon /> },
   { name: 'Eventos', href: '/admin/events', icon: <EventIcon /> },
