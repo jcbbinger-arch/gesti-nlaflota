@@ -238,7 +238,7 @@ export const AdminDashboard: React.FC = () => {
                    </div>
                    <span className="opacity-0 group-hover:opacity-100 transition-opacity font-bold">&rarr;</span>
                 </Link>
-                <Link to="/admin/staff" className="group flex items-center justify-between p-3 rounded-lg bg-gray-800 dark:bg-gray-700 hover:bg-black transition-all shadow-sm text-white">
+                <Link to="/admin/teachers" className="group flex items-center justify-between p-3 rounded-lg bg-gray-800 dark:bg-gray-700 hover:bg-black transition-all shadow-sm text-white">
                    <div className="flex items-center">
                       <UsersIcon className="w-5 h-5 mr-3 opacity-90" />
                       <span className="font-bold text-sm">Gestión de Personal</span>
