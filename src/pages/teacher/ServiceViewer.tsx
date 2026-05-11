@@ -41,7 +41,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     const [activeTab, setActiveTab] = useState<ServiceRole | 'Global'>('Global');
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
-    const SECTIONS: ServiceRole[] = ['Servicios (Sala)', 'Cocina', 'Postres', 'Mignardises', 'Cafetería', 'Pan del servicio'];
+    const SECTIONS: ServiceRole[] = ['Servicios (Sala)', 'Cafetería', 'Cocina', 'Postres', 'Mignardises', 'Pan del servicio'];
 
     // Toggle collapse state for a card
     const toggleCollapse = (itemId: string) => {
@@ -491,15 +491,24 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                             >
                                 VISTA GLOBAL
                             </button>
-                            {SERVICE_ROLES.filter(r => !(service.inactive_roles || []).includes(r)).map(role => (
-                                <button 
-                                    key={role}
-                                    onClick={() => setActiveTab(role)}
-                                    className={`px-4 py-2 text-xs font-bold transition-all whitespace-nowrap ${activeTab === role ? 'border-b-2 border-amber-600 text-amber-600 bg-amber-50/50' : 'text-gray-500 hover:text-gray-700'}`}
-                                >
-                                    {role.toUpperCase()}
-                                </button>
-                            ))}
+                            {SERVICE_ROLES.filter(r => !(service.inactive_roles || []).includes(r)).map(role => {
+                                const isAllowed = currentUser?.role === 'admin' || myRoles.includes(role);
+                                return (
+                                    <button 
+                                        key={role}
+                                        onClick={() => isAllowed && setActiveTab(role)}
+                                        className={`px-4 py-2 text-xs font-bold transition-all whitespace-nowrap ${
+                                            activeTab === role 
+                                            ? 'border-b-2 border-amber-600 text-amber-600 bg-amber-50/50' 
+                                            : isAllowed 
+                                                ? 'text-gray-500 hover:text-gray-700' 
+                                                : 'text-gray-300 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        {role.toUpperCase()}
+                                    </button>
+                                );
+                            })}
                         </div>
                             {activeTab === 'Global' && (currentUser?.profiles.includes(Profile.TEACHER) || currentUser?.role === 'admin') && (
                                 <div className="mb-6 pb-6 border-b border-gray-100 dark:border-gray-700/50">
