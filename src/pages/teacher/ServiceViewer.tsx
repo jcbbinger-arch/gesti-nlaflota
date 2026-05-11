@@ -140,6 +140,21 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         alert('Menú distribuido a la vista de comedor.');
     };
 
+    const handleToggleClosedRole = (role: ServiceRole) => {
+        const closedRoles = service.closed_roles || [];
+        const isClosed = closedRoles.includes(role);
+        
+        const updatedService = { 
+            ...service, 
+            closed_roles: isClosed 
+                ? closedRoles.filter(r => r !== role) 
+                : [...closedRoles, role] 
+        };
+        setServices(services.map(s => s.id === service.id ? updatedService : s));
+    };
+
+    const isRoleClosed = (role: ServiceRole) => (service.closed_roles || []).includes(role);
+
     const handleAddRecipe = (recipe_id: string) => {
         const recipe = recipesMap.get(recipe_id);
         if (!recipe) return;
@@ -553,12 +568,20 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                         {activeTab !== 'Global' && (
                             <div className="flex justify-between items-center mb-4">
                                 <div className="flex space-x-2">
+                                    {!isRoleClosed(activeTab) && (
+                                        <button 
+                                            onClick={() => setAddStep('choice')} 
+                                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center"
+                                        >
+                                            <PlusIcon className="w-4 h-4 mr-2" />
+                                            Añadir Pase
+                                        </button>
+                                    )}
                                     <button 
-                                        onClick={() => setAddStep('choice')} 
-                                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center"
+                                        onClick={() => handleToggleClosedRole(activeTab)} 
+                                        className={`${isRoleClosed(activeTab) ? 'bg-green-600' : 'bg-gray-500'} text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center`}
                                     >
-                                        <PlusIcon className="w-4 h-4 mr-2" />
-                                        Añadir Pase
+                                        {isRoleClosed(activeTab) ? 'Abrir Configuración' : 'Cerrar Sección'}
                                     </button>
                                 </div>
                             </div>
@@ -587,7 +610,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                     <div key={sectionRole} className="space-y-2">
                                         <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
                                             <h3 className="text-xs font-black uppercase text-gray-600">{sectionRole}</h3>
-                                            {(currentUser?.role === 'admin' || myRoles.includes(sectionRole)) && (
+                                            {(currentUser?.role === 'admin' || myRoles.includes(sectionRole)) && !isRoleClosed(sectionRole) && (
                                                 <button 
                                                     onClick={() => { setAddStep('choice'); setActiveTab(sectionRole); }}
                                                     className="bg-primary-600 text-white text-[10px] font-bold px-2 py-1 rounded"
