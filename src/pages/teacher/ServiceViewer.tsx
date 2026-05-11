@@ -147,7 +147,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
         const updatedService = { 
             ...service, 
             closed_roles: isClosed 
-                ? closedRoles.filter(r => r !== role) 
+                ? closedRoles.filter((r: ServiceRole) => r !== role) 
                 : [...closedRoles, role] 
         };
         setServices(services.map(s => s.id === service.id ? updatedService : s));
@@ -510,16 +510,15 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                 const isAllowed = currentUser?.role === 'admin' || myRoles.includes(role);
                                 return (
                                     <button 
-                                        key={role}
-                                        onClick={() => isAllowed && setActiveTab(role)}
-                                        className={`px-4 py-2 text-xs font-bold transition-all whitespace-nowrap ${
-                                            activeTab === role 
-                                            ? 'border-b-2 border-amber-600 text-amber-600 bg-amber-50/50' 
-                                            : isAllowed 
-                                                ? 'text-gray-500 hover:text-gray-700' 
-                                                : 'text-gray-300 cursor-not-allowed'
-                                        }`}
-                                    >
+                                    onClick={() => isAllowed && setActiveTab(role)}
+                                    className={`px-4 py-2 text-xs font-bold transition-all whitespace-nowrap ${
+                                        activeTab === role 
+                                        ? 'border-b-2 border-amber-600 text-amber-600 bg-amber-50/50' 
+                                        : isAllowed 
+                                            ? 'text-gray-500 hover:text-gray-700' 
+                                            : 'text-gray-300'
+                                    }`}
+                                >
                                         {role.toUpperCase()}
                                     </button>
                                 );
@@ -597,8 +596,8 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                 </button>
                             </div>
                         )}
-                        
-                        <div className="space-y-6">
+                    </Card>
+                    <div className="space-y-6">
                             {(activeTab === 'Global' ? SECTIONS : [activeTab]).map(sectionRole => {
                                 const sectionItems = service.menu
                                     .filter(item => item.role === sectionRole)
@@ -624,6 +623,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                             const itemsRecipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
                                             const canEdit = currentUser?.role === 'admin' || (myRoles.includes(item.role));
                                             const isCollapsed = collapsedSections[item.id];
+                                            const isSectionClosed = isRoleClosed(item.role);
 
                                             return (
                                                 <div key={item.id} className="space-y-2 border-b dark:border-gray-700 pb-2">
@@ -634,7 +634,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                                         <span className="font-bold text-xs text-primary-600 mr-2">{item.order_number}</span>
                                                         <span className="font-bold text-sm text-gray-800 dark:text-white flex-1">{item.name}</span>
                                                         
-                                                        {canEdit && (
+                                                        {canEdit && !isSectionClosed && (
                                                             <button onClick={() => handleRemoveRecipe(item.id)} className="p-1 text-gray-400 hover:text-red-500">
                                                                 <TrashIcon className="w-4 h-4" />
                                                             </button>
@@ -654,7 +654,6 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                     </div>
                                 );
                             })}
-                        </div>
                         
                         {service.menu.length === 0 && (
                             <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
@@ -662,7 +661,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                 <p className="text-xs text-gray-400 mt-1 italic">Pulsa "Añadir Plato" para empezar.</p>
                             </div>
                         )}
-                    </Card>
+                        </div>
                     <Card title="Documentación de Salida">
                         <div className="flex flex-wrap gap-2">
                             <button 

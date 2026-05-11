@@ -437,6 +437,7 @@ export interface Service {
     inactive_roles?: ServiceRole[]; // Roles that won't participate in this service
     completed_roles?: ServiceRole[]; // Roles that have finalized their part
     status: 'Planificación' | 'Confirmado' | 'Completado';
+    closed_roles?: ServiceRole[];
     event_id?: string;
     global_setup?: {
         service_type?: string;

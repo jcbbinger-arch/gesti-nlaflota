@@ -58,6 +58,7 @@ import { RecipeManager } from './pages/teacher/RecipeManager';
 import { RecipeForm } from './pages/teacher/RecipeForm';
 import { RecipeView } from './pages/teacher/RecipeView';
 import { ServiceViewer } from './pages/teacher/ServiceViewer';
+import { DevelopmentPortal } from './pages/teacher/DevelopmentPortal';
 import { TransferPortal } from './pages/teacher/TransferPortal';
 
 import { ClassroomList } from './pages/teacher/classroom/ClassroomList';
@@ -237,6 +238,7 @@ const AppContent: React.FC = () => {
           <Route path="/teacher" element={<TeacherLayout />}>
               <Route path="dashboard" element={<TeacherDashboard />} />
               <Route path="service-planner" element={<ServiceViewer />} />
+              <Route path="dev-portal" element={<DevelopmentPortal />} />
               <Route path="orders-management/*" element={<OrdersUnifiedDashboard />} />
               <Route path="order-portal/*" element={<Navigate to="orders-management/portal" replace />} />
               <Route path="order-history" element={<Navigate to="orders-management/history" replace />} />
