@@ -3,7 +3,8 @@ import { useData } from '../../contexts/DataContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { PlusIcon, DownloadIcon, WarningIcon, TrashIcon, ProductIcon, ShieldCheckIcon } from '../../components/icons';
-import { Product, Supplier, ProductState, WarehouseStatus, Profile } from '../../types';
+import { Product, Supplier, ProductState, WarehouseStatus, Profile, CustomTaxonomyFamily } from '../../types';
+import productClassification from '../../data/clasificacion_productos.json';
 import { exportToCsv } from '../../utils/export';
 import { parseCsv } from '../../utils/csv';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,22 +26,32 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
     });
     
     // Families from JSON + custom ones from workspace
-    const taxonomy = workspaceSettings?.custom_taxonomy || [];
+    const taxonomy: CustomTaxonomyFamily[] = useMemo(() => {
+        if (workspaceSettings?.custom_taxonomy && workspaceSettings.custom_taxonomy.length > 0) {
+            return workspaceSettings.custom_taxonomy;
+        }
+        // Fallback to default JSON classification
+        return productClassification.familias.map((f: any) => ({
+            nombre: f.nombre.toUpperCase(),
+            categorias: f.categorias.map((c: string) => c.toUpperCase()),
+            condiciones: f.condiciones.map((c: string) => c.toUpperCase())
+        }));
+    }, [workspaceSettings]);
     
-    const families = useMemo(() => {
+    const families: string[] = useMemo(() => {
         return [...new Set(taxonomy.map(f => f.nombre.toUpperCase()))].sort();
     }, [taxonomy]);
 
     // Categories filter based on family
-    const categories = useMemo(() => {
+    const categories: string[] = useMemo(() => {
         const familyData = taxonomy.find(f => f.nombre.toUpperCase() === formState.family.toUpperCase());
-        return familyData ? [...new Set(familyData.categorias.map(c => c.toUpperCase()))].sort() : [];
+        return familyData ? [...new Set(familyData.categorias.map((c: string) => c.toUpperCase()))].sort() : [];
     }, [taxonomy, formState.family]);
 
     // Conditions filter based on category
-    const conditions = useMemo(() => {
+    const conditions: string[] = useMemo(() => {
         const familyData = taxonomy.find(f => f.nombre.toUpperCase() === formState.family.toUpperCase());
-        return familyData ? [...new Set(familyData.condiciones.map(c => c.toUpperCase()))].sort() : [];
+        return familyData ? [...new Set(familyData.condiciones.map((c: string) => c.toUpperCase()))].sort() : [];
     }, [taxonomy, formState.family]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -219,18 +230,18 @@ export const ProductFormModal: React.FC<{ product: Product | null; onClose: () =
                             {families.map(f => <option key={f} value={f}>{f.toUpperCase()}</option>)}
                         </select>
                     </div>
-                     <div>
+                    <div>
                         <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">2. Categoría </label>
                         <select name="category" value={formState.category} onChange={handleChange} disabled={!formState.family} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                             <option value="">-- Selecciona Categoría --</option>
-                            {categories.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                            {categories.map((c: string) => <option key={c} value={c}>{c.toUpperCase()}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="text-sm flex justify-between items-center font-medium text-gray-700 dark:text-gray-300">3. Condición</label>
                         <select name="condition" value={formState.condition || ''} onChange={handleChange} disabled={!formState.category} className="mt-1 block w-full rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                              <option value="">-- Selecciona Condición --</option>
-                            {conditions.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                            {conditions.map((s: string) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
                         </select>
                     </div>
                 </div>
@@ -423,9 +434,12 @@ export const ProductManager: React.FC = () => {
         };
     };
     
-    const uniqueFamilies = useMemo(() => {
+    const uniqueFamilies: string[] = useMemo(() => {
         const taxonomy = workspaceSettings?.custom_taxonomy || [];
-        return [...new Set(taxonomy.map(f => f.nombre.toUpperCase()))].sort();
+        if (taxonomy.length > 0) {
+            return [...new Set(taxonomy.map(f => f.nombre.toUpperCase()))].sort();
+        }
+        return [...new Set(productClassification.familias.map(f => f.nombre.toUpperCase()))].sort();
     }, [workspaceSettings]);
 
     const filteredProducts = useMemo(() => {

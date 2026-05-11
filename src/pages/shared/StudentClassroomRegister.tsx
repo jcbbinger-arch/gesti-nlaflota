@@ -57,7 +57,7 @@ export const StudentClassroomRegister: React.FC = () => {
         classroom_id: classroom.id,
         activity_status: 'Activo',
         location_status: 'En el centro',
-        workspaceId: 'default-workspace' // Assuming a default or inherited workspace
+        workspaceId: 'ies-hosteleria-primary' 
       };
 
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser);

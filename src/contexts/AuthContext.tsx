@@ -84,8 +84,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Ensure WorkspaceId exists
-      if (!userData.workspaceId) {
-        userData.workspaceId = firebaseUser.uid;
+      const SHARED_WORKSPACE_ID = 'ies-hosteleria-primary';
+      if (!userData.workspaceId || userData.workspaceId !== SHARED_WORKSPACE_ID) {
+        userData.workspaceId = SHARED_WORKSPACE_ID;
         needsUpdate = true;
       }
       // Ensure super users have admin role
@@ -127,12 +128,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log(`Pre-registered invitation found for ${userEmail}. Activating account...`);
           const inviteData = inviteDoc.data() as User;
           
+          const SHARED_WORKSPACE_ID = 'ies-hosteleria-primary';
           const newUser: User = {
             ...inviteData,
             id: firebaseUser.uid,
             name: firebaseUser.displayName || inviteData.name || userEmail.split('@')[0],
             avatar: firebaseUser.photoURL || inviteData.avatar || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
-            workspaceId: firebaseUser.uid,
+            workspaceId: SHARED_WORKSPACE_ID,
             activity_status: 'Activo', // Always active if activated from invitation
             isInvitation: false, // Clear the flag if it exists
           } as any;
@@ -165,6 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // No pre-created user found, standard creation
+      const SHARED_WORKSPACE_ID = 'ies-hosteleria-primary';
       const newUser: User = {
         id: firebaseUser.uid,
         email: userEmail,
@@ -173,7 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT, Profile.CUSTOMER] 
           : (isPablo ? [Profile.TEACHER] : [Profile.CUSTOMER]), // Default to Customer if nothing else
         role: isSuperUser ? 'admin' : 'user',
-        workspaceId: firebaseUser.uid, 
+        workspaceId: SHARED_WORKSPACE_ID, 
         activity_status: (isSuperUser || isPablo || true) ? 'Activo' : 'De Baja', // Make new users active by default, especially customers
         location_status: 'En el centro',
         avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
@@ -301,6 +304,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const result = await createUserWithEmailAndPassword(auth, email, password);
       console.log('User created in Firebase Auth:', result.user.uid);
       
+      const SHARED_WORKSPACE_ID = 'ies-hosteleria-primary';
       const newUser: User = {
         id: result.user.uid,
         email: email,
@@ -308,7 +312,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: phone,
         allergens: allergens,
         profiles: [Profile.CUSTOMER],
-        workspaceId: result.user.uid,
+        workspaceId: SHARED_WORKSPACE_ID,
         activity_status: 'Activo',
         location_status: 'Fuera del centro',
         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
