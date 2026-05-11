@@ -75,6 +75,7 @@ export const Login: React.FC = () => {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError('');
+    localStorage.setItem('preferredPortal', view); // Save the intent
     const errorMessage = await loginWithGoogle();
     if (errorMessage) {
       setError(errorMessage);

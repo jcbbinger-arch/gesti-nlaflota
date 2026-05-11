@@ -11,7 +11,7 @@ import {
 import { doc, getDoc, setDoc, query, collection, where, getDocs, deleteDoc, getDocFromServer, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { User, Profile, SUPER_USER_EMAILS } from '../types';
+import { User, Profile, SUPER_USER_EMAILS, TEACHER_EMAILS } from '../types';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -189,20 +189,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // No pre-created user found, standard creation
       const SHARED_WORKSPACE_ID = 'ies-hosteleria-primary';
+      const preferredPortal = localStorage.getItem('preferredPortal');
+      let initialProfiles: Profile[] = [Profile.CUSTOMER];
+      
+      if (isSuperUser) {
+        initialProfiles = [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT, Profile.CUSTOMER];
+      } else if (isPablo || TEACHER_EMAILS.includes(userEmail) || preferredPortal === 'teacher') {
+        initialProfiles = [Profile.TEACHER];
+      } else if (preferredPortal === 'takeaway') {
+        initialProfiles = [Profile.CUSTOMER];
+      }
+      // If preferredPortal === 'portal', it defaults to Customer
+
       const newUser: User = {
         id: firebaseUser.uid,
         email: userEmail,
         name: firebaseUser.displayName || userEmail.split('@')[0],
-        profiles: isSuperUser 
-          ? [Profile.CREATOR, Profile.ADMIN, Profile.TEACHER, Profile.ALMACEN, Profile.STUDENT, Profile.CUSTOMER] 
-          : (isPablo ? [Profile.TEACHER] : [Profile.CUSTOMER]), // Default to Customer if nothing else
+        profiles: initialProfiles,
         role: isSuperUser ? 'admin' : 'user',
         workspaceId: SHARED_WORKSPACE_ID, 
-        activity_status: (isSuperUser || isPablo || true) ? 'Activo' : 'De Baja', // Make new users active by default, especially customers
+        activity_status: 'Activo', // Make new users active by default
         location_status: 'En el centro',
         avatar: firebaseUser.photoURL || `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
       };
       await setDoc(userDocRef, newUser);
+      
+      // Clear the intent
+      localStorage.removeItem('preferredPortal');
       return newUser;
     }
   };

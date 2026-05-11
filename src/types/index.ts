@@ -1,4 +1,5 @@
 export const SUPER_USER_EMAILS = ['managerproapp@gmail.com', 'jcbprofesor@gmail.com'];
+export const TEACHER_EMAILS = ['recetaopro@gmail.com'];
 
 export enum Profile {
   CREATOR = 'creator',
