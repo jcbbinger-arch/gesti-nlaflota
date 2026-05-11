@@ -561,7 +561,7 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                 const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
                                 const itemsRecipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
                                 
-                                const canEdit = activeTab !== 'Global' || isFOH;
+                                const canEdit = currentUser?.role === 'admin' || (myRoles.includes(item.role));
 
                                              return (
                                     <div key={item.id} className="space-y-2 border-b dark:border-gray-700 pb-4 last:border-0 last:pb-0">
