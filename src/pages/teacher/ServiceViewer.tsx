@@ -17,7 +17,7 @@ import {
     Edit2,
     Save
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addHeaderToPdf } from '../../utils/export';
 import { useCompany } from '../../contexts/CompanyContext';
 import { ALLERGENS_LIST, ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
@@ -600,9 +600,20 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                     <div className="space-y-6">
                             {(activeTab === 'Global' ? SECTIONS : [activeTab]).map(sectionRole => {
                                 const sectionItems = service.menu
-                                    .filter(item => item.role === sectionRole)
+                                    .filter(item => {
+                                        if (item.role === sectionRole) return true;
+                                        // Fallback mapping if role is missing
+                                        if (!item.role) {
+                                            if (sectionRole === 'Cocina' && item.work_area === 'Cocina') return true;
+                                            if (sectionRole === 'Postres' && item.work_area === 'Pastelería') return true;
+                                            if (sectionRole === 'Servicios (Sala)' && item.work_area === 'Servicios') return true;
+                                            if (sectionRole === 'Pan del servicio' && item.work_area === 'Panadería') return true;
+                                        }
+                                        return false;
+                                    })
                                     .sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
 
+                                if (sectionItems.length === 0 && activeTab === 'Global') return null;
                                 if (sectionItems.length === 0 && activeTab !== 'Global') return null;
 
                                 return (
@@ -1031,7 +1042,16 @@ const RecipeSelectorModal: React.FC<{ recipes: Recipe[], onClose: () => void, on
 export const ServiceViewer: React.FC = () => {
     const { services, service_groups } = useData();
     const { currentUser } = useAuth();
-    const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const selectedServiceId = searchParams.get('id');
+    
+    const setSelectedServiceId = (id: string | null) => {
+        if (id) {
+            setSearchParams({ id });
+        } else {
+            setSearchParams({});
+        }
+    };
     
     const selectedService = useMemo(() => services.find((s: any) => s.id === selectedServiceId), [services, selectedServiceId]);
 

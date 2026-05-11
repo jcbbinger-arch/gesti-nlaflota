@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
@@ -158,31 +158,34 @@ export const DiningServiceView: React.FC = () => {
         setEditingTableId(null);
     };
 
+    const myRoles = useMemo(() => {
+        if (!currentUser || !matchingPlanningService) return [];
+        return Object.entries(matchingPlanningService.roles)
+            .filter(([_, uid]) => uid === currentUser.id)
+            .map(([role]) => role as any);
+    }, [matchingPlanningService?.roles, currentUser]);
+
+    const navigate = useNavigate();
+
     // Menu Management Logic
     const handleAddMenuItem = () => {
-        const defaultArea = currentUser?.work_area && CATEGORIES_BY_AREA[currentUser.work_area] 
-            ? currentUser.work_area 
-            : 'Cocina';
-
-        const area = defaultArea as WorkArea;
-        const categories = CATEGORIES_BY_AREA[area];
-        
-        setEditingMenuItem({
-            id: crypto.randomUUID(),
-            work_area: area,
-            category: categories[0],
-            order_number: (matchingPlanningService?.menu.length || 0) + 1,
-            allergens: [],
-            name: '',
-            is_custom: false
-        });
-        setIsMenuModalOpen(true);
+        if (!matchingPlanningService) return;
+        navigate(`/teacher/service-planner?id=${matchingPlanningService.id}`);
     };
 
     const handleSaveMenuItem = () => {
         if (!editingMenuItem || !matchingPlanningService || !selectedService?.service_id) return;
         
         const newItem = editingMenuItem as ServiceMenuItem;
+        
+        // Ensure item has a role for the planner to see it in Global view
+        if (!newItem.role) {
+            newItem.role = newItem.work_area === 'Cocina' ? 'Cocina' : 
+                         newItem.work_area === 'Pastelería' ? 'Postres' :
+                         newItem.work_area === 'Servicios' ? 'Servicios (Sala)' :
+                         newItem.work_area === 'Panadería' ? 'Pan del servicio' : 'Cocina' as any;
+        }
+
         const updatedMenu = [...(matchingPlanningService.menu || [])];
         const index = updatedMenu.findIndex(i => i.id === newItem.id);
         
@@ -203,13 +206,16 @@ export const DiningServiceView: React.FC = () => {
         setEditingMenuItem(null);
     };
 
-    const handleDeleteMenuItem = (itemId: string) => {
+    const handleDeleteMenuItem = (item: ServiceMenuItem) => {
         if (!matchingPlanningService) return;
+        const canEdit = currentUser?.role === 'admin' || myRoles.includes(item.role) || (item.work_area === currentUser?.work_area);
+        if (!canEdit) return;
+
         if (!confirm('¿Estás seguro de eliminar este plato del menú?')) return;
 
         setServices(prev => prev.map(s => 
             s.id === matchingPlanningService.id 
-                ? { ...s, menu: s.menu.filter(item => item.id !== itemId) } 
+                ? { ...s, menu: s.menu.filter(i => i.id !== item.id) } 
                 : s
         ));
     };
@@ -219,6 +225,10 @@ export const DiningServiceView: React.FC = () => {
         const menu = [...matchingPlanningService.menu];
         const index = menu.findIndex(i => i.id === itemId);
         if (index === -1) return;
+
+        const item = menu[index];
+        const canEdit = currentUser?.role === 'admin' || myRoles.includes(item.role) || (item.work_area === currentUser?.work_area);
+        if (!canEdit) return;
 
         const targetIndex = direction === 'up' ? index - 1 : index + 1;
         if (targetIndex < 0 || targetIndex >= menu.length) return;
@@ -732,14 +742,14 @@ export const DiningServiceView: React.FC = () => {
                                                                     <button 
                                                                         onClick={() => { setEditingMenuItem(item); setIsMenuModalOpen(true); }}
                                                                         className="p-1.5 text-gray-400 hover:text-primary-500 hover:bg-primary-50 rounded-lg transition-colors"
-                                                                        disabled={item.work_area !== currentUser?.work_area}
+                                                                        disabled={!(currentUser?.role === 'admin' || myRoles.includes(item.role) || item.work_area === currentUser?.work_area)}
                                                                     >
                                                                         <Edit2 className="w-4 h-4" />
                                                                     </button>
                                                                     <button 
-                                                                        onClick={() => handleDeleteMenuItem(item.id)}
+                                                                        onClick={() => handleDeleteMenuItem(item)}
                                                                         className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                                        disabled={item.work_area !== currentUser?.work_area}
+                                                                        disabled={!(currentUser?.role === 'admin' || myRoles.includes(item.role) || item.work_area === currentUser?.work_area)}
                                                                     >
                                                                         <Trash2 className="w-4 h-4" />
                                                                     </button>
