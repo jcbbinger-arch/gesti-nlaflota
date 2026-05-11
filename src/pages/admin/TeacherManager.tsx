@@ -11,9 +11,21 @@ export const TeacherManager: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'profesores' | 'clientes' | 'alumnos' | 'invitaciones'>('profesores');
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isCleanupModalOpen, setIsCleanupModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [deleteStep, setDeleteStep] = useState(1);
 
+    const usersToCleanup = useMemo(() => {
+        return users.filter(u => {
+            if (u.email && SUPER_USER_EMAILS.includes(u.email)) return false;
+            if (u.id.startsWith('invite-') || u.isInvitation) return false;
+            
+            const hasPersonalProfile = u.profiles.some(p => [Profile.TEACHER, Profile.ADMIN, Profile.ALMACEN, Profile.SALES_MANAGER, Profile.CREATOR].includes(p));
+            
+            // Cleanup: No personal profile, no student profile, no customer profile
+            return !hasPersonalProfile && !u.profiles.includes(Profile.STUDENT) && !u.profiles.includes(Profile.CUSTOMER);
+        });
+    }, [users]);
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredUsers = useMemo(() => {
@@ -210,6 +222,10 @@ export const TeacherManager: React.FC = () => {
         setSelectedUser(null);
     };
 
+    const handleDeleteCleanupUser = (userId: string) => {
+        setUsers(users.filter(u => u.id !== userId));
+    };
+
     const handleExport = () => {
         exportToCsv('personal.csv', staff.map(s => ({...s, password: '***'})));
     }
@@ -224,6 +240,12 @@ export const TeacherManager: React.FC = () => {
                         className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center shadow-sm"
                     >
                         <PlusIcon className="w-5 h-5 mr-1" /> Nuevo Registro/Invitación
+                    </button>
+                    <button 
+                        onClick={() => setIsCleanupModalOpen(true)} 
+                        className="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 flex items-center shadow-sm"
+                    >
+                        <TrashIcon className="w-5 h-5 mr-1" /> Limpieza
                     </button>
                     <button onClick={handleExport} className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center">
                         <DownloadIcon className="w-5 h-5 mr-1" /> Exportar
@@ -315,6 +337,23 @@ export const TeacherManager: React.FC = () => {
                         </div>
                     </div>
                 )}
+            </Modal>
+            
+            <Modal isOpen={isCleanupModalOpen} onClose={() => setIsCleanupModalOpen(false)} title="Limpieza de Cuentas No Profesoras">
+                <div>
+                     <p className="mb-4">Se han detectado {usersToCleanup.length} cuentas que no tienen perfiles de personal (profesores, admin, etc.) y no son usuarios especiales:</p>
+                     <ul className="max-h-60 overflow-y-auto mb-4 border p-2 rounded">
+                         {usersToCleanup.map(u => (
+                             <li key={u.id} className="text-sm border-b py-1 flex justify-between items-center">
+                                 <span>{u.name} ({u.email})</span>
+                                 <button onClick={() => handleDeleteCleanupUser(u.id)} className="text-red-500 hover:text-red-700 font-bold">Borrar</button>
+                             </li>
+                         ))}
+                     </ul>
+                     <div className="flex justify-end space-x-2">
+                        <button onClick={() => setIsCleanupModalOpen(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-md">Cerrar</button>
+                     </div>
+                </div>
             </Modal>
         </div>
     );
