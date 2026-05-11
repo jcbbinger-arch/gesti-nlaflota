@@ -170,7 +170,11 @@ export const DiningServiceView: React.FC = () => {
     // Menu Management Logic
     const handleAddMenuItem = () => {
         if (!matchingPlanningService) return;
-        navigate(`/teacher/service-planner?id=${matchingPlanningService.id}`);
+        const targetTab = currentUser?.work_area === 'Cocina' ? 'Cocina' : 
+                         currentUser?.work_area === 'Pastelería' ? 'Postres' :
+                         currentUser?.work_area === 'Servicios' ? 'Servicios (Sala)' :
+                         currentUser?.work_area === 'Panadería' ? 'Pan del servicio' : 'Global';
+        navigate(`/teacher/service-planner?id=${matchingPlanningService.id}&tab=${targetTab}&add=true`);
     };
 
     const handleSaveMenuItem = () => {

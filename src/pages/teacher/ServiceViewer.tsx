@@ -27,7 +27,12 @@ import 'jspdf-autotable';
 const SERVICE_ROLES: ServiceRole[] = ['Cocina', 'Postres', 'Servicios (Sala)', 'Cafetería', 'Pan del servicio', 'Mignardises'];
 
 // --- DETAIL VIEW COMPONENT ---
-const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({ service, onBack }) => {
+const ServiceDetailView: React.FC<{ 
+    service: Service; 
+    onBack: () => void; 
+    initialTab?: ServiceRole | 'Global';
+    initialAdd?: boolean;
+}> = ({ service, onBack, initialTab, initialAdd }) => {
     const { 
         services, setServices, service_groups, users, recipes, setRecipes, products, setOrders, events,
         orders: allOrders, transfers: allTransfers, reservations: allReservations, sale_items: allSaleItems, 
@@ -35,10 +40,10 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     } = useData();
     const { companyInfo } = useCompany();
     const { currentUser } = useAuth();
-    const [addStep, setAddStep] = useState<null | 'choice' | 'database' | 'manual'>(null);
+    const [addStep, setAddStep] = useState<null | 'choice' | 'database' | 'manual'>(initialAdd ? 'choice' : null);
     const [targetMenuItemId, setTargetMenuItemId] = useState<string | null>(null);
     const [editingMenuItemId, setEditingMenuItemId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<ServiceRole | 'Global'>('Global');
+    const [activeTab, setActiveTab] = useState<ServiceRole | 'Global'>(initialTab || 'Global');
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
     const SECTIONS: ServiceRole[] = ['Servicios (Sala)', 'Cafetería', 'Cocina', 'Postres', 'Mignardises', 'Pan del servicio'];
@@ -58,9 +63,18 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     // Identify current user's role(s) in this service
     const myRoles = useMemo(() => {
         if (!currentUser) return [];
-        return Object.entries(service.roles)
+        const explicitRoles = Object.entries(service.roles)
             .filter(([_, uid]) => uid === currentUser.id)
             .map(([role]) => role as ServiceRole);
+            
+        const areaRoles: ServiceRole[] = [];
+        if (currentUser.work_area === 'Cocina') areaRoles.push('Cocina');
+        if (currentUser.work_area === 'Pastelería') areaRoles.push('Postres', 'Mignardises');
+        if (currentUser.work_area === 'Servicios') areaRoles.push('Servicios (Sala)', 'Cafetería');
+        if (currentUser.work_area === 'Panadería') areaRoles.push('Pan del servicio');
+        
+        // Ensure unique roles
+        return Array.from(new Set([...explicitRoles, ...areaRoles]));
     }, [service.roles, currentUser]);
 
     const isFOH = myRoles.includes('Servicios (Sala)') || currentUser?.role === 'admin';
@@ -608,12 +622,16 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                             if (sectionRole === 'Postres' && item.work_area === 'Pastelería') return true;
                                             if (sectionRole === 'Servicios (Sala)' && item.work_area === 'Servicios') return true;
                                             if (sectionRole === 'Pan del servicio' && item.work_area === 'Panadería') return true;
+                                            if (sectionRole === 'Cafetería' && item.work_area === 'Servicios') return true;
+                                            if (sectionRole === 'Mignardises' && item.work_area === 'Pastelería') return true;
                                         }
                                         return false;
                                     })
                                     .sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
+                                
+                                const canInteract = currentUser?.role === 'admin' || myRoles.includes(sectionRole);
 
-                                if (sectionItems.length === 0 && activeTab === 'Global') return null;
+                                if (sectionItems.length === 0 && activeTab === 'Global' && !canInteract) return null;
                                 if (sectionItems.length === 0 && activeTab !== 'Global') return null;
 
                                 return (
@@ -1062,7 +1080,16 @@ export const ServiceViewer: React.FC = () => {
     }, [services, service_groups, currentUser]);
 
     if (selectedService) {
-        return <ServiceDetailView service={selectedService} onBack={() => setSelectedServiceId(null)} />;
+        const initialTab = searchParams.get('tab') as ServiceRole | 'Global' | null;
+        const initialAdd = searchParams.get('add') === 'true';
+        return (
+            <ServiceDetailView 
+                service={selectedService} 
+                onBack={() => setSelectedServiceId(null)} 
+                initialTab={initialTab || undefined}
+                initialAdd={initialAdd}
+            />
+        );
     }
 
     return (
