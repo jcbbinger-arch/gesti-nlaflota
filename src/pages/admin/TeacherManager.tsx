@@ -173,7 +173,7 @@ export const TeacherManager: React.FC = () => {
             }
         } else { // Creating new
             try {
-                const isInvitation = activeTab === 'invitaciones' || activeTab === 'profesores';
+                const isInvitation = activeTab === 'invitaciones';
                 const idPrefix = isInvitation ? 'invite' : 'user';
                 
                 const newUser: User = {
