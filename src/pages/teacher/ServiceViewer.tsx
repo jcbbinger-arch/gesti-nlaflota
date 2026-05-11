@@ -39,6 +39,14 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
     const [targetMenuItemId, setTargetMenuItemId] = useState<string | null>(null);
     const [editingMenuItemId, setEditingMenuItemId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ServiceRole | 'Global'>('Global');
+    const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+    const SECTIONS: ServiceRole[] = ['Servicios (Sala)', 'Cocina', 'Postres', 'Mignardises', 'Cafetería', 'Pan del servicio'];
+
+    // Toggle collapse state for a card
+    const toggleCollapse = (itemId: string) => {
+        setCollapsedSections(prev => ({ ...prev, [itemId]: !prev[itemId] }));
+    };
     const navigate = useNavigate();
 
     const usersMap = useMemo(() => new Map<string, User>(users.map((u: any) => [u.id, u])), [users]);
@@ -533,200 +541,84 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                 </div>
                             )}
 
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex space-x-2">
-                                <button 
-                                    onClick={() => setAddStep('choice')} 
-                                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center"
-                                >
-                                    <PlusIcon className="w-4 h-4 mr-2" />
-                                    Añadir Pase
-                                </button>
-                                {service.menu.length > 0 && isFOH && (
+                        {activeTab !== 'Global' && (
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex space-x-2">
                                     <button 
-                                        onClick={handleDistribute}
-                                        disabled={!isLocked}
-                                        className={`${!isLocked ? 'bg-gray-300 cursor-not-allowed' : service.status === 'Confirmado' ? 'bg-gray-100 text-gray-600 border' : 'bg-green-600 text-white'} px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center`}
+                                        onClick={() => setAddStep('choice')} 
+                                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center"
                                     >
-                                        {!isLocked ? 'Puzzle Incompleto' : service.status === 'Confirmado' ? 'Re-Distribuir a Comedor' : 'Distribuir a Comedor'}
+                                        <PlusIcon className="w-4 h-4 mr-2" />
+                                        Añadir Pase
                                     </button>
-                                )}
+                                </div>
                             </div>
-                        </div>
+                        )}
+                        {isFOH && activeTab === 'Global' && service.menu.length > 0 && (
+                            <div className="flex justify-start mb-4">
+                                <button 
+                                    onClick={handleDistribute}
+                                    disabled={!isLocked}
+                                    className={`${!isLocked ? 'bg-gray-300 cursor-not-allowed' : service.status === 'Confirmado' ? 'bg-gray-100 text-gray-600 border' : 'bg-green-600 text-white'} px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center`}
+                                >
+                                    {!isLocked ? 'Puzzle Incompleto' : service.status === 'Confirmado' ? 'Re-Distribuir a Comedor' : 'Distribuir a Comedor'}
+                                </button>
+                            </div>
+                        )}
                         
-                        <div className="space-y-2">
-                            {service.menu
-                                .filter(item => activeTab === 'Global' || item.role === activeTab)
-                                .sort((a, b) => (a.order_number || 0) - (b.order_number || 0)).map((item, idx) => {
-                                const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
-                                const itemsRecipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
-                                
-                                const canEdit = currentUser?.role === 'admin' || (myRoles.includes(item.role));
+                        <div className="space-y-6">
+                            {(activeTab === 'Global' ? SECTIONS : [activeTab]).map(sectionRole => {
+                                const sectionItems = service.menu
+                                    .filter(item => item.role === sectionRole)
+                                    .sort((a, b) => (a.order_number || 0) - (b.order_number || 0));
 
-                                             return (
-                                    <div key={item.id} className="space-y-2 border-b dark:border-gray-700 pb-4 last:border-0 last:pb-0">
-                                        <div className="flex items-center p-3 bg-white dark:bg-gray-800 border rounded-xl shadow-sm group">
-                                            <div className="flex flex-col items-center mr-4 pr-4 border-r dark:border-gray-700 min-w-[60px]">
-                                                <span className="text-[10px] font-black text-gray-400 uppercase leading-none mb-1">Orden</span>
-                                                <input 
-                                                    type="number"
-                                                    disabled={!canEdit}
-                                                    value={item.order_number || 0}
-                                                    onChange={(e) => {
-                                                        const newVal = parseInt(e.target.value) || 0;
-                                                        const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, order_number: newVal } : m);
-                                                        setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                    }}
-                                                    className="w-12 text-center font-black text-primary-600 bg-transparent border-none focus:ring-0 p-0 disabled:opacity-50"
-                                                />
-                                            </div>
-                                            
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center space-x-2 mb-1">
-                                                    <div className="flex space-x-1">
-                                                        <input 
-                                                            type="text"
-                                                            disabled={!canEdit}
-                                                            value={item.category || ''}
-                                                            placeholder="Categoría..."
-                                                            onChange={(e) => {
-                                                                const newVal = e.target.value;
-                                                                const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, category: newVal } : m);
-                                                                setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                            }}
-                                                            className="text-[10px] font-black uppercase tracking-widest text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded border-none focus:ring-0 w-24 h-5 disabled:opacity-50"
-                                                        />
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                                            {item.role || item.work_area}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <input 
-                                                    type="text"
-                                                    disabled={!canEdit}
-                                                    value={item.name}
-                                                    onChange={(e) => {
-                                                        const newVal = e.target.value;
-                                                        const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, name: newVal } : m);
-                                                        setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                    }}
-                                                    className="font-bold text-gray-800 dark:text-white bg-transparent border-none focus:ring-0 p-0 w-full h-auto disabled:opacity-50"
-                                                />
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    {itemsRecipes.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {itemsRecipes.map(r => (
-                                                                <span key={r.id} className="text-[9px] bg-gray-100 dark:bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-600 flex items-center group/tag">
-                                                                    {r.name}
-                                                                    {canEdit && (
-                                                                        <button 
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, recipe_ids: (m.recipe_ids || []).filter(rid => rid !== r.id) } : m);
-                                                                                setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                                            }}
-                                                                            className="ml-1 text-gray-400 hover:text-red-500 opacity-0 group-hover/tag:opacity-100"
-                                                                        >
-                                                                            <X className="w-2.5 h-2.5" />
-                                                                        </button>
-                                                                    )}
-                                                                </span>
-                                                            ))}
-                                                            {canEdit && (
-                                                                <button 
-                                                                    onClick={() => { setTargetMenuItemId(item.id); setAddStep('database'); }}
-                                                                    className="text-[9px] bg-primary-50 dark:bg-primary-900/30 text-primary-600 px-1.5 py-0.5 rounded-full border border-primary-200 dark:border-primary-800 hover:bg-primary-100 transition-colors"
-                                                                >
-                                                                    + Añadir Componente
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                    <button 
-                                                        onClick={() => setEditingMenuItemId(editingMenuItemId === item.id ? null : item.id)}
-                                                        className={`text-[10px] font-bold flex items-center px-2 py-1 rounded-lg transition-colors ${editingMenuItemId === item.id ? 'bg-amber-100 text-amber-700' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
-                                                    >
-                                                        <Edit2 className="w-3 h-3 mr-1" />
-                                                        Detalles del Pase
-                                                    </button>
-                                                </div>
-                                            </div>
+                                if (sectionItems.length === 0 && activeTab !== 'Global') return null;
 
-                                            {canEdit && (
+                                return (
+                                    <div key={sectionRole} className="space-y-2">
+                                        <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
+                                            <h3 className="text-xs font-black uppercase text-gray-600">{sectionRole}</h3>
+                                            {(currentUser?.role === 'admin' || myRoles.includes(sectionRole)) && (
                                                 <button 
-                                                    onClick={() => handleRemoveRecipe(item.id)}
-                                                    className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    title="Eliminar del menú"
+                                                    onClick={() => { setAddStep('choice'); setActiveTab(sectionRole); }}
+                                                    className="bg-primary-600 text-white text-[10px] font-bold px-2 py-1 rounded"
                                                 >
-                                                    <TrashIcon className="w-5 h-5" />
+                                                    + Añadir
                                                 </button>
                                             )}
                                         </div>
+                                        {sectionItems.map((item) => {
+                                            const recipeIds = item.recipe_ids || (item.recipe_id ? [item.recipe_id] : []);
+                                            const itemsRecipes = recipeIds.map(rid => recipesMap.get(rid)).filter((r): r is Recipe => !!r);
+                                            const canEdit = currentUser?.role === 'admin' || (myRoles.includes(item.role));
+                                            const isCollapsed = collapsedSections[item.id];
 
-                                        {editingMenuItemId === item.id && (
-                                            <div className="ml-12 p-4 bg-amber-50/30 dark:bg-amber-900/10 rounded-xl border border-amber-100/50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                                <div className="lg:col-span-2">
-                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Explicación Camarero / Historia</label>
-                                                    <textarea 
-                                                        value={item.service_explanation || itemsRecipes[0]?.service_explanation || ''}
-                                                        onChange={(e) => {
-                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, service_explanation: e.target.value } : m);
-                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                        }}
-                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800"
-                                                        rows={2}
-                                                    />
+                                            return (
+                                                <div key={item.id} className="space-y-2 border-b dark:border-gray-700 pb-2">
+                                                    <div className={`flex items-center p-2 bg-white dark:bg-gray-800 border rounded-lg shadow-sm group ${isCollapsed ? 'opacity-80' : ''}`}>
+                                                        <button onClick={() => toggleCollapse(item.id)} className="mr-2 text-gray-400">
+                                                            {isCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                                                        </button>
+                                                        <span className="font-bold text-xs text-primary-600 mr-2">{item.order_number}</span>
+                                                        <span className="font-bold text-sm text-gray-800 dark:text-white flex-1">{item.name}</span>
+                                                        
+                                                        {canEdit && (
+                                                            <button onClick={() => handleRemoveRecipe(item.id)} className="p-1 text-gray-400 hover:text-red-500">
+                                                                <TrashIcon className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {!isCollapsed && (
+                                                        <div className="ml-8 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-xs space-y-2">
+                                                            <div><span className="font-bold text-gray-500">Explicación:</span> {item.service_explanation || itemsRecipes[0]?.service_explanation || item.description || '-'}</div>
+                                                            <div><span className="font-bold text-gray-500">Temp/Pase:</span> {item.temperature || itemsRecipes[0]?.temperature || '-'}</div>
+                                                            <div><span className="font-bold text-gray-500">Marcaje:</span> {item.cutlery_required || itemsRecipes[0]?.cutlery_required || '-'}</div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div>
-                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Temp / Pase</label>
-                                                    <input 
-                                                        type="text"
-                                                        value={item.temperature || itemsRecipes[0]?.temperature || ''}
-                                                        onChange={(e) => {
-                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, temperature: e.target.value } : m);
-                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                        }}
-                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800 font-bold"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Protocolo Específico</label>
-                                                    <input 
-                                                        type="text"
-                                                        value={item.service_type || itemsRecipes[0]?.service_type || ''}
-                                                        onChange={(e) => {
-                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, service_type: e.target.value } : m);
-                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                        }}
-                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800 font-bold"
-                                                    />
-                                                </div>
-                                                <div className="lg:col-span-2">
-                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Marcaje / Cubiertería</label>
-                                                    <input 
-                                                        type="text"
-                                                        value={item.cutlery_required || itemsRecipes[0]?.cutlery_required || itemsRecipes[0]?.recommended_marking || ''}
-                                                        onChange={(e) => {
-                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, cutlery_required: e.target.value } : m);
-                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                        }}
-                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800 font-bold"
-                                                    />
-                                                </div>
-                                                <div className="lg:col-span-2">
-                                                    <label className="block text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Instrucciones de Emplatado</label>
-                                                    <input 
-                                                        type="text"
-                                                        value={item.presentation || itemsRecipes[0]?.presentation || ''}
-                                                        onChange={(e) => {
-                                                            const updatedMenu = service.menu.map(m => m.id === item.id ? { ...m, presentation: e.target.value } : m);
-                                                            setServices(services.map(s => s.id === service.id ? { ...s, menu: updatedMenu } : s));
-                                                        }}
-                                                        className="w-full p-2 text-xs border rounded-lg bg-white dark:bg-gray-800"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
+                                            );
+                                        })}
                                     </div>
                                 );
                             })}
