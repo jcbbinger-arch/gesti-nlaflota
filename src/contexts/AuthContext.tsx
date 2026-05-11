@@ -116,9 +116,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         needsUpdate = true;
       }
       // Ensure super users and fixed accounts are active
-      if ((isSuperUser || userEmail === 'pablo.palazon@murciaeduca.es') && (userData.activity_status !== 'Activo' || !userData.profiles.includes(Profile.TEACHER))) {
+      if ((isSuperUser || userEmail === 'pablo.palazon@murciaeduca.es' || userEmail === 'cursos.cpr.juanc@gmail.com') && (userData.activity_status !== 'Activo' || !userData.profiles.includes(Profile.TEACHER))) {
         userData.activity_status = 'Activo';
-        if (userEmail === 'pablo.palazon@murciaeduca.es' && !userData.profiles.includes(Profile.TEACHER)) {
+        if (!userData.profiles.includes(Profile.TEACHER)) {
           userData.profiles = [...(userData.profiles || []), Profile.TEACHER];
         }
         needsUpdate = true;

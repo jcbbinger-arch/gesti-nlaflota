@@ -14,10 +14,9 @@ export interface FirestoreErrorInfo {
 }
 
 export const handleFirestoreError = (error: any, operationType: FirestoreErrorInfo['operationType'], path: string | null = null) => {
-  if (error?.code === 'permission-denied' || error?.message?.includes('insufficient permissions')) {
     const user = auth.currentUser;
     const errorInfo: FirestoreErrorInfo = {
-      error: error.message || 'Missing or insufficient permissions',
+      error: error.message || String(error),
       operationType,
       path,
       authInfo: {
@@ -29,9 +28,8 @@ export const handleFirestoreError = (error: any, operationType: FirestoreErrorIn
       }
     };
     
+    console.error('Firestore Error Detailed:', JSON.stringify(errorInfo, null, 2));
+
     // Throwing as JSON string as per instructions
     throw new Error(JSON.stringify(errorInfo));
-  }
-  
-  throw error;
 };
