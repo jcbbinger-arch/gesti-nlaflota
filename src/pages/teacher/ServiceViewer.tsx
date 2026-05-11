@@ -496,8 +496,8 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                         <div className="mb-6 pb-6 border-b border-gray-100 dark:border-gray-700/50">
                             <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Configuración General del Servicio</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div>
-                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Tipo de Servicio Global</label>
+                                <div className="lg:col-span-2">
+                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Tipo de Servicio Global del Comedor</label>
                                     <input 
                                         type="text"
                                         value={service.global_setup?.service_type || ''}
@@ -512,24 +512,8 @@ const ServiceDetailView: React.FC<{ service: Service; onBack: () => void }> = ({
                                         className="w-full p-2 text-sm font-bold border rounded-lg dark:bg-gray-700"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Título del Menú</label>
-                                    <input 
-                                        type="text"
-                                        value={service.global_setup?.menu_title || ''}
-                                        placeholder="Ej: Menú Degustación Primavera"
-                                        onChange={(e) => {
-                                            const updatedService = { 
-                                                ...service, 
-                                                global_setup: { ...(service.global_setup || {}), menu_title: e.target.value } 
-                                            };
-                                            setServices(services.map(s => s.id === service.id ? updatedService : s));
-                                        }}
-                                        className="w-full p-2 text-sm font-bold border rounded-lg dark:bg-gray-700"
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Observaciones Generales de Sala/Cocina</label>
+                                <div className="lg:col-span-2">
+                                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Observaciones Generales para todo el equipo</label>
                                     <input 
                                         type="text"
                                         value={service.global_setup?.general_observations || ''}
