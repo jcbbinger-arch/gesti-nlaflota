@@ -11,7 +11,7 @@ import { calculateIngredientCost, areUnitsCompatible } from '../../lib/unitConve
 import { ALLERGENS_LIST, ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
 import { AllergensControl } from '../../components/AllergensControl';
 import { compressImage } from '../../lib/imageCompression';
-import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal, RefreshCcw, CheckCircle2, ArrowLeft, Save, Wine, Martini, GlassWater } from 'lucide-react';
+import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal, RefreshCcw, CheckCircle2, ArrowLeft, Save, Wine, Martini, GlassWater, Briefcase, Ruler, ShoppingCart, Users as UsersIcon, Trash2, Info, Bean, Wheat, Thermometer, Timer, Activity } from 'lucide-react';
 
 const COCKTAIL_STYLES = ['Clásico', 'Flair'];
 const PREP_METHODS = ['Batido', 'Agitado', 'Directo al Vaso', 'Otros'];
@@ -177,10 +177,12 @@ export const RecipeForm: React.FC = () => {
 
     const categories = useMemo(() => workspaceSettings?.categories || DEFAULT_CATEGORIES, [workspaceSettings]);
 
-    const initialType = searchParams.get('type') === 'cocktail' ? 'cocktail' : 'standard';
+    const initialType = searchParams.get('type') === 'cocktail' ? 'cocktail' : 
+                        searchParams.get('type') === 'service_tech' ? 'service_tech' :
+                        searchParams.get('type') === 'bakery' ? 'bakery' : 'standard';
 
     const [formState, setFormState] = useState<Omit<Recipe, 'id' | 'author_id'>>({
-        name: '', description: '', photo: '', yield_amount: 1, yield_unit: 'raciones', category: initialType === 'cocktail' ? 'Bebidas' : '',
+        name: '', description: '', photo: '', yield_amount: 1, yield_unit: initialType === 'service_tech' ? 'servicios' : initialType === 'bakery' ? 'kg' : 'raciones', category: initialType === 'cocktail' ? 'Bebidas' : initialType === 'service_tech' ? 'Servicios' : initialType === 'bakery' ? 'Panadería' : '',
         ingredients: [], preparation_steps: '', key_points: '', is_public: false, cost: 0, price: 0,
         custom_section: { title: '', content: '' },
         presentation: '',
@@ -202,7 +204,22 @@ export const RecipeForm: React.FC = () => {
         cocktail_category: '',
         tools: '',
         glassware: '',
-        garnish: ''
+        garnish: '',
+        service_definition: '',
+        service_provisioning: '',
+        service_manipulation: '',
+        service_presentation: '',
+        service_maintenance: '',
+        bakery_flour_specs: { type: '', protein: '', strength: '', extraction: '' },
+        bakery_formula: { total_dough_weight: '', total_percentage: '' },
+        bakery_process_params: { 
+            ambient_temp: '', flour_temp: '', friction_factor: '', base_temp: '', water_temp: '', 
+            final_temp: '', bulk_fermentation: '', folds: '', final_proofing: '', humidity: '' 
+        },
+        bakery_baking_standards: { 
+            preheat_temp: '', entry_temp: '', steam: false, steam_time: '', total_time: '', internal_temp: '' 
+        },
+        bakery_organoleptic: { crust: '', crumb: '', aroma: '' }
     });
     const [searchTerm, setSearchTerm] = useState('');
     const [linkingIndex, setLinkingIndex] = useState<{ tab: number; index: number } | null>(null);
@@ -248,6 +265,19 @@ export const RecipeForm: React.FC = () => {
         } else {
             setFormState(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
         }
+    };
+
+    const handleNestedChange = (category: keyof Recipe, field: string, value: any) => {
+        setFormState(prev => {
+            const currentObj = (prev as any)[category] || {};
+            return {
+                ...prev,
+                [category]: {
+                    ...currentObj,
+                    [field]: value
+                }
+            };
+        });
     };
 
     const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -562,6 +592,12 @@ Justificación: ${aiData.molecularData.scientificJustification}
             const glassware = getVal('glassware', 'cristaleria', 'utensilios_servicio');
             const garnish = getVal('garnish', 'decoracion', 'decoracion_garnish');
 
+            const sDef = getVal('service_definition', 'definicion_producto', 'normativa');
+            const sProv = getVal('service_provisioning', 'aprovisionamiento', 'mise_en_place');
+            const sManip = getVal('service_manipulation', 'tecnicas_manipulacion', 'manipulacion');
+            const sPres = getVal('service_presentation', 'presentacion_acabado', 'acabado');
+            const sMaint = getVal('service_maintenance', 'limpieza_mantenimiento', 'mantenimiento');
+
             // Handle Sub-preparations
             const subPreps: SubPreparation[] = [];
             const aiSubPreps = aiData.sub_preparations || aiData.elaboraciones_secundarias || [];
@@ -676,7 +712,16 @@ Justificación: ${aiData.molecularData.scientificJustification}
                 cocktail_category: cocktailCat || prev.cocktail_category,
                 tools: tools || prev.tools,
                 glassware: glassware || prev.glassware,
-                garnish: garnish || prev.garnish
+                garnish: garnish || prev.garnish,
+                service_definition: sDef || prev.service_definition,
+                service_provisioning: sProv || prev.service_provisioning,
+                service_manipulation: sManip || prev.service_manipulation,
+                service_presentation: sPres || prev.service_presentation,
+                service_maintenance: sMaint || prev.service_maintenance,
+                bakery_flour_specs: aiData.bakery_flour_specs || prev.bakery_flour_specs,
+                bakery_process_params: aiData.bakery_process_params || prev.bakery_process_params,
+                bakery_baking_standards: aiData.bakery_baking_standards || prev.bakery_baking_standards,
+                bakery_organoleptic: aiData.bakery_organoleptic || prev.bakery_organoleptic
             }));
 
             setShowAIHub(false);
@@ -1231,6 +1276,339 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                             rows={4}
                                             className="w-full p-3 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl text-xs font-bold"
                                         />
+                                    </div>
+                                </div>
+                            </Card>
+                        )}
+
+                        {formState.recipe_type === 'bakery' && (
+                            <div className="space-y-6">
+                                {/* ESPECIFICACIONES HARINA */}
+                                <Card title="🌾 1. Especificaciones de la Harina">
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Tipo / Nombre</label>
+                                            <input 
+                                                type="text"
+                                                value={formState.bakery_flour_specs?.type || ''}
+                                                onChange={(e) => handleNestedChange('bakery_flour_specs', 'type', e.target.value)}
+                                                className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="Ej: T80, Fuerza..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Proteína (%)</label>
+                                            <input 
+                                                type="text"
+                                                value={formState.bakery_flour_specs?.protein || ''}
+                                                onChange={(e) => handleNestedChange('bakery_flour_specs', 'protein', e.target.value)}
+                                                className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="Ej: 12%"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Fuerza (W)</label>
+                                            <input 
+                                                type="text"
+                                                value={formState.bakery_flour_specs?.strength || ''}
+                                                onChange={(e) => handleNestedChange('bakery_flour_specs', 'strength', e.target.value)}
+                                                className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="Ej: 300W"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Extracción</label>
+                                            <input 
+                                                type="text"
+                                                value={formState.bakery_flour_specs?.extraction || ''}
+                                                onChange={(e) => handleNestedChange('bakery_flour_specs', 'extraction', e.target.value)}
+                                                className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="Ej: Integral"
+                                            />
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                {/* PARÁMETROS DE PROCESO */}
+                                <Card title="⚙️ 2. Parámetros Críticos de Proceso">
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block flex items-center">
+                                                    <Thermometer className="w-3 h-3 mr-1" /> T. Ambiente
+                                                </label>
+                                                <input 
+                                                    type="text"
+                                                    value={formState.bakery_process_params?.ambient_temp || ''}
+                                                    onChange={(e) => handleNestedChange('bakery_process_params', 'ambient_temp', e.target.value)}
+                                                    className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                    placeholder="°C"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block flex items-center">
+                                                    <Wheat className="w-3 h-3 mr-1" /> T. Harina
+                                                </label>
+                                                <input 
+                                                    type="text"
+                                                    value={formState.bakery_process_params?.flour_temp || ''}
+                                                    onChange={(e) => handleNestedChange('bakery_process_params', 'flour_temp', e.target.value)}
+                                                    className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                    placeholder="°C"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block flex items-center">
+                                                    <Activity className="w-3 h-3 mr-1" /> Fricción
+                                                </label>
+                                                <input 
+                                                    type="text"
+                                                    value={formState.bakery_process_params?.friction_factor || ''}
+                                                    onChange={(e) => handleNestedChange('bakery_process_params', 'friction_factor', e.target.value)}
+                                                    className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                    placeholder="°C"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block flex items-center text-blue-600">
+                                                    <GlassWater className="w-3 h-3 mr-1" /> T. Agua
+                                                </label>
+                                                <input 
+                                                    type="text"
+                                                    value={formState.bakery_process_params?.water_temp || ''}
+                                                    onChange={(e) => handleNestedChange('bakery_process_params', 'water_temp', e.target.value)}
+                                                    className="w-full p-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30 rounded-lg text-xs font-black"
+                                                    placeholder="Cálculo"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">T. Final Masa</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formState.bakery_process_params?.final_temp || ''}
+                                                    onChange={(e) => handleNestedChange('bakery_process_params', 'final_temp', e.target.value)}
+                                                    className="w-full p-2 bg-orange-100 dark:bg-orange-800 border-none rounded-lg text-xs font-black"
+                                                    placeholder="Ej: 24-26°C"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            <div className="md:col-span-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Fermentación Bloque</label>
+                                                <textarea 
+                                                    rows={2}
+                                                    value={formState.bakery_process_params?.bulk_fermentation || ''}
+                                                    onChange={(e) => handleNestedChange('bakery_process_params', 'bulk_fermentation', e.target.value)}
+                                                    className="w-full p-3 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                    placeholder="Tiempo y temperatura..."
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Pliegues (Folds)</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formState.bakery_process_params?.folds || ''}
+                                                    onChange={(e) => handleNestedChange('bakery_process_params', 'folds', e.target.value)}
+                                                    className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                    placeholder="Ej: 3 cada 30 min"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Humedad Cámara</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formState.bakery_process_params?.humidity || ''}
+                                                    onChange={(e) => handleNestedChange('bakery_process_params', 'humidity', e.target.value)}
+                                                    className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                    placeholder="Ej: 75%"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                {/* ESTÁNDARES COCCIÓN */}
+                                <Card title="🔥 3. Estándares de Cocción">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Precalentado</label>
+                                            <input 
+                                                type="text"
+                                                value={formState.bakery_baking_standards?.preheat_temp || ''}
+                                                onChange={(e) => handleNestedChange('bakery_baking_standards', 'preheat_temp', e.target.value)}
+                                                className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="°C"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">T. Entrada</label>
+                                            <input 
+                                                type="text"
+                                                value={formState.bakery_baking_standards?.entry_temp || ''}
+                                                onChange={(e) => handleNestedChange('bakery_baking_standards', 'entry_temp', e.target.value)}
+                                                className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="°C"
+                                            />
+                                        </div>
+                                        <div className="flex items-end space-x-2">
+                                            <div className="flex-1">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Vapor</label>
+                                                <select 
+                                                    value={formState.bakery_baking_standards?.steam ? 'true' : 'false'}
+                                                    onChange={(e) => handleNestedChange('bakery_baking_standards', 'steam', e.target.value === 'true')}
+                                                    className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                >
+                                                    <option value="false">No</option>
+                                                    <option value="true">Sí</option>
+                                                </select>
+                                            </div>
+                                            {formState.bakery_baking_standards?.steam && (
+                                                <div className="w-16">
+                                                    <input 
+                                                        type="text"
+                                                        value={formState.bakery_baking_standards?.steam_time || ''}
+                                                        onChange={(e) => handleNestedChange('bakery_baking_standards', 'steam_time', e.target.value)}
+                                                        className="w-full p-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 rounded-lg text-xs font-bold"
+                                                        placeholder="seg"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-1 block">Horneado Total</label>
+                                            <input 
+                                                type="text"
+                                                value={formState.bakery_baking_standards?.total_time || ''}
+                                                onChange={(e) => handleNestedChange('bakery_baking_standards', 'total_time', e.target.value)}
+                                                className="w-full p-2 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="min"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-red-600 mb-1 block">T. Seg. Interna</label>
+                                            <input 
+                                                type="text"
+                                                value={formState.bakery_baking_standards?.internal_temp || ''}
+                                                onChange={(e) => handleNestedChange('bakery_baking_standards', 'internal_temp', e.target.value)}
+                                                className="w-full p-2 bg-red-50 dark:bg-red-900/10 border border-red-100 rounded-lg text-xs font-black text-red-600"
+                                                placeholder="> 94°C"
+                                            />
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                {/* ANÁLISIS ORGANOLÉPTICO */}
+                                <Card title="🍞 4. Análisis Organoléptico (Calidad)">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-2 block">Corteza</label>
+                                            <textarea 
+                                                rows={3}
+                                                value={formState.bakery_organoleptic?.crust || ''}
+                                                onChange={(e) => handleNestedChange('bakery_organoleptic', 'crust', e.target.value)}
+                                                className="w-full p-3 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="Grosor, color Maillard, crujencia..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-2 block">Alveolado</label>
+                                            <textarea 
+                                                rows={3}
+                                                value={formState.bakery_organoleptic?.crumb || ''}
+                                                onChange={(e) => handleNestedChange('bakery_organoleptic', 'crumb', e.target.value)}
+                                                className="w-full p-3 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="Abierto, cerrado, regular..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-2 block">Aroma</label>
+                                            <textarea 
+                                                rows={3}
+                                                value={formState.bakery_organoleptic?.aroma || ''}
+                                                onChange={(e) => handleNestedChange('bakery_organoleptic', 'aroma', e.target.value)}
+                                                className="w-full p-3 bg-orange-50/50 dark:bg-orange-900/10 border-none rounded-lg text-xs font-bold"
+                                                placeholder="Láctico, acético, cereal tostado..."
+                                            />
+                                        </div>
+                                    </div>
+                                </Card>
+                            </div>
+                        )}
+
+                        {formState.recipe_type === 'service_tech' && (
+                            <Card title="🎓 Ficha Técnica de Servicio (Sala)">
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2 block flex items-center">
+                                                <Info className="w-3.5 h-3.5 mr-1.5" /> Definición del Producto y Normativa
+                                            </label>
+                                            <textarea 
+                                                name="service_definition"
+                                                value={formState.service_definition || ''}
+                                                onChange={handleFormChange}
+                                                placeholder="Descripción clara del plato según la definición oficial y normas básicas..."
+                                                rows={4}
+                                                className="w-full p-4 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl text-xs font-bold"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2 block flex items-center">
+                                                <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Aprovisionamiento y Mise en Place
+                                            </label>
+                                            <textarea 
+                                                name="service_provisioning"
+                                                value={formState.service_provisioning || ''}
+                                                onChange={handleFormChange}
+                                                placeholder="Lista de materias primas y preparación de útiles y equipos (Carro, Pinzas, etc.)..."
+                                                rows={4}
+                                                className="w-full p-4 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl text-xs font-bold"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2 block flex items-center">
+                                            <UsersIcon className="w-3.5 h-3.5 mr-1.5" /> Técnicas de Manipulación y Servicio
+                                        </label>
+                                        <textarea 
+                                            name="service_manipulation"
+                                            value={formState.service_manipulation || ''}
+                                            onChange={handleFormChange}
+                                            placeholder="Instrucciones específicas: trinchado, desespinado o cocina frente al cliente..."
+                                            rows={6}
+                                            className="w-full p-4 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl text-xs font-bold"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2 block flex items-center">
+                                                <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Presentación, Acabado y Temperaturas
+                                            </label>
+                                            <textarea 
+                                                name="service_presentation"
+                                                value={formState.service_presentation || ''}
+                                                onChange={handleFormChange}
+                                                placeholder="Detalles sobre emplatado elegante y condiciones de temperatura..."
+                                                rows={4}
+                                                className="w-full p-4 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl text-xs font-bold"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2 block flex items-center">
+                                                <RefreshCcw className="w-3.5 h-3.5 mr-1.5" /> Limpieza y Mantenimiento
+                                            </label>
+                                            <textarea 
+                                                name="service_maintenance"
+                                                value={formState.service_maintenance || ''}
+                                                onChange={handleFormChange}
+                                                placeholder="Procedimientos para limpieza de utensilios y equipos durante/después del servicio..."
+                                                rows={4}
+                                                className="w-full p-4 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-2xl text-xs font-bold"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </Card>

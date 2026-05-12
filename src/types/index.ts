@@ -312,13 +312,55 @@ export interface Recipe {
         type: string;
         observation: string;
     };
-    recipe_type?: 'standard' | 'cocktail';
+    recipe_type?: 'standard' | 'cocktail' | 'service_tech' | 'bakery';
     cocktail_style?: 'Clásico' | 'Flair' | string;
     prep_method?: 'Batido' | 'Agitado' | 'Directo al Vaso' | 'Otros' | string;
     cocktail_category?: 'Aperitivo' | 'Digestivo' | 'Trago Largo' | 'Trago Corto' | 'Espumante' | 'Fantasía' | string;
     tools?: string;
     glassware?: string;
     garnish?: string;
+    // Service-specific fields (FOH/Gueridon)
+    service_definition?: string;
+    service_provisioning?: string;
+    service_manipulation?: string;
+    service_presentation?: string;
+    service_maintenance?: string;
+    // Bakery-specific fields
+    bakery_flour_specs?: {
+        type: string;
+        protein?: string;
+        strength?: string;
+        extraction?: string;
+    };
+    bakery_formula?: {
+        total_dough_weight?: string;
+        total_percentage?: string;
+    };
+    bakery_process_params?: {
+        ambient_temp?: string;
+        flour_temp?: string;
+        friction_factor?: string;
+        base_temp?: string;
+        water_temp?: string;
+        final_temp?: string;
+        bulk_fermentation?: string;
+        folds?: string;
+        final_proofing?: string;
+        humidity?: string;
+    };
+    bakery_baking_standards?: {
+        preheat_temp?: string;
+        entry_temp?: string;
+        steam?: boolean;
+        steam_time?: string;
+        total_time?: string;
+        internal_temp?: string;
+    };
+    bakery_organoleptic?: {
+        crust?: string;
+        crumb?: string;
+        aroma?: string;
+    };
 }
 
 export interface StockItem {

@@ -8,7 +8,7 @@ interface AIHubModalProps {
     isOpen: boolean;
     onClose: () => void;
     onImport: (jsonString: string) => void;
-    initialTab?: 'digitalize' | 'molecular' | 'cocktail';
+    initialTab?: 'digitalize' | 'molecular' | 'cocktail' | 'service' | 'bakery';
 }
 
 export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImport, initialTab = 'digitalize' }) => {
@@ -16,8 +16,8 @@ export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImpor
     const { creatorInfo } = useCreator();
     const { workspaceSettings } = useData();
     const [jsonInput, setJsonInput] = useState('');
-    const [copied, setCopied] = useState<'master' | 'molecular' | 'cocktail' | null>(null);
-    const [activeView, setActiveView] = useState<'digitalize' | 'molecular' | 'cocktail'>(initialTab);
+    const [copied, setCopied] = useState<'master' | 'molecular' | 'cocktail' | 'service' | 'bakery' | null>(null);
+    const [activeView, setActiveView] = useState<'digitalize' | 'molecular' | 'cocktail' | 'service' | 'bakery'>(initialTab);
 
     // Sync activeView with initialTab when modal opens
     React.useEffect(() => {
@@ -133,8 +133,87 @@ INGREDIENTES PARA ANALIZAR:
 [PEGA AQUÍ TUS INGREDIENTES]`;
     };
 
-    const handleCopy = (type: 'master' | 'molecular' | 'cocktail') => {
-        const prompt = type === 'master' ? getMasterPrompt() : type === 'cocktail' ? getCocktailPrompt() : getMolecularPrompt();
+    const getServicePrompt = () => {
+        return `Actúa como Maître y Experto en Operativa de Sala para ${companyInfo.name || 'mi establecimiento'}.
+Tu tarea es convertir un texto de PROCEDIMIENTO DE SERVICIO O TÉCNICA DE GUERIDÓN en un objeto JSON compatible.
+
+REGLAS DE FORMATO:
+1. Devuelve ÚNICAMENTE el código JSON.
+2. Esquema exacto:
+{
+  "name": "Nombre de la técnica/plato",
+  "recipe_type": "service_tech",
+  "category": "Servicios",
+  "yieldQuantity": 1, 
+  "yieldUnit": "servicios",
+  "service_definition": "Definición y normativa",
+  "service_provisioning": "Mise en place y herramientas necesarias",
+  "service_manipulation": "Técnica paso a paso de manipulación frente al cliente",
+  "service_presentation": "Presentación, acabado y temperaturas",
+  "service_maintenance": "Limpieza y mantenimiento post-servicio",
+  "ingredients": [{"name": "Material/Ingrediente", "quantity": 1, "unit": "ud"}],
+  "clientDescription": "Descripción sugerente para el cliente",
+  "serviceExplanation": "Storytelling del servicio"
+}
+
+TEXTO A DIGITALIZAR:
+[PEGA AQUÍ EL PROCEDIMIENTO]`;
+    };
+
+    const getBakeryPrompt = () => {
+        return `Actúa como Maestro Panadero para ${companyInfo.name || 'mi establecimiento'}. 
+Tu tarea es convertir un texto de RECETA DE PANADERÍA en un objeto JSON especializado.
+
+REGLAS DE FORMATO:
+1. Devuelve ÚNICAMENTE el código JSON.
+2. Esquema exacto:
+{
+  "name": "Nombre del pan",
+  "recipe_type": "bakery",
+  "yieldQuantity": 1,
+  "yieldUnit": "kg",
+  "bakery_flour_specs": {
+    "type": "Tipo de harina",
+    "protein": "% proteína",
+    "strength": "W",
+    "extraction": "Extracción"
+  },
+  "bakery_process_params": {
+    "ambient_temp": "22",
+    "flour_temp": "20",
+    "friction_factor": "10",
+    "final_temp": "24-26",
+    "bulk_fermentation": "Tiempo y temp",
+    "folds": "Pliegues",
+    "humidity": "%"
+  },
+  "bakery_baking_standards": {
+    "preheat_temp": "240",
+    "entry_temp": "230",
+    "steam": true,
+    "steam_time": "10",
+    "total_time": "45",
+    "internal_temp": "> 94"
+  },
+  "bakery_organoleptic": {
+    "crust": "Corteza",
+    "crumb": "Alveolado",
+    "aroma": "Aroma"
+  },
+  "ingredients": [{"name": "Harina", "quantity": 1000, "unit": "g", "percentage": 100}]
+}
+
+TEXTO A DIGITALIZAR:
+[PEGA AQUÍ EL PROCEDIMIENTO]`;
+    };
+
+    const handleCopy = (type: 'master' | 'molecular' | 'cocktail' | 'service' | 'bakery') => {
+        const prompt = 
+            type === 'master' ? getMasterPrompt() : 
+            type === 'cocktail' ? getCocktailPrompt() : 
+            type === 'service' ? getServicePrompt() : 
+            type === 'bakery' ? getBakeryPrompt() :
+            getMolecularPrompt();
         navigator.clipboard.writeText(prompt);
         setCopied(type);
         setTimeout(() => setCopied(null), 2000);
@@ -182,6 +261,18 @@ INGREDIENTES PARA ANALIZAR:
                             Cóctel
                         </button>
                         <button 
+                            onClick={() => setActiveView('service')}
+                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'service' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            Servicios
+                        </button>
+                        <button 
+                            onClick={() => setActiveView('bakery')}
+                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'bakery' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            Panadería
+                        </button>
+                        <button 
                             onClick={() => setActiveView('molecular')}
                             className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'molecular' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                         >
@@ -211,6 +302,10 @@ INGREDIENTES PARA ANALIZAR:
                                             ? 'Optimizado para extraer gramajes, pasos y storytelling comercial de cualquier imagen o texto de cocina.'
                                             : activeView === 'cocktail'
                                             ? 'Especializado en mixología: técnicas de agitado, cristalería, herramientas y familias de cócteles.'
+                                            : activeView === 'service'
+                                            ? 'Enfocado en operativa de sala, técnicas de gueridón, trinchado y protocolos de servicio al cliente.'
+                                            : activeView === 'bakery'
+                                            ? 'Especializado en panadería: especificaciones de harina, fórmula panadera, temperaturas de masa y estándares de cocción.'
                                             : 'Basado en FlavorDB y perfiles de terpenos para maridajes científicos de vanguardia.'
                                         }
                                     </p>
@@ -223,11 +318,11 @@ INGREDIENTES PARA ANALIZAR:
                         </div>
 
                         <button 
-                            onClick={() => handleCopy(activeView === 'digitalize' ? 'master' : activeView === 'cocktail' ? 'cocktail' : 'molecular')}
+                            onClick={() => handleCopy(activeView === 'digitalize' ? 'master' : activeView === 'cocktail' ? 'cocktail' : activeView === 'service' ? 'service' : activeView === 'bakery' ? 'bakery' : 'molecular')}
                             className="w-full bg-white text-[#121421] py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center space-x-3 shadow-xl active:scale-[0.98]"
                         >
                             {copied === activeView ? <Check className="w-5 h-5 text-emerald-600" /> : <Copy className="w-5 h-5" />}
-                            <span>{copied === activeView ? 'PROMPT COPIADO' : `COPIAR PROMPT ${activeView === 'digitalize' ? 'COCINA' : activeView === 'cocktail' ? 'CÓCTEL' : 'MOLECULAR'}`}</span>
+                            <span>{copied === activeView ? 'PROMPT COPIADO' : `COPIAR PROMPT ${activeView === 'digitalize' ? 'COCINA' : activeView === 'cocktail' ? 'CÓCTEL' : activeView === 'service' ? 'SERVICIOS' : activeView === 'bakery' ? 'PANADERÍA' : 'MOLECULAR'}`}</span>
                         </button>
                     </div>
 

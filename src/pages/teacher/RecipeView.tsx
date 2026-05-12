@@ -27,7 +27,17 @@ import {
     Dna,
     Wine,
     Martini,
-    GlassWater
+    GlassWater,
+    Briefcase,
+    ShoppingCart,
+    Users as UsersIcon,
+    RefreshCcw,
+    BookOpen,
+    Bean,
+    Wheat,
+    Timer,
+    Activity,
+    Wind
 } from 'lucide-react';
 import { ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
 import { printPage } from '../../utils/export';
@@ -202,6 +212,16 @@ export const RecipeView: React.FC = () => {
                                                 <Wine className="w-3 h-3 mr-1" /> Cóctel
                                             </span>
                                         )}
+                                        {recipe.recipe_type === 'service_tech' && (
+                                            <span className="ml-4 no-print inline-flex items-center px-3 py-1 rounded-full bg-emerald-500 text-[10px] font-black uppercase tracking-widest text-white align-middle">
+                                                <Briefcase className="w-3 h-3 mr-1" /> Técnica de Servicio
+                                            </span>
+                                        )}
+                                        {recipe.recipe_type === 'bakery' && (
+                                            <span className="ml-4 no-print inline-flex items-center px-3 py-1 rounded-full bg-orange-500 text-[10px] font-black uppercase tracking-widest text-white align-middle">
+                                                <Bean className="w-3 h-3 mr-1" /> Panadería
+                                            </span>
+                                        )}
                                     </h1>
                                 </div>
                                 <p className="text-slate-400 print:text-gray-600 text-sm">{recipe.description}</p>
@@ -314,6 +334,205 @@ export const RecipeView: React.FC = () => {
                                         <h4 className="text-[10px] font-black uppercase tracking-widest">Garnish / Decoración</h4>
                                     </div>
                                     <p className="text-sm font-bold text-slate-300 whitespace-pre-line">{recipe.garnish || 'No documentado'}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {recipe.recipe_type === 'bakery' && (
+                            <div className="space-y-8 no-print">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    {/* HARINA Y FÓRMULA */}
+                                    <div className="space-y-6">
+                                        <div className="bg-orange-500/5 border border-orange-500/20 rounded-3xl p-6 space-y-4">
+                                            <div className="flex items-center space-x-2 text-orange-500">
+                                                <Wheat className="w-4 h-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Especificaciones de la Harina</h4>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase text-orange-500/50">Tipo / Nombre</p>
+                                                    <p className="text-sm font-bold text-white">{recipe.bakery_flour_specs?.type || '-'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase text-orange-500/50">Proteína (%)</p>
+                                                    <p className="text-sm font-bold text-white">{recipe.bakery_flour_specs?.protein || '-'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase text-orange-500/50">Fuerza (W)</p>
+                                                    <p className="text-sm font-bold text-white">{recipe.bakery_flour_specs?.strength || '-'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase text-orange-500/50">Extracción</p>
+                                                    <p className="text-sm font-bold text-white">{recipe.bakery_flour_specs?.extraction || '-'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-slate-800/20 border border-slate-700/50 rounded-3xl p-6 space-y-3">
+                                            <div className="flex items-center space-x-2 text-orange-500">
+                                                <Activity className="w-4 h-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Parámetros de Amasado</h4>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div className="bg-slate-800/40 p-3 rounded-2xl text-center">
+                                                    <p className="text-[8px] font-black uppercase text-slate-500 mb-1">T. Ambiente</p>
+                                                    <span className="text-xs font-bold text-slate-200">{recipe.bakery_process_params?.ambient_temp}°C</span>
+                                                </div>
+                                                <div className="bg-slate-800/40 p-3 rounded-2xl text-center">
+                                                    <p className="text-[8px] font-black uppercase text-slate-500 mb-1">T. Harina</p>
+                                                    <span className="text-xs font-bold text-slate-200">{recipe.bakery_process_params?.flour_temp}°C</span>
+                                                </div>
+                                                <div className="bg-slate-800/40 p-3 rounded-2xl text-center">
+                                                    <p className="text-[8px] font-black uppercase text-slate-500 mb-1">Fricción</p>
+                                                    <span className="text-xs font-bold text-slate-200">{recipe.bakery_process_params?.friction_factor}°C</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center p-3 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+                                                <div className="flex items-center space-x-2 text-blue-400">
+                                                    <GlassWater className="w-3.5 h-3.5" />
+                                                    <span className="text-[9px] font-black uppercase">T. Agua Calculada</span>
+                                                </div>
+                                                <span className="text-base font-black text-blue-400">{recipe.bakery_process_params?.water_temp}°C</span>
+                                            </div>
+                                            <div className="flex justify-between items-center p-3 bg-orange-500/10 border border-orange-500/20 rounded-2xl">
+                                                <div className="flex items-center space-x-2 text-orange-400">
+                                                    <Thermometer className="w-3.5 h-3.5" />
+                                                    <span className="text-[9px] font-black uppercase">T. Final Masa (TFM)</span>
+                                                </div>
+                                                <span className="text-base font-black text-orange-400">{recipe.bakery_process_params?.final_temp}°C</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* FERMENTACIÓN Y COCCIÓN */}
+                                    <div className="space-y-6">
+                                        <div className="bg-orange-500/5 border border-orange-500/20 rounded-3xl p-6 space-y-4">
+                                            <div className="flex items-center space-x-2 text-orange-500">
+                                                <Timer className="w-4 h-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Fermentación y Control</h4>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between border-b border-slate-700/50 pb-2">
+                                                    <span className="text-[9px] font-black uppercase text-slate-500">Bloque</span>
+                                                    <span className="text-xs font-bold text-slate-300">{recipe.bakery_process_params?.bulk_fermentation || '-'}</span>
+                                                </div>
+                                                <div className="flex justify-between border-b border-slate-700/50 pb-2">
+                                                    <span className="text-[9px] font-black uppercase text-slate-500">Pliegues (S&F)</span>
+                                                    <span className="text-xs font-bold text-slate-300">{recipe.bakery_process_params?.folds || '-'}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-[9px] font-black uppercase text-slate-500">Humedad Cámara</span>
+                                                    <span className="text-xs font-bold text-slate-300">{recipe.bakery_process_params?.humidity}%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-6 space-y-4">
+                                            <div className="flex items-center space-x-2 text-red-500">
+                                                <RefreshCcw className="w-4 h-4" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest">Estándares de Cocción</h4>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase text-red-500/50">Precalentado</p>
+                                                    <p className="text-xs font-bold text-white">{recipe.bakery_baking_standards?.preheat_temp}°C</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase text-red-500/50">Entrada</p>
+                                                    <p className="text-xs font-bold text-white">{recipe.bakery_baking_standards?.entry_temp}°C</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase text-red-500/50">Vapor</p>
+                                                    <p className="text-xs font-bold text-white">
+                                                        {recipe.bakery_baking_standards?.steam ? `SÍ (${recipe.bakery_baking_standards?.steam_time}s)` : 'NO'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase text-red-500/50">Horneado</p>
+                                                    <p className="text-xs font-bold text-white">{recipe.bakery_baking_standards?.total_time} min</p>
+                                                </div>
+                                            </div>
+                                            <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-2xl flex justify-between items-center">
+                                                <span className="text-[9px] font-black uppercase text-red-400">T. Seguridad Interna</span>
+                                                <span className="text-base font-black text-white">{recipe.bakery_baking_standards?.internal_temp || '> 94°C'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ANÁLISIS ORGANOLÉPTICO */}
+                                <div className="bg-slate-800/20 border border-slate-700/50 rounded-[2.5rem] p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center space-x-2 text-orange-500">
+                                            <Bean className="w-4 h-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-500">Corteza</h4>
+                                        </div>
+                                        <p className="text-sm text-slate-300 italic">{recipe.bakery_organoleptic?.crust || 'No documentado'}</p>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center space-x-2 text-orange-500">
+                                            <Activity className="w-4 h-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-500">Alveolado (Miga)</h4>
+                                        </div>
+                                        <p className="text-sm text-slate-300 italic">{recipe.bakery_organoleptic?.crumb || 'No documentado'}</p>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center space-x-2 text-orange-500">
+                                            <Wind className="w-4 h-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-500">Aroma</h4>
+                                        </div>
+                                        <p className="text-sm text-slate-300 italic">{recipe.bakery_organoleptic?.aroma || 'No documentado'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {recipe.recipe_type === 'service_tech' && (
+                            <div className="space-y-8 no-print">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-6 space-y-3">
+                                        <div className="flex items-center space-x-2 text-emerald-500">
+                                            <BookOpen className="w-4 h-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Definición y Normativa</h4>
+                                        </div>
+                                        <p className="text-sm font-medium text-slate-300 leading-relaxed italic">{recipe.service_definition || 'Sin definición técnica registrada.'}</p>
+                                    </div>
+                                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-6 space-y-3">
+                                        <div className="flex items-center space-x-2 text-emerald-500">
+                                            <ShoppingCart className="w-4 h-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Aprovisionamiento (Mise en Place)</h4>
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-300 whitespace-pre-line">{recipe.service_provisioning || 'Sin registro de útiles necesarios.'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-[2.5rem] p-8 space-y-4">
+                                    <div className="flex items-center space-x-3 text-emerald-400">
+                                        <UsersIcon className="w-5 h-5" />
+                                        <h3 className="text-sm font-black uppercase tracking-[0.2em]">Técnicas de Manipulación y Servicio</h3>
+                                    </div>
+                                    <div className="prose prose-invert max-w-none">
+                                        <p className="text-base text-slate-200 leading-loose whitespace-pre-line font-medium border-l-2 border-emerald-500/30 pl-6">
+                                            {recipe.service_manipulation || 'No se han detallado las técnicas de manipulación para esta ficha.'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-slate-800/30 border border-slate-700/50 rounded-3xl p-6 space-y-3">
+                                        <div className="flex items-center space-x-2 text-primary-400">
+                                            <Sparkles className="w-4 h-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest">Presentación y Acabado</h4>
+                                        </div>
+                                        <p className="text-sm text-slate-400">{recipe.service_presentation || 'No documentado'}</p>
+                                    </div>
+                                    <div className="bg-slate-800/30 border border-slate-700/50 rounded-3xl p-6 space-y-3">
+                                        <div className="flex items-center space-x-2 text-red-400">
+                                            <RefreshCcw className="w-4 h-4" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest">Mantenimiento y Limpieza</h4>
+                                        </div>
+                                        <p className="text-sm text-slate-400">{recipe.service_maintenance || 'No documentado'}</p>
+                                    </div>
                                 </div>
                             </div>
                         )}

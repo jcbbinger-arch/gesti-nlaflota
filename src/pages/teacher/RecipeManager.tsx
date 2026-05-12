@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { ComposeMessageModal } from '../shared/Messaging';
-import { Share2, Eye, Edit2, Trash2, Users, Lock, Unlock, Image as ImageIcon, Coins, Info, Settings, Plus, Wine } from 'lucide-react';
+import { Share2, Eye, Edit2, Trash2, Users, Lock, Unlock, Image as ImageIcon, Coins, Info, Settings, Plus, Wine, Briefcase, Bean } from 'lucide-react';
 import { Recipe, Message, User } from '../../types';
 import { SettingsModal } from '../../components/SettingsModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -297,6 +297,18 @@ export const RecipeManager: React.FC = () => {
                         className="flex-1 md:flex-initial bg-amber-600 text-white py-3 px-6 rounded-2xl hover:bg-amber-700 flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg shadow-amber-100 transition-all hover:-translate-y-0.5 active:translate-y-0"
                     >
                         <Wine className="w-4 h-4 mr-2" /> Nuevo Cóctel
+                    </Link>
+                    <Link 
+                        to="/teacher/recipes/new?type=service_tech" 
+                        className="flex-1 md:flex-initial bg-emerald-600 text-white py-3 px-6 rounded-2xl hover:bg-emerald-700 flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg shadow-emerald-100 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                        <Briefcase className="w-4 h-4 mr-2" /> Ficha de Servicio
+                    </Link>
+                    <Link 
+                        to="/teacher/recipes/new?type=bakery" 
+                        className="flex-1 md:flex-initial bg-orange-600 text-white py-3 px-6 rounded-2xl hover:bg-orange-700 flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg shadow-orange-100 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                        <Bean className="w-4 h-4 mr-2" /> Ficha de Panadería
                     </Link>
                 </div>
             </div>
