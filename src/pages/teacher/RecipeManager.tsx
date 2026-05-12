@@ -344,47 +344,47 @@ export const RecipeManager: React.FC = () => {
                 <div className="no-print flex items-center space-x-3 w-full md:w-auto">
                     <button 
                         onClick={() => setShowAIHub(true)}
-                        className="flex-1 md:flex-initial bg-white/10 text-white py-3 px-6 rounded-2xl hover:bg-white/20 flex items-center justify-center font-black uppercase tracking-widest text-xs transition-all border border-white/5"
+                        className="flex-1 md:flex-initial bg-indigo-600 text-white py-3 px-6 rounded-2xl hover:bg-indigo-700 flex items-center justify-center font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-indigo-100"
                     >
-                        <Sparkles className="w-4 h-4 mr-2 text-primary-400" /> Digitalizar IA
+                        <Sparkles className="w-4 h-4 mr-2 text-indigo-200" /> Digitalizar IA
                     </button>
                     <button 
                         onClick={() => setShowSettings(true)}
-                        className="flex-1 md:flex-initial bg-gray-100 text-gray-600 py-3 px-5 rounded-2xl hover:bg-gray-200 flex items-center justify-center font-bold uppercase tracking-widest text-xs transition-colors"
+                        className="flex-1 md:flex-initial bg-gray-100 text-gray-700 py-3 px-5 rounded-2xl hover:bg-gray-200 flex items-center justify-center font-bold uppercase tracking-widest text-xs transition-colors border border-gray-200"
                     >
-                        <Settings className="w-4 h-4 mr-2" /> Configurar
+                        <Settings className="w-4 h-4 mr-2 text-gray-400" /> Configurar
                     </button>
                 </div>
             </div>
 
             {/* CREATION ACTIONS GROUPED BY DEPARTMENT */}
-            <div className="bg-white/5 dark:bg-slate-800/30 rounded-[2rem] p-6 border border-white/10 mb-10 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 blur-[100px] rounded-full -mr-32 -mt-32"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full -ml-32 -mb-32"></div>
+            <div className="bg-slate-50 dark:bg-slate-800/30 rounded-[2rem] p-6 border border-slate-200 dark:border-white/10 mb-10 overflow-hidden relative shadow-sm">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full -ml-32 -mb-32"></div>
                 
-                <div className={`relative grid grid-cols-1 ${isKitchenProfile && isServiceProfile ? 'lg:grid-cols-2 lg:divide-x' : 'lg:grid-cols-1'} gap-8 divide-y lg:divide-y-0 divide-white/10`}>
+                <div className={`relative grid grid-cols-1 ${isKitchenProfile && isServiceProfile ? 'lg:grid-cols-2 lg:divide-x' : 'lg:grid-cols-1'} gap-8 divide-y lg:divide-y-0 divide-slate-200 dark:divide-white/10`}>
                     {/* KITCHEN & BAKERY GROUP */}
                     {isKitchenProfile && (
                         <div className={`space-y-6 ${isServiceProfile ? 'lg:pr-8' : ''}`}>
                             <div className="flex items-center space-x-3">
                                 <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                                    <ChefHat className="w-4 h-4 text-orange-500" />
+                                    <ChefHat className="w-4 h-4 text-orange-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Cocina y Pastelería</h3>
+                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Cocina y Pastelería</h3>
                                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Producción y Elaboración</p>
                                 </div>
                             </div>
                             <div className="flex flex-wrap gap-3">
                                 <Link 
                                     to="/teacher/recipes/new" 
-                                    className="flex-1 bg-[#0e1627] text-white py-4 px-6 rounded-2xl hover:bg-black flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg transition-all hover:-translate-y-1 active:translate-y-0"
+                                    className="flex-1 bg-slate-900 text-white py-4 px-6 rounded-2xl hover:bg-black flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-xl shadow-black/20 transition-all hover:-translate-y-1 active:translate-y-0"
                                 >
-                                    <Plus className="w-4 h-4 mr-2" /> Nueva Receta
+                                    <Plus className="w-4 h-4 mr-2 text-indigo-400" /> Nueva Receta
                                 </Link>
                                 <Link 
                                     to="/teacher/recipes/new?type=bakery" 
-                                    className="flex-1 bg-white/5 text-orange-200 py-4 px-6 rounded-2xl hover:bg-white/10 flex items-center justify-center font-black uppercase tracking-widest text-[10px] border border-white/5 shadow-lg transition-all hover:-translate-y-1 active:translate-y-0"
+                                    className="flex-1 bg-amber-700 text-white py-4 px-6 rounded-2xl hover:bg-amber-800 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-xl shadow-amber-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
                                 >
                                     <Bean className="w-4 h-4 mr-2" /> Ficha Panadería
                                 </Link>
@@ -396,24 +396,24 @@ export const RecipeManager: React.FC = () => {
                     {isServiceProfile && (
                         <div className={`space-y-6 ${isKitchenProfile ? 'lg:pl-8 pt-8 lg:pt-0' : ''}`}>
                             <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                                    <Wine className="w-4 h-4 text-emerald-500" />
+                                <div className="w-8 h-8 rounded-xl bg-teal-500/10 flex items-center justify-center">
+                                    <Wine className="w-4 h-4 text-teal-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Servicio y Sala</h3>
+                                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Servicio y Sala</h3>
                                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Atención y Mixología</p>
                                 </div>
                             </div>
                             <div className="flex flex-wrap gap-3">
                                 <Link 
                                     to="/teacher/recipes/new?type=cocktail" 
-                                    className="flex-1 bg-amber-600/90 text-white py-4 px-6 rounded-2xl hover:bg-amber-700 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg shadow-amber-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
+                                    className="flex-1 bg-orange-700 text-white py-4 px-6 rounded-2xl hover:bg-orange-800 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-xl shadow-orange-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
                                 >
                                     <Martini className="w-4 h-4 mr-2" /> Nuevo Cóctel
                                 </Link>
                                 <Link 
                                     to="/teacher/recipes/new?type=service_tech" 
-                                    className="flex-1 bg-emerald-600/90 text-white py-4 px-6 rounded-2xl hover:bg-emerald-700 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
+                                    className="flex-1 bg-emerald-800 text-white py-4 px-6 rounded-2xl hover:bg-emerald-900 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-xl shadow-emerald-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
                                 >
                                     <Briefcase className="w-4 h-4 mr-2" /> Ficha Servicio
                                 </Link>
