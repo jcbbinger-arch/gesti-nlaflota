@@ -24,7 +24,10 @@ import {
     Clock,
     User,
     Sparkles,
-    Dna
+    Dna,
+    Wine,
+    Martini,
+    GlassWater
 } from 'lucide-react';
 import { ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
 import { printPage } from '../../utils/export';
@@ -192,7 +195,14 @@ export const RecipeView: React.FC = () => {
                             <div className="space-y-2">
                                 <div className="flex items-center space-x-2">
                                     <ChefHat className="w-6 h-6 text-primary-500 print:text-black" />
-                                    <h1 className="text-4xl font-black italic uppercase tracking-tighter text-white print:text-black">{recipe.name}</h1>
+                                    <h1 className="text-4xl font-black italic uppercase tracking-tighter text-white print:text-black">
+                                        {recipe.name}
+                                        {recipe.recipe_type === 'cocktail' && (
+                                            <span className="ml-4 no-print inline-flex items-center px-3 py-1 rounded-full bg-amber-500 text-[10px] font-black uppercase tracking-widest text-[#121421] align-middle">
+                                                <Wine className="w-3 h-3 mr-1" /> Cóctel
+                                            </span>
+                                        )}
+                                    </h1>
                                 </div>
                                 <p className="text-slate-400 print:text-gray-600 text-sm">{recipe.description}</p>
                             </div>
@@ -201,6 +211,27 @@ export const RecipeView: React.FC = () => {
                                 <p className="text-xs font-bold text-slate-500 print:text-gray-400">FICHA TÉCNICA DE PRODUCCIÓN</p>
                             </div>
                         </div>
+
+                        {recipe.recipe_type === 'cocktail' && (
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-6 grid grid-cols-2 lg:grid-cols-4 gap-4 no-print">
+                                <div className="text-center">
+                                    <p className="text-[8px] font-black uppercase text-amber-500/70 mb-1">Estilo</p>
+                                    <span className="text-xs font-black text-white uppercase tracking-widest">{recipe.cocktail_style || '-'}</span>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[8px] font-black uppercase text-amber-500/70 mb-1">Método</p>
+                                    <span className="text-xs font-black text-white uppercase tracking-widest">{recipe.prep_method || '-'}</span>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[8px] font-black uppercase text-amber-500/70 mb-1">Categoría Cóctel</p>
+                                    <span className="text-xs font-black text-white uppercase tracking-widest">{recipe.cocktail_category || '-'}</span>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-[8px] font-black uppercase text-amber-500/70 mb-1">Producción</p>
+                                    <span className="text-xs font-black text-white uppercase tracking-widest">{recipe.yield_amount} {recipe.yield_unit}</span>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                             <div className="space-y-6">
@@ -259,6 +290,33 @@ export const RecipeView: React.FC = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* SUB-ELABORACIONES */}
+                        {recipe.recipe_type === 'cocktail' && (
+                            <div className="bg-slate-800/20 border border-slate-700/50 rounded-3xl p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                                <div className="space-y-3">
+                                    <div className="flex items-center space-x-2 text-amber-500">
+                                        <Martini className="w-4 h-4" />
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest">Herramientas</h4>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-300 whitespace-pre-line">{recipe.tools || 'No documentado'}</p>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center space-x-2 text-amber-500">
+                                        <GlassWater className="w-4 h-4" />
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest">Cristalería</h4>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-300 whitespace-pre-line">{recipe.glassware || 'No documentado'}</p>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center space-x-2 text-emerald-500">
+                                        <Sparkles className="w-4 h-4" />
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest">Garnish / Decoración</h4>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-300 whitespace-pre-line">{recipe.garnish || 'No documentado'}</p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* SUB-ELABORACIONES */}
                         {(recipe.sub_preparations || []).length > 0 && (

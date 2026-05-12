@@ -312,6 +312,13 @@ export interface Recipe {
         type: string;
         observation: string;
     };
+    recipe_type?: 'standard' | 'cocktail';
+    cocktail_style?: 'Clásico' | 'Flair' | string;
+    prep_method?: 'Batido' | 'Agitado' | 'Directo al Vaso' | 'Otros' | string;
+    cocktail_category?: 'Aperitivo' | 'Digestivo' | 'Trago Largo' | 'Trago Corto' | 'Espumante' | 'Fantasía' | string;
+    tools?: string;
+    glassware?: string;
+    garnish?: string;
 }
 
 export interface StockItem {

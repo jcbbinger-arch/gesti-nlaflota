@@ -8,7 +8,7 @@ interface AIHubModalProps {
     isOpen: boolean;
     onClose: () => void;
     onImport: (jsonString: string) => void;
-    initialTab?: 'digitalize' | 'molecular';
+    initialTab?: 'digitalize' | 'molecular' | 'cocktail';
 }
 
 export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImport, initialTab = 'digitalize' }) => {
@@ -16,8 +16,8 @@ export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImpor
     const { creatorInfo } = useCreator();
     const { workspaceSettings } = useData();
     const [jsonInput, setJsonInput] = useState('');
-    const [copied, setCopied] = useState<'master' | 'molecular' | null>(null);
-    const [activeView, setActiveView] = useState<'digitalize' | 'molecular'>(initialTab);
+    const [copied, setCopied] = useState<'master' | 'molecular' | 'cocktail' | null>(null);
+    const [activeView, setActiveView] = useState<'digitalize' | 'molecular' | 'cocktail'>(initialTab);
 
     // Sync activeView with initialTab when modal opens
     React.useEffect(() => {
@@ -39,6 +39,7 @@ REGLAS DE FORMATO:
 2. Esquema exacto (Respeta estrictamente los nombres de campos):
 {
   "name": "Nombre de la receta",
+  "recipe_type": "standard",
   "category": "${categoriesStr}",
   "yieldQuantity": 4, 
   "yieldUnit": "raciones",
@@ -73,6 +74,36 @@ RECETA A DIGITALIZAR:
 [PEGA AQUÍ TU RECETA]`;
     };
 
+    const getCocktailPrompt = () => {
+        return `Actúa como un Mixólogo Profesional e I+D de Coctelería para ${companyInfo.name || 'mi establecimiento'}.
+Tu tarea es convertir el texto o imagen de una RECETA DE COCTELERÍA en un objeto JSON compatible con el sistema ${creatorInfo.app_name}.
+
+REGLAS DE FORMATO:
+1. Devuelve ÚNICAMENTE el código JSON.
+2. Esquema exacto (Respeta estrictamente los nombres de campos):
+{
+  "name": "Nombre del cóctel",
+  "recipe_type": "cocktail",
+  "cocktail_style": "Clásico|Flair",
+  "prep_method": "Batido|Agitado|Directo al Vaso|Otros",
+  "cocktail_category": "Aperitivo|Digestivo|Trago Largo|Trago Corto|Espumante|Fantasía",
+  "yieldQuantity": 1, 
+  "yieldUnit": "copa",
+  "ingredients": [{"name": "Ingrediente/Licor", "quantity": 50, "unit": "ml|cl|oz|ud"}],
+  "instructions": "Pasos detallados de elaboración",
+  "tools": "Coctelera, Jigger, etc.",
+  "glassware": "Copa Martini, Vaso Collins, etc.",
+  "garnish": "Twist de piel de naranja, etc.",
+  "notes": "Puntos clave y servicio",
+  "clientDescription": "Descripción comercial sugerente",
+  "serviceExplanation": "Storytelling del cóctel para el camarero",
+  "organolepticAnalysis": "Aromas, sabores y perfil del cóctel"
+}
+
+RECETA A DIGITALIZAR:
+[PEGA AQUÍ TU RECETA DE COCTELERÍA]`;
+    };
+
     const getMolecularPrompt = () => {
         return `Actúa como: Un experto internacional en gastronomía molecular y sumiller especializado en química del sabor. Tu conocimiento se basa estrictamente en la base de datos FlavorDB y en el principio de compuestos aromáticos volátiles compartidos.
 
@@ -102,8 +133,8 @@ INGREDIENTES PARA ANALIZAR:
 [PEGA AQUÍ TUS INGREDIENTES]`;
     };
 
-    const handleCopy = (type: 'master' | 'molecular') => {
-        const prompt = type === 'master' ? getMasterPrompt() : getMolecularPrompt();
+    const handleCopy = (type: 'master' | 'molecular' | 'cocktail') => {
+        const prompt = type === 'master' ? getMasterPrompt() : type === 'cocktail' ? getCocktailPrompt() : getMolecularPrompt();
         navigator.clipboard.writeText(prompt);
         setCopied(type);
         setTimeout(() => setCopied(null), 2000);
@@ -140,15 +171,21 @@ INGREDIENTES PARA ANALIZAR:
                     <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
                         <button 
                             onClick={() => setActiveView('digitalize')}
-                            className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'digitalize' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'digitalize' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                         >
-                            Digitalizar
+                            Cocina
+                        </button>
+                        <button 
+                            onClick={() => setActiveView('cocktail')}
+                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'cocktail' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            Cóctel
                         </button>
                         <button 
                             onClick={() => setActiveView('molecular')}
-                            className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'molecular' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'molecular' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                         >
-                            Análisis Molecular
+                            Molecular
                         </button>
                     </div>
                 </div>
@@ -171,7 +208,9 @@ INGREDIENTES PARA ANALIZAR:
                                     </div>
                                     <p className="text-xs text-gray-400 leading-relaxed font-medium">
                                         {activeView === 'digitalize' 
-                                            ? 'Optimizado para extraer gramajes, pasos y storytelling comercial de cualquier imagen o texto.'
+                                            ? 'Optimizado para extraer gramajes, pasos y storytelling comercial de cualquier imagen o texto de cocina.'
+                                            : activeView === 'cocktail'
+                                            ? 'Especializado en mixología: técnicas de agitado, cristalería, herramientas y familias de cócteles.'
                                             : 'Basado en FlavorDB y perfiles de terpenos para maridajes científicos de vanguardia.'
                                         }
                                     </p>
@@ -184,11 +223,11 @@ INGREDIENTES PARA ANALIZAR:
                         </div>
 
                         <button 
-                            onClick={() => handleCopy(activeView === 'digitalize' ? 'master' : 'molecular')}
+                            onClick={() => handleCopy(activeView === 'digitalize' ? 'master' : activeView === 'cocktail' ? 'cocktail' : 'molecular')}
                             className="w-full bg-white text-[#121421] py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center space-x-3 shadow-xl active:scale-[0.98]"
                         >
                             {copied === activeView ? <Check className="w-5 h-5 text-emerald-600" /> : <Copy className="w-5 h-5" />}
-                            <span>{copied === activeView ? 'PROMPT COPIADO' : `COPIAR PROMPT ${activeView === 'digitalize' ? 'MAESTRO' : 'MOLECULAR'}`}</span>
+                            <span>{copied === activeView ? 'PROMPT COPIADO' : `COPIAR PROMPT ${activeView === 'digitalize' ? 'COCINA' : activeView === 'cocktail' ? 'CÓCTEL' : 'MOLECULAR'}`}</span>
                         </button>
                     </div>
 

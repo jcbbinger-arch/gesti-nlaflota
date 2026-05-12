@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
@@ -11,7 +11,11 @@ import { calculateIngredientCost, areUnitsCompatible } from '../../lib/unitConve
 import { ALLERGENS_LIST, ALLERGEN_ICONS, ALLERGEN_COLORS } from '../../lib/allergens';
 import { AllergensControl } from '../../components/AllergensControl';
 import { compressImage } from '../../lib/imageCompression';
-import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal, RefreshCcw, CheckCircle2, ArrowLeft, Save } from 'lucide-react';
+import { ChefHat, Sparkles, ScanText, ImageIcon, AlertTriangle, Wand2, Terminal, RefreshCcw, CheckCircle2, ArrowLeft, Save, Wine, Martini, GlassWater } from 'lucide-react';
+
+const COCKTAIL_STYLES = ['Clásico', 'Flair'];
+const PREP_METHODS = ['Batido', 'Agitado', 'Directo al Vaso', 'Otros'];
+const COCKTAIL_CATEGORIES = ['Aperitivo', 'Digestivo', 'Trago Largo', 'Trago Corto', 'Espumante', 'Fantasía'];
 import { AIHubModal } from '../../components/AIHubModal';
 import { AIDigitalizedRecipe } from '../../services/geminiService';
 
@@ -165,6 +169,7 @@ const LabelPreviewModal: React.FC<{ recipe: Recipe, company: any, onClose: () =>
 
 export const RecipeForm: React.FC = () => {
     const { recipeId } = useParams<{ recipeId?: string }>();
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { recipes, setRecipes, products, workspaceSettings } = useData();
     const { currentUser } = useAuth();
@@ -172,8 +177,10 @@ export const RecipeForm: React.FC = () => {
 
     const categories = useMemo(() => workspaceSettings?.categories || DEFAULT_CATEGORIES, [workspaceSettings]);
 
+    const initialType = searchParams.get('type') === 'cocktail' ? 'cocktail' : 'standard';
+
     const [formState, setFormState] = useState<Omit<Recipe, 'id' | 'author_id'>>({
-        name: '', description: '', photo: '', yield_amount: 1, yield_unit: 'raciones', category: '',
+        name: '', description: '', photo: '', yield_amount: 1, yield_unit: 'raciones', category: initialType === 'cocktail' ? 'Bebidas' : '',
         ingredients: [], preparation_steps: '', key_points: '', is_public: false, cost: 0, price: 0,
         custom_section: { title: '', content: '' },
         presentation: '',
@@ -189,6 +196,13 @@ export const RecipeForm: React.FC = () => {
         sub_preparations: [],
         chemical_analysis: '',
         organoleptic_analysis: '',
+        recipe_type: initialType,
+        cocktail_style: '',
+        prep_method: '',
+        cocktail_category: '',
+        tools: '',
+        glassware: '',
+        garnish: ''
     });
     const [searchTerm, setSearchTerm] = useState('');
     const [linkingIndex, setLinkingIndex] = useState<{ tab: number; index: number } | null>(null);
@@ -539,6 +553,14 @@ Justificación: ${aiData.molecularData.scientificJustification}
             const serviceTime = getVal('serviceTime', 'service_time', 'tiempo_pase', 'tiempo');
             const chemAnalysis = getVal('chemicalAnalysis', 'analisis_quimico', 'nutritional_info');
             const organoAnalysis = getVal('organolepticAnalysis', 'analisis_organoleptico', 'sensorial');
+            
+            const recipeType = getVal('recipe_type', 'tipo');
+            const style = getVal('cocktail_style', 'estilo');
+            const method = getVal('prep_method', 'metodo');
+            const cocktailCat = getVal('cocktail_category', 'categoria_coctel');
+            const tools = getVal('tools', 'herramientas');
+            const glassware = getVal('glassware', 'cristaleria', 'utensilios_servicio');
+            const garnish = getVal('garnish', 'decoracion', 'decoracion_garnish');
 
             // Handle Sub-preparations
             const subPreps: SubPreparation[] = [];
@@ -647,7 +669,14 @@ Justificación: ${aiData.molecularData.scientificJustification}
                 ingredients: importedIngredients.length > 0 ? importedIngredients : prev.ingredients,
                 sub_preparations: subPreps.length > 0 ? subPreps : prev.sub_preparations,
                 chemical_analysis: chemAnalysis || prev.chemical_analysis,
-                organoleptic_analysis: organoAnalysis || prev.organoleptic_analysis
+                organoleptic_analysis: organoAnalysis || prev.organoleptic_analysis,
+                recipe_type: recipeType || prev.recipe_type,
+                cocktail_style: style || prev.cocktail_style,
+                prep_method: method || prev.prep_method,
+                cocktail_category: cocktailCat || prev.cocktail_category,
+                tools: tools || prev.tools,
+                glassware: glassware || prev.glassware,
+                garnish: garnish || prev.garnish
             }));
 
             setShowAIHub(false);
@@ -813,10 +842,12 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                 <div className="md:w-7/12 p-6 space-y-6">
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">Nombre de la Receta</label>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 block">
+                                                {formState.recipe_type === 'cocktail' ? 'Nombre del Cóctel' : 'Nombre de la Receta'}
+                                            </label>
                                             <input 
                                                 type="text" 
-                                                placeholder="Nombre de la Ficha" 
+                                                placeholder={formState.recipe_type === 'cocktail' ? "Nombre del Cóctel" : "Nombre de la Ficha"} 
                                                 value={formState.name} 
                                                 onChange={handleFormChange} 
                                                 name="name" 
@@ -824,6 +855,47 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                                 className="w-full text-2xl font-black p-0 border-none focus:ring-0 placeholder:text-gray-300 bg-transparent dark:text-white"
                                             />
                                         </div>
+
+                                        {formState.recipe_type === 'cocktail' && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-800/30">
+                                                <div>
+                                                    <label className="text-[8px] font-black uppercase tracking-widest text-amber-600 mb-1 block">Estilo</label>
+                                                    <select 
+                                                        name="cocktail_style"
+                                                        value={formState.cocktail_style}
+                                                        onChange={handleFormChange}
+                                                        className="w-full p-2 bg-white dark:bg-gray-800 border-none rounded-lg text-xs font-bold shadow-sm"
+                                                    >
+                                                        <option value="">Seleccionar...</option>
+                                                        {COCKTAIL_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[8px] font-black uppercase tracking-widest text-amber-600 mb-1 block">Método</label>
+                                                    <select 
+                                                        name="prep_method"
+                                                        value={formState.prep_method}
+                                                        onChange={handleFormChange}
+                                                        className="w-full p-2 bg-white dark:bg-gray-800 border-none rounded-lg text-xs font-bold shadow-sm"
+                                                    >
+                                                        <option value="">Seleccionar...</option>
+                                                        {PREP_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[8px] font-black uppercase tracking-widest text-amber-600 mb-1 block">Categoría</label>
+                                                    <select 
+                                                        name="cocktail_category"
+                                                        value={formState.cocktail_category}
+                                                        onChange={handleFormChange}
+                                                        className="w-full p-2 bg-white dark:bg-gray-800 border-none rounded-lg text-xs font-bold shadow-sm"
+                                                    >
+                                                        <option value="">Seleccionar...</option>
+                                                        {COCKTAIL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
                                         
                                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                                             <div>
@@ -1117,6 +1189,52 @@ Justificación: ${aiData.molecularData.scientificJustification}
                                 </div>
                             </div>
                         </Card>
+
+                        {formState.recipe_type === 'cocktail' && (
+                            <Card noPadding>
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-2 block flex items-center">
+                                            <Terminal className="w-3.5 h-3.5 mr-1.5" /> Herramientas a Utilizar
+                                        </label>
+                                        <textarea 
+                                            name="tools"
+                                            value={formState.tools || ''}
+                                            onChange={handleFormChange}
+                                            placeholder="Ej: Coctelera, Gusanillo, Muddler..."
+                                            rows={4}
+                                            className="w-full p-3 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl text-xs font-bold"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-2 block flex items-center">
+                                            <Martini className="w-3.5 h-3.5 mr-1.5" /> Cristalería / Utensilios
+                                        </label>
+                                        <textarea 
+                                            name="glassware"
+                                            value={formState.glassware || ''}
+                                            onChange={handleFormChange}
+                                            placeholder="Ej: Copa Martini, Vaso On the Rocks..."
+                                            rows={4}
+                                            className="w-full p-3 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl text-xs font-bold"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-2 block flex items-center">
+                                            <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Decoración / Garnish
+                                        </label>
+                                        <textarea 
+                                            name="garnish"
+                                            value={formState.garnish || ''}
+                                            onChange={handleFormChange}
+                                            placeholder="Ej: Twist de limón, Cereza marrasquino..."
+                                            rows={4}
+                                            className="w-full p-3 bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl text-xs font-bold"
+                                        />
+                                    </div>
+                                </div>
+                            </Card>
+                        )}
 
                         {/* EXAMEN QUÍMICO */}
                         <Card title="🔬 Examen Químico y Organoléptico">

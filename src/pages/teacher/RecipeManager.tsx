@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { ComposeMessageModal } from '../shared/Messaging';
-import { Share2, Eye, Edit2, Trash2, Users, Lock, Unlock, Image as ImageIcon, Coins, Info, Settings, Plus } from 'lucide-react';
+import { Share2, Eye, Edit2, Trash2, Users, Lock, Unlock, Image as ImageIcon, Coins, Info, Settings, Plus, Wine } from 'lucide-react';
 import { Recipe, Message, User } from '../../types';
 import { SettingsModal } from '../../components/SettingsModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -288,9 +288,15 @@ export const RecipeManager: React.FC = () => {
                     </button>
                     <Link 
                         to="/teacher/recipes/new" 
-                        className="flex-1 md:flex-initial bg-primary-600 text-white py-3 px-6 rounded-2xl hover:bg-primary-700 flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg shadow-primary-100 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                        className="flex-1 md:flex-initial bg-[#0e1627] text-white py-3 px-6 rounded-2xl hover:bg-black flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0"
                     >
                         <Plus className="w-4 h-4 mr-2" /> Nueva Receta
+                    </Link>
+                    <Link 
+                        to="/teacher/recipes/new?type=cocktail" 
+                        className="flex-1 md:flex-initial bg-amber-600 text-white py-3 px-6 rounded-2xl hover:bg-amber-700 flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg shadow-amber-100 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                        <Wine className="w-4 h-4 mr-2" /> Nuevo Cóctel
                     </Link>
                 </div>
             </div>
