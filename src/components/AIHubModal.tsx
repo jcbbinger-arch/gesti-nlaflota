@@ -3,6 +3,8 @@ import { X, Copy, Check, ClipboardPaste, Wand2, Info, Sparkles, Terminal } from 
 import { useCompany } from '../contexts/CompanyContext';
 import { useCreator } from '../contexts/CreatorContext';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
+import { Profile } from '../types';
 
 interface AIHubModalProps {
     isOpen: boolean;
@@ -11,20 +13,41 @@ interface AIHubModalProps {
     initialTab?: 'digitalize' | 'molecular' | 'cocktail' | 'service' | 'bakery';
 }
 
-export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImport, initialTab = 'digitalize' }) => {
+export const AIHubModal: React.FC<AIHubModalProps> = ({ isOpen, onClose, onImport, initialTab }) => {
     const { companyInfo } = useCompany();
     const { creatorInfo } = useCreator();
     const { workspaceSettings } = useData();
+    const { currentUser } = useAuth();
     const [jsonInput, setJsonInput] = useState('');
     const [copied, setCopied] = useState<'master' | 'molecular' | 'cocktail' | 'service' | 'bakery' | null>(null);
-    const [activeView, setActiveView] = useState<'digitalize' | 'molecular' | 'cocktail' | 'service' | 'bakery'>(initialTab);
+    
+    const isKitchenProfile = useMemo(() => {
+        if (!currentUser) return true;
+        if (currentUser.profiles.includes(Profile.ADMIN) || currentUser.profiles.includes(Profile.CREATOR)) return true;
+        return ['Cocina', 'Panadería', 'Pastelería'].includes(currentUser.work_area || '');
+    }, [currentUser]);
 
-    // Sync activeView with initialTab when modal opens
+    const isServiceProfile = useMemo(() => {
+        if (!currentUser) return true;
+        if (currentUser.profiles.includes(Profile.ADMIN) || currentUser.profiles.includes(Profile.CREATOR)) return true;
+        return currentUser.work_area === 'Servicios' || currentUser.work_area === 'Cafetería' as any;
+    }, [currentUser]);
+
+    const defaultTab = useMemo(() => {
+        if (initialTab) return initialTab;
+        if (isKitchenProfile) return 'digitalize';
+        if (isServiceProfile) return 'cocktail';
+        return 'digitalize';
+    }, [initialTab, isKitchenProfile, isServiceProfile]);
+
+    const [activeView, setActiveView] = useState<'digitalize' | 'molecular' | 'cocktail' | 'service' | 'bakery'>(defaultTab);
+
+    // Sync activeView with defaultTab when modal opens
     React.useEffect(() => {
         if (isOpen) {
-            setActiveView(initialTab);
+            setActiveView(defaultTab);
         }
-    }, [isOpen, initialTab]);
+    }, [isOpen, defaultTab]);
 
     const categoriesStr = useMemo(() => {
         return workspaceSettings?.categories?.join('|') || "Entrantes|Ensaladas|Sopas y Cremas|Carnes|Aves|Pescados|Mariscos|Pastas y Arroces|Guarniciones|Salsas|Postres|Panadería/Pastelería|Bebidas|Otros|Sostenible|Fermentados/varios|Decoraciones de platos|Snack|Nuevas Tecnologías|Aperitivos|Bizcochos|Cremas Dulces";
@@ -248,36 +271,46 @@ TEXTO A DIGITALIZAR:
                     </div>
                     
                     <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-                        <button 
-                            onClick={() => setActiveView('digitalize')}
-                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'digitalize' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            Cocina
-                        </button>
-                        <button 
-                            onClick={() => setActiveView('cocktail')}
-                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'cocktail' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            Cóctel
-                        </button>
-                        <button 
-                            onClick={() => setActiveView('service')}
-                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'service' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            Servicios
-                        </button>
-                        <button 
-                            onClick={() => setActiveView('bakery')}
-                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'bakery' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            Panadería
-                        </button>
-                        <button 
-                            onClick={() => setActiveView('molecular')}
-                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'molecular' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            Molecular
-                        </button>
+                        {isKitchenProfile && (
+                            <button 
+                                onClick={() => setActiveView('digitalize')}
+                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'digitalize' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Cocina
+                            </button>
+                        )}
+                        {isServiceProfile && (
+                            <button 
+                                onClick={() => setActiveView('cocktail')}
+                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'cocktail' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Cóctel
+                            </button>
+                        )}
+                        {isServiceProfile && (
+                            <button 
+                                onClick={() => setActiveView('service')}
+                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'service' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Servicios
+                            </button>
+                        )}
+                        {isKitchenProfile && (
+                            <button 
+                                onClick={() => setActiveView('bakery')}
+                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'bakery' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Panadería
+                            </button>
+                        )}
+                        {(isKitchenProfile || isServiceProfile) && (
+                            <button 
+                                onClick={() => setActiveView('molecular')}
+                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeView === 'molecular' ? 'bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                Molecular
+                            </button>
+                        )}
                     </div>
                 </div>
 

@@ -25,7 +25,7 @@ import {
     Martini, 
     Sparkles 
 } from 'lucide-react';
-import { Recipe, Message, User } from '../../types';
+import { Recipe, Message, User, Profile } from '../../types';
 import { SettingsModal } from '../../components/SettingsModal';
 import { AIHubModal } from '../../components/AIHubModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -216,6 +216,22 @@ export const RecipeManager: React.FC = () => {
     const { currentUser, isOwner } = useAuth();
     const navigate = useNavigate();
 
+    const isKitchenProfile = useMemo(() => {
+        if (!currentUser) return true;
+        // Admins and creators see everything
+        if (currentUser.profiles.includes(Profile.ADMIN) || currentUser.profiles.includes(Profile.CREATOR)) return true;
+        // Specific areas
+        return ['Cocina', 'Panadería', 'Pastelería'].includes(currentUser.work_area || '');
+    }, [currentUser]);
+
+    const isServiceProfile = useMemo(() => {
+        if (!currentUser) return true;
+        // Admins and creators see everything
+        if (currentUser.profiles.includes(Profile.ADMIN) || currentUser.profiles.includes(Profile.CREATOR)) return true;
+        // Specific areas
+        return currentUser.work_area === 'Servicios' || currentUser.work_area === 'Cafetería' as any;
+    }, [currentUser]);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [recipeToShare, setRecipeToShare] = useState<Recipe | null>(null);
     const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
@@ -334,60 +350,64 @@ export const RecipeManager: React.FC = () => {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 blur-[100px] rounded-full -mr-32 -mt-32"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full -ml-32 -mb-32"></div>
                 
-                <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-8 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
+                <div className={`relative grid grid-cols-1 ${isKitchenProfile && isServiceProfile ? 'lg:grid-cols-2 lg:divide-x' : 'lg:grid-cols-1'} gap-8 divide-y lg:divide-y-0 divide-white/10`}>
                     {/* KITCHEN & BAKERY GROUP */}
-                    <div className="space-y-6 lg:pr-8">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                                <ChefHat className="w-4 h-4 text-orange-500" />
+                    {isKitchenProfile && (
+                        <div className={`space-y-6 ${isServiceProfile ? 'lg:pr-8' : ''}`}>
+                            <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                                    <ChefHat className="w-4 h-4 text-orange-500" />
+                                </div>
+                                <div>
+                                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Cocina y Pastelería</h3>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Producción y Elaboración</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Cocina y Pastelería</h3>
-                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Producción y Elaboración</p>
+                            <div className="flex flex-wrap gap-3">
+                                <Link 
+                                    to="/teacher/recipes/new" 
+                                    className="flex-1 bg-[#0e1627] text-white py-4 px-6 rounded-2xl hover:bg-black flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg transition-all hover:-translate-y-1 active:translate-y-0"
+                                >
+                                    <Plus className="w-4 h-4 mr-2" /> Nueva Receta
+                                </Link>
+                                <Link 
+                                    to="/teacher/recipes/new?type=bakery" 
+                                    className="flex-1 bg-white/5 text-orange-200 py-4 px-6 rounded-2xl hover:bg-white/10 flex items-center justify-center font-black uppercase tracking-widest text-[10px] border border-white/5 shadow-lg transition-all hover:-translate-y-1 active:translate-y-0"
+                                >
+                                    <Bean className="w-4 h-4 mr-2" /> Ficha Panadería
+                                </Link>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-3">
-                            <Link 
-                                to="/teacher/recipes/new" 
-                                className="flex-1 bg-[#0e1627] text-white py-4 px-6 rounded-2xl hover:bg-black flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg transition-all hover:-translate-y-1 active:translate-y-0"
-                            >
-                                <Plus className="w-4 h-4 mr-2" /> Nueva Receta
-                            </Link>
-                            <Link 
-                                to="/teacher/recipes/new?type=bakery" 
-                                className="flex-1 bg-white/5 text-orange-200 py-4 px-6 rounded-2xl hover:bg-white/10 flex items-center justify-center font-black uppercase tracking-widest text-[10px] border border-white/5 shadow-lg transition-all hover:-translate-y-1 active:translate-y-0"
-                            >
-                                <Bean className="w-4 h-4 mr-2" /> Ficha Panadería
-                            </Link>
-                        </div>
-                    </div>
+                    )}
 
                     {/* SERVICE & COCKTAIL GROUP */}
-                    <div className="space-y-6 lg:pl-8 pt-8 lg:pt-0">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                                <Wine className="w-4 h-4 text-emerald-500" />
+                    {isServiceProfile && (
+                        <div className={`space-y-6 ${isKitchenProfile ? 'lg:pl-8 pt-8 lg:pt-0' : ''}`}>
+                            <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                                    <Wine className="w-4 h-4 text-emerald-500" />
+                                </div>
+                                <div>
+                                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Servicio y Sala</h3>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Atención y Mixología</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Servicio y Sala</h3>
-                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Atención y Mixología</p>
+                            <div className="flex flex-wrap gap-3">
+                                <Link 
+                                    to="/teacher/recipes/new?type=cocktail" 
+                                    className="flex-1 bg-amber-600/90 text-white py-4 px-6 rounded-2xl hover:bg-amber-700 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg shadow-amber-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
+                                >
+                                    <Martini className="w-4 h-4 mr-2" /> Nuevo Cóctel
+                                </Link>
+                                <Link 
+                                    to="/teacher/recipes/new?type=service_tech" 
+                                    className="flex-1 bg-emerald-600/90 text-white py-4 px-6 rounded-2xl hover:bg-emerald-700 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
+                                >
+                                    <Briefcase className="w-4 h-4 mr-2" /> Ficha Servicio
+                                </Link>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-3">
-                            <Link 
-                                to="/teacher/recipes/new?type=cocktail" 
-                                className="flex-1 bg-amber-600/90 text-white py-4 px-6 rounded-2xl hover:bg-amber-700 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg shadow-amber-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
-                            >
-                                <Martini className="w-4 h-4 mr-2" /> Nuevo Cóctel
-                            </Link>
-                            <Link 
-                                to="/teacher/recipes/new?type=service_tech" 
-                                className="flex-1 bg-emerald-600/90 text-white py-4 px-6 rounded-2xl hover:bg-emerald-700 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
-                            >
-                                <Briefcase className="w-4 h-4 mr-2" /> Ficha Servicio
-                            </Link>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
