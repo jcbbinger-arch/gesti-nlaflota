@@ -5,9 +5,29 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../../components/Card';
 import { Modal } from '../../components/Modal';
 import { ComposeMessageModal } from '../shared/Messaging';
-import { Share2, Eye, Edit2, Trash2, Users, Lock, Unlock, Image as ImageIcon, Coins, Info, Settings, Plus, Wine, Briefcase, Bean } from 'lucide-react';
+import { 
+    Share2, 
+    Eye, 
+    Edit2, 
+    Trash2, 
+    Users, 
+    Lock, 
+    Unlock, 
+    Image as ImageIcon, 
+    Coins, 
+    Info, 
+    Settings, 
+    Plus, 
+    Wine, 
+    Briefcase, 
+    Bean, 
+    ChefHat, 
+    Martini, 
+    Sparkles 
+} from 'lucide-react';
 import { Recipe, Message, User } from '../../types';
 import { SettingsModal } from '../../components/SettingsModal';
+import { AIHubModal } from '../../components/AIHubModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ALLERGEN_ICONS: Record<string, string> = {
@@ -123,8 +143,11 @@ const RecipeListItem: React.FC<{
                                 {recipe.yield_amount} {recipe.yield_unit}
                             </span>
                         </div>
-                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight truncate">
+                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight truncate flex items-center">
                             {recipe.name}
+                            {recipe.recipe_type === 'bakery' && <Bean className="w-3.5 h-3.5 ml-2 text-orange-500" />}
+                            {recipe.recipe_type === 'cocktail' && <Martini className="w-3.5 h-3.5 ml-2 text-amber-500" />}
+                            {recipe.recipe_type === 'service_tech' && <Briefcase className="w-3.5 h-3.5 ml-2 text-emerald-500" />}
                         </h3>
                         <div className="flex items-center text-[9px] font-bold text-gray-400 uppercase tracking-widest truncate">
                             {authorName}
@@ -198,6 +221,17 @@ export const RecipeManager: React.FC = () => {
     const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
     const [deleteConfirmStep, setDeleteConfirmStep] = useState(0);
     const [showSettings, setShowSettings] = useState(false);
+    const [showAIHub, setShowAIHub] = useState(false);
+
+    const handleAIImport = (jsonString: string) => {
+        try {
+            // Save data to session storage so the form can pick it up
+            sessionStorage.setItem('ai_import_recipe', jsonString);
+            navigate('/teacher/recipes/new');
+        } catch (err) {
+            console.error('Error storing AI data:', err);
+        }
+    };
 
     const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
@@ -281,35 +315,79 @@ export const RecipeManager: React.FC = () => {
                 </div>
                 <div className="no-print flex items-center space-x-3 w-full md:w-auto">
                     <button 
+                        onClick={() => setShowAIHub(true)}
+                        className="flex-1 md:flex-initial bg-white/10 text-white py-3 px-6 rounded-2xl hover:bg-white/20 flex items-center justify-center font-black uppercase tracking-widest text-xs transition-all border border-white/5"
+                    >
+                        <Sparkles className="w-4 h-4 mr-2 text-primary-400" /> Digitalizar IA
+                    </button>
+                    <button 
                         onClick={() => setShowSettings(true)}
                         className="flex-1 md:flex-initial bg-gray-100 text-gray-600 py-3 px-5 rounded-2xl hover:bg-gray-200 flex items-center justify-center font-bold uppercase tracking-widest text-xs transition-colors"
                     >
                         <Settings className="w-4 h-4 mr-2" /> Configurar
                     </button>
-                    <Link 
-                        to="/teacher/recipes/new" 
-                        className="flex-1 md:flex-initial bg-[#0e1627] text-white py-3 px-6 rounded-2xl hover:bg-black flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0"
-                    >
-                        <Plus className="w-4 h-4 mr-2" /> Nueva Receta
-                    </Link>
-                    <Link 
-                        to="/teacher/recipes/new?type=cocktail" 
-                        className="flex-1 md:flex-initial bg-amber-600 text-white py-3 px-6 rounded-2xl hover:bg-amber-700 flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg shadow-amber-100 transition-all hover:-translate-y-0.5 active:translate-y-0"
-                    >
-                        <Wine className="w-4 h-4 mr-2" /> Nuevo Cóctel
-                    </Link>
-                    <Link 
-                        to="/teacher/recipes/new?type=service_tech" 
-                        className="flex-1 md:flex-initial bg-emerald-600 text-white py-3 px-6 rounded-2xl hover:bg-emerald-700 flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg shadow-emerald-100 transition-all hover:-translate-y-0.5 active:translate-y-0"
-                    >
-                        <Briefcase className="w-4 h-4 mr-2" /> Ficha de Servicio
-                    </Link>
-                    <Link 
-                        to="/teacher/recipes/new?type=bakery" 
-                        className="flex-1 md:flex-initial bg-orange-600 text-white py-3 px-6 rounded-2xl hover:bg-orange-700 flex items-center justify-center font-black uppercase tracking-widest text-xs shadow-lg shadow-orange-100 transition-all hover:-translate-y-0.5 active:translate-y-0"
-                    >
-                        <Bean className="w-4 h-4 mr-2" /> Ficha de Panadería
-                    </Link>
+                </div>
+            </div>
+
+            {/* CREATION ACTIONS GROUPED BY DEPARTMENT */}
+            <div className="bg-white/5 dark:bg-slate-800/30 rounded-[2rem] p-6 border border-white/10 mb-10 overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full -ml-32 -mb-32"></div>
+                
+                <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-8 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
+                    {/* KITCHEN & BAKERY GROUP */}
+                    <div className="space-y-6 lg:pr-8">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                                <ChefHat className="w-4 h-4 text-orange-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Cocina y Pastelería</h3>
+                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Producción y Elaboración</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            <Link 
+                                to="/teacher/recipes/new" 
+                                className="flex-1 bg-[#0e1627] text-white py-4 px-6 rounded-2xl hover:bg-black flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg transition-all hover:-translate-y-1 active:translate-y-0"
+                            >
+                                <Plus className="w-4 h-4 mr-2" /> Nueva Receta
+                            </Link>
+                            <Link 
+                                to="/teacher/recipes/new?type=bakery" 
+                                className="flex-1 bg-white/5 text-orange-200 py-4 px-6 rounded-2xl hover:bg-white/10 flex items-center justify-center font-black uppercase tracking-widest text-[10px] border border-white/5 shadow-lg transition-all hover:-translate-y-1 active:translate-y-0"
+                            >
+                                <Bean className="w-4 h-4 mr-2" /> Ficha Panadería
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* SERVICE & COCKTAIL GROUP */}
+                    <div className="space-y-6 lg:pl-8 pt-8 lg:pt-0">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                                <Wine className="w-4 h-4 text-emerald-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Servicio y Sala</h3>
+                                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Atención y Mixología</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            <Link 
+                                to="/teacher/recipes/new?type=cocktail" 
+                                className="flex-1 bg-amber-600/90 text-white py-4 px-6 rounded-2xl hover:bg-amber-700 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg shadow-amber-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
+                            >
+                                <Martini className="w-4 h-4 mr-2" /> Nuevo Cóctel
+                            </Link>
+                            <Link 
+                                to="/teacher/recipes/new?type=service_tech" 
+                                className="flex-1 bg-emerald-600/90 text-white py-4 px-6 rounded-2xl hover:bg-emerald-700 flex items-center justify-center font-black uppercase tracking-widest text-[10px] shadow-lg shadow-emerald-900/20 transition-all hover:-translate-y-1 active:translate-y-0"
+                            >
+                                <Briefcase className="w-4 h-4 mr-2" /> Ficha Servicio
+                            </Link>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -415,6 +493,14 @@ export const RecipeManager: React.FC = () => {
 
             {showSettings && (
                 <SettingsModal onClose={() => setShowSettings(false)} />
+            )}
+
+            {showAIHub && (
+                <AIHubModal 
+                    isOpen={showAIHub}
+                    onClose={() => setShowAIHub(false)}
+                    onImport={handleAIImport}
+                />
             )}
 
             {recipeToDelete && (
