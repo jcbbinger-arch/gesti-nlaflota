@@ -7,7 +7,7 @@ import { Modal } from '../../components/Modal';
 import { 
     Users, Calendar, Download, AlertTriangle, ArrowRight, 
     CheckCircle, Clock, ChefHat, Edit2, Save, X, Plus, Trash2, 
-    ChevronUp, ChevronDown, Info, ChevronRight, Printer as PrinterIcon
+    ChevronUp, ChevronDown, Info, ChevronRight, Printer as PrinterIcon, Wine
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { motion, AnimatePresence } from 'motion/react';
@@ -837,6 +837,23 @@ export const DiningServiceView: React.FC = () => {
                                                                         </div>
                                                                     </div>
                                                                 </div>
+
+                                                                {item.pairing && (
+                                                                    <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 rounded-2xl flex items-center">
+                                                                        <div className="w-10 h-10 bg-amber-100 dark:bg-amber-800 flex items-center justify-center rounded-full mr-4 shrink-0">
+                                                                            <Wine className="w-6 h-6 text-amber-600" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <h5 className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-1">Maridaje Sugerido</h5>
+                                                                            <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                                                                                {item.pairing.type}
+                                                                            </p>
+                                                                            <p className="text-xs text-amber-600 dark:text-amber-400 italic">
+                                                                                {item.pairing.observation}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -981,11 +998,52 @@ export const DiningServiceView: React.FC = () => {
                     <div>
                         <label className="block text-xs font-black uppercase text-gray-400 mb-1">Comentarios / Explicación para Sala</label>
                         <textarea
-                            className="w-full p-2 border rounded dark:bg-gray-700 text-sm h-24"
+                            className="w-full p-2 border rounded dark:bg-gray-700 text-sm h-20"
                             value={editingMenuItem?.description}
                             onChange={(e) => setEditingMenuItem(prev => ({ ...prev!, description: e.target.value }))}
                             placeholder="Explica el origen, ingredientes clave o forma de servicio..."
                         />
+                    </div>
+
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-800 space-y-3">
+                        <div className="flex items-center text-[10px] font-black text-amber-600 uppercase tracking-widest">
+                            <Wine className="w-3.5 h-3.5 mr-1.5" />
+                            Sección de Maridaje
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[8px] font-black text-amber-500 uppercase mb-1">Tipo de Bebida</label>
+                                <input 
+                                    type="text"
+                                    value={editingMenuItem?.pairing?.type || ''}
+                                    onChange={(e) => setEditingMenuItem(prev => ({ 
+                                        ...prev!, 
+                                        pairing: { 
+                                            type: e.target.value, 
+                                            observation: prev?.pairing?.observation || '' 
+                                        } 
+                                    }))}
+                                    placeholder="Ej: Vino Blanco..."
+                                    className="w-full p-2 border border-amber-200 rounded-lg dark:bg-gray-700 text-xs font-bold"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[8px] font-black text-amber-500 uppercase mb-1">Observación</label>
+                                <input 
+                                    type="text"
+                                    value={editingMenuItem?.pairing?.observation || ''}
+                                    onChange={(e) => setEditingMenuItem(prev => ({ 
+                                        ...prev!, 
+                                        pairing: { 
+                                            type: prev?.pairing?.type || '', 
+                                            observation: e.target.value 
+                                        } 
+                                    }))}
+                                    placeholder="Notas de cata..."
+                                    className="w-full p-2 border border-amber-200 rounded-lg dark:bg-gray-700 text-xs font-bold"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100 dark:border-gray-800">

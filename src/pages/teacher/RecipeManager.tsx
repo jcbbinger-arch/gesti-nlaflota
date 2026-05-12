@@ -202,32 +202,35 @@ export const RecipeManager: React.FC = () => {
     const usersMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
     const productsMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
+    const accessibleRecipes = useMemo(() => {
+        return recipes.filter(r => isOwner(r.author_id) || r.is_public);
+    }, [recipes, isOwner]);
+
     const sortedRecipes = useMemo(() => {
-        // Sort by ID descending (most recent first)
-        return [...recipes].sort((a, b) => b.id.localeCompare(a.id));
-    }, [recipes]);
+        return [...accessibleRecipes].sort((a, b) => b.id.localeCompare(a.id));
+    }, [accessibleRecipes]);
 
     const filteredRecipes = useMemo(() => {
-        let results = sortedRecipes;
+        if (!searchTerm) return sortedRecipes;
         
-        if (searchTerm) {
-            const lowerCaseSearch = searchTerm.toLowerCase();
-            results = sortedRecipes.filter(recipe => {
-                if (recipe.name.toLowerCase().includes(lowerCaseSearch)) return true;
-                return recipe.ingredients.some(ing => 
-                    productsMap.get(ing.product_id)?.name.toLowerCase().includes(lowerCaseSearch)
-                );
-            });
-        } else {
-            // If no search, limit to last 15
-            results = sortedRecipes.slice(0, 15);
-        }
-
-        return results;
+        const lowerCaseSearch = searchTerm.toLowerCase();
+        return sortedRecipes.filter(recipe => {
+            if (recipe.name.toLowerCase().includes(lowerCaseSearch)) return true;
+            return recipe.ingredients.some(ing => 
+                productsMap.get(ing.product_id)?.name.toLowerCase().includes(lowerCaseSearch)
+            );
+        });
     }, [sortedRecipes, searchTerm, productsMap]);
 
-    const myRecipes = useMemo(() => filteredRecipes.filter(r => isOwner(r.author_id)), [filteredRecipes, isOwner]);
-    const publicRecipes = useMemo(() => filteredRecipes.filter(r => r.is_public && !isOwner(r.author_id)), [filteredRecipes, isOwner]);
+    const myRecipes = useMemo(() => {
+        const results = filteredRecipes.filter(r => isOwner(r.author_id));
+        return searchTerm ? results : results.slice(0, 15);
+    }, [filteredRecipes, isOwner, searchTerm]);
+
+    const publicRecipes = useMemo(() => {
+        const results = filteredRecipes.filter(r => r.is_public && !isOwner(r.author_id));
+        return searchTerm ? results : results.slice(0, 15);
+    }, [filteredRecipes, isOwner, searchTerm]);
 
     const getCategoryColors = (categoryName: string) => {
         const config = workspaceSettings?.categoryConfigs?.find(c => c.name === categoryName);

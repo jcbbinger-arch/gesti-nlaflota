@@ -15,7 +15,9 @@ import {
     Info,
     AlertTriangle,
     Edit2,
-    Save
+    Save,
+    Search,
+    Wine
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { addHeaderToPdf } from '../../utils/export';
@@ -43,6 +45,7 @@ const ServiceDetailView: React.FC<{
     const [addStep, setAddStep] = useState<null | 'choice' | 'database' | 'manual'>(initialAdd ? 'choice' : null);
     const [targetMenuItemId, setTargetMenuItemId] = useState<string | null>(null);
     const [editingMenuItemId, setEditingMenuItemId] = useState<string | null>(null);
+    const [pairingEditItemId, setPairingEditItemId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ServiceRole | 'Global'>(initialTab || 'Global');
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
@@ -204,7 +207,8 @@ const ServiceDetailView: React.FC<{
             work_area: currentUser?.work_area || 'Cocina',
             role: roleForNewItem,
             allergens: recipe.ingredients.flatMap((ing: any) => productsMap.get(ing.product_id)?.allergens || []),
-            description: recipe.description
+            description: recipe.description,
+            pairing: recipe.pairing
         };
 
         const updatedService = { ...service, menu: [...service.menu, newItem] };
@@ -226,6 +230,7 @@ const ServiceDetailView: React.FC<{
             role: assignedRole,
             allergens: newRecipe.selected_allergens || [],
             description: newRecipe.description,
+            pairing: newRecipe.pairing,
             is_custom: true
         };
 
@@ -663,18 +668,43 @@ const ServiceDetailView: React.FC<{
                                                         <span className="font-bold text-xs text-primary-600 mr-2">{item.order_number}</span>
                                                         <span className="font-bold text-sm text-gray-800 dark:text-white flex-1">{item.name}</span>
                                                         
-                                                        {canEdit && !isSectionClosed && (
-                                                            <button onClick={() => handleRemoveRecipe(item.id)} className="p-1 text-gray-400 hover:text-red-500">
-                                                                <TrashIcon className="w-4 h-4" />
-                                                            </button>
+                                                        {(canEdit || myRoles.includes('Servicios (Sala)')) && !isSectionClosed && (
+                                                            <div className="flex space-x-1">
+                                                                <button 
+                                                                    onClick={() => setPairingEditItemId(item.id)} 
+                                                                    className="p-1 text-amber-500 hover:bg-amber-50 rounded transition-colors"
+                                                                    title="Editar Maridaje"
+                                                                >
+                                                                    <Wine className="w-4 h-4" />
+                                                                </button>
+                                                                {canEdit && (
+                                                                    <button onClick={() => handleRemoveRecipe(item.id)} className="p-1 text-gray-400 hover:text-red-500">
+                                                                        <TrashIcon className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                     
                                                     {!isCollapsed && (
                                                         <div className="ml-8 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-xs space-y-2">
                                                             <div><span className="font-bold text-gray-500">Explicación:</span> {item.service_explanation || itemsRecipes[0]?.service_explanation || item.description || '-'}</div>
-                                                            <div><span className="font-bold text-gray-500">Temp/Pase:</span> {item.temperature || itemsRecipes[0]?.temperature || '-'}</div>
-                                                            <div><span className="font-bold text-gray-500">Marcaje:</span> {item.cutlery_required || itemsRecipes[0]?.cutlery_required || '-'}</div>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                <div><span className="font-bold text-gray-500">Temp/Pase:</span> {item.temperature || itemsRecipes[0]?.temperature || '-'}</div>
+                                                                <div><span className="font-bold text-gray-500">Marcaje:</span> {item.cutlery_required || itemsRecipes[0]?.cutlery_required || '-'}</div>
+                                                            </div>
+                                                            {item.pairing && (
+                                                                <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 rounded-md">
+                                                                    <div className="flex items-center text-amber-700 dark:text-amber-400 font-bold mb-1 uppercase tracking-tighter">
+                                                                        <Wine className="w-3 h-3 mr-1" /> Maridaje
+                                                                    </div>
+                                                                    <div className="text-[10px]">
+                                                                        <span className="font-bold">Bebida:</span> {item.pairing.type}
+                                                                        <br />
+                                                                        <span className="font-bold">Nota:</span> {item.pairing.observation}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -804,6 +834,19 @@ const ServiceDetailView: React.FC<{
                     initialRole={activeTab !== 'Global' ? activeTab : (myRoles[0] || 'Cocina')}
                 />
             )}
+
+            {pairingEditItemId && (
+                <PairingEditModal 
+                    item={service.menu.find(i => i.id === pairingEditItemId)!}
+                    onSave={(pairing) => {
+                        const updatedMenu = service.menu.map(i => i.id === pairingEditItemId ? { ...i, pairing } : i);
+                        const updatedService = { ...service, menu: updatedMenu };
+                        setServices(services.map(s => s.id === service.id ? updatedService : s));
+                        setPairingEditItemId(null);
+                    }}
+                    onClose={() => setPairingEditItemId(null)}
+                />
+            )}
         </div>
     );
 };
@@ -816,6 +859,8 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe, role: ServiceRole) 
     const [recommendedMarking, setRecommendedMarking] = useState('');
     const [serviceType, setServiceType] = useState('');
     const [clientDescription, setClientDescription] = useState('');
+    const [pairingType, setPairingType] = useState('');
+    const [pairingObservation, setPairingObservation] = useState('');
     const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
     const [category, setCategory] = useState('Entrante');
     const [isCustomCategory, setIsCustomCategory] = useState(false);
@@ -852,7 +897,8 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe, role: ServiceRole) 
             recommended_marking: recommendedMarking,
             service_type: serviceType,
             client_description: clientDescription,
-            selected_allergens: selectedAllergens
+            selected_allergens: selectedAllergens,
+            pairing: pairingType ? { type: pairingType, observation: pairingObservation } : undefined
         };
 
         onSave(newRecipe, assignedRole);
@@ -1029,10 +1075,36 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe, role: ServiceRole) 
                     <textarea 
                         value={clientDescription} 
                         onChange={e => setClientDescription(e.target.value)} 
-                        className="w-full p-2 border rounded-lg dark:bg-gray-700" 
-                        rows={3}
+                        className="w-full p-2 border rounded-lg dark:bg-gray-700 text-sm" 
+                        rows={2}
                         placeholder="Explica el origen, ingredientes clave o forma de servicio..."
                     />
+                </div>
+
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-800 space-y-3">
+                    <h4 className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Sección de Maridaje</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-[8px] font-black text-amber-500 uppercase mb-1">Tipo de Bebida</label>
+                            <input 
+                                type="text"
+                                value={pairingType}
+                                onChange={e => setPairingType(e.target.value)}
+                                placeholder="Ej: Vino Blanco, Cerveza Artesana..."
+                                className="w-full p-2 border border-amber-200 rounded-lg dark:bg-gray-700 text-xs font-bold"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[8px] font-black text-amber-500 uppercase mb-1">Observación de Cata/Maridaje</label>
+                            <input 
+                                type="text"
+                                value={pairingObservation}
+                                onChange={e => setPairingObservation(e.target.value)}
+                                placeholder="Notas para el alumno..."
+                                className="w-full p-2 border border-amber-200 rounded-lg dark:bg-gray-700 text-xs font-bold"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex justify-end space-x-2 pt-4 border-t">
@@ -1045,13 +1117,125 @@ const ManualRecipeModal: React.FC<{ onSave: (recipe: Recipe, role: ServiceRole) 
 };
 
 const RecipeSelectorModal: React.FC<{ recipes: Recipe[], onClose: () => void, onSelect: (recipe_id: string) => void }> = ({ recipes, onClose, onSelect }) => {
+    const { currentUser, isOwner } = useAuth();
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredRecipes = useMemo(() => {
+        return recipes.filter(r => {
+            // Filter by privacy/ownership
+            const canSee = isOwner(r.author_id) || r.is_public;
+            if (!canSee) return false;
+
+            // Filter by search term
+            if (searchTerm) {
+                return r.name.toLowerCase().includes(searchTerm.toLowerCase());
+            }
+            return true;
+        }).sort((a, b) => a.name.localeCompare(b.name));
+    }, [recipes, searchTerm, isOwner]);
+
     return (
         <Modal isOpen={true} onClose={onClose} title="Seleccionar Receta">
-            <div className="max-h-96 overflow-y-auto">
-                {recipes.map(r => (
-                    <div key={r.id} onClick={() => { onSelect(r.id); onClose(); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">{r.name}</div>
-                ))}
+            <div className="p-4 space-y-4">
+                <div className="relative">
+                    <input 
+                        type="text"
+                        placeholder="Buscar receta..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary-500 transition-all outline-none"
+                        autoFocus
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <Search className="w-4 h-4" />
+                    </div>
+                </div>
+
+                <div className="max-h-96 overflow-y-auto space-y-1 pr-1">
+                    {filteredRecipes.map(r => (
+                        <div 
+                            key={r.id} 
+                            onClick={() => { onSelect(r.id); onClose(); }} 
+                            className="p-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10 cursor-pointer shadow-sm transition-all group"
+                        >
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-tight group-hover:text-primary-600 transition-colors">{r.name}</h4>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{r.category}</p>
+                                </div>
+                                {isOwner(r.author_id) ? (
+                                    <span className="text-[8px] font-black bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase">Mía</span>
+                                ) : (
+                                    <span className="text-[8px] font-black bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded uppercase tracking-tighter">Pública</span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    {filteredRecipes.length === 0 && (
+                        <div className="text-center py-8">
+                            <p className="text-gray-500 text-sm italic">No se han encontrado recetas disponibles.</p>
+                        </div>
+                    )}
+                </div>
             </div>
+        </Modal>
+    );
+};
+
+const PairingEditModal: React.FC<{ 
+    item: ServiceMenuItem, 
+    onSave: (pairing: { type: string; observation: string }) => void, 
+    onClose: () => void 
+}> = ({ item, onSave, onClose }) => {
+    const [type, setType] = useState(item.pairing?.type || '');
+    const [observation, setObservation] = useState(item.pairing?.observation || '');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave({ type, observation });
+    };
+
+    return (
+        <Modal isOpen={true} onClose={onClose} title={`Editar Maridaje - ${item.name}`}>
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-800 flex items-center mb-4">
+                    <Wine className="w-8 h-8 text-amber-600 mr-3 shrink-0" />
+                    <div>
+                        <h4 className="text-sm font-black text-amber-800 dark:text-amber-200 uppercase tracking-tight">Vinos y Maridaje</h4>
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase">Define el mejor acompañamiento para este plato</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Tipo de Bebida (Vino, Cerveza, etc.)</label>
+                    <input 
+                        type="text"
+                        value={type}
+                        onChange={e => setType(e.target.value)}
+                        placeholder="Ej: Rioja Crianza, IPA Artesana..."
+                        className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary-500 transition-all outline-none"
+                        autoFocus
+                        required
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Observaciones de Maridaje</label>
+                    <textarea 
+                        value={observation}
+                        onChange={e => setObservation(e.target.value)}
+                        placeholder="Explica el porqué de este maridaje o notas de cata..."
+                        className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary-500 transition-all outline-none"
+                        rows={3}
+                        required
+                    />
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4 border-t">
+                    <button type="button" onClick={onClose} className="px-6 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+                    <button type="submit" className="px-6 py-2 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 shadow-md transform active:scale-95 transition-all text-sm uppercase tracking-widest">Guardar Maridaje</button>
+                </div>
+            </form>
         </Modal>
     );
 };

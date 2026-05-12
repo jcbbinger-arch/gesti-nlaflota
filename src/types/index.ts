@@ -308,6 +308,10 @@ export interface Recipe {
     sub_preparations?: SubPreparation[];
     chemical_analysis?: string;
     organoleptic_analysis?: string;
+    pairing?: {
+        type: string;
+        observation: string;
+    };
 }
 
 export interface StockItem {
@@ -425,6 +429,10 @@ export interface ServiceMenuItem {
     service_type?: string;
     cutlery_required?: string;
     presentation?: string;
+    pairing?: {
+        type: string;
+        observation: string;
+    };
 }
 
 export interface Service {
