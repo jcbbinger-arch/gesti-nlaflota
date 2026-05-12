@@ -218,18 +218,30 @@ export const RecipeManager: React.FC = () => {
 
     const isKitchenProfile = useMemo(() => {
         if (!currentUser) return true;
-        // Admins and creators see everything
-        if (currentUser.profiles.includes(Profile.ADMIN) || currentUser.profiles.includes(Profile.CREATOR)) return true;
-        // Specific areas
-        return ['Cocina', 'Panadería', 'Pastelería'].includes(currentUser.work_area || '');
+        const workArea = currentUser.work_area?.toLowerCase() || '';
+        
+        // Define areas strictly (case insensitive)
+        const isKitchenGroup = ['cocina', 'panadería', 'panaderia', 'pastelería', 'pasteleria', 'producción', 'elaboración'].some(area => workArea.includes(area));
+        const isServiceGroup = ['servicios', 'servicio', 'sala', 'cafetería', 'cafeteria', 'bar', 'restauración', 'restauracion'].some(area => workArea.includes(area));
+        
+        if (isKitchenGroup) return true;
+        if (isServiceGroup) return false;
+        
+        return currentUser.profiles.includes(Profile.ADMIN) || currentUser.profiles.includes(Profile.CREATOR);
     }, [currentUser]);
 
     const isServiceProfile = useMemo(() => {
         if (!currentUser) return true;
-        // Admins and creators see everything
-        if (currentUser.profiles.includes(Profile.ADMIN) || currentUser.profiles.includes(Profile.CREATOR)) return true;
-        // Specific areas
-        return currentUser.work_area === 'Servicios' || currentUser.work_area === 'Cafetería' as any;
+        const workArea = currentUser.work_area?.toLowerCase() || '';
+        
+        // Define areas strictly (case insensitive)
+        const isKitchenGroup = ['cocina', 'panadería', 'panaderia', 'pastelería', 'pasteleria', 'producción', 'elaboración'].some(area => workArea.includes(area));
+        const isServiceGroup = ['servicios', 'servicio', 'sala', 'cafetería', 'cafeteria', 'bar', 'restauración', 'restauracion'].some(area => workArea.includes(area));
+        
+        if (isServiceGroup) return true;
+        if (isKitchenGroup) return false;
+        
+        return currentUser.profiles.includes(Profile.ADMIN) || currentUser.profiles.includes(Profile.CREATOR);
     }, [currentUser]);
 
     const [searchTerm, setSearchTerm] = useState('');
