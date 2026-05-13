@@ -57,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userEmail = (firebaseUser.email || '').trim().toLowerCase();
     const isSuperUser = SUPER_USER_EMAILS.includes(userEmail);
     const isPablo = userEmail === 'pablo.palazon@murciaeduca.es';
+    const isTeacherEmail = TEACHER_EMAILS.includes(userEmail);
 
     if (userDoc.exists()) {
       let userData = userDoc.data() as User;
@@ -93,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!userData.activity_status && !isSuperUser) {
         // Customers are always active by default. Other profiles depend on manual activation.
         const isCustomer = userData.profiles.includes(Profile.CUSTOMER);
-        userData.activity_status = (isSuperUser || isPablo || isCustomer) ? 'Activo' : 'De Baja';
+        userData.activity_status = (isSuperUser || isPablo || isTeacherEmail || isCustomer) ? 'Activo' : 'De Baja';
         needsUpdate = true;
       }
       
@@ -116,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         needsUpdate = true;
       }
       // Ensure super users and fixed accounts are active
-      if ((isSuperUser || userEmail === 'pablo.palazon@murciaeduca.es' || userEmail === 'cursos.cpr.juanc@gmail.com') && (userData.activity_status !== 'Activo' || !userData.profiles.includes(Profile.TEACHER))) {
+      if ((isSuperUser || isPablo || isTeacherEmail || userEmail === 'cursos.cpr.juanc@gmail.com') && (userData.activity_status !== 'Activo' || !userData.profiles.includes(Profile.TEACHER))) {
         userData.activity_status = 'Activo';
         if (!userData.profiles.includes(Profile.TEACHER)) {
           userData.profiles = [...(userData.profiles || []), Profile.TEACHER];
